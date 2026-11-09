@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="th"><head>
+  <meta charset="utf-8">
+  <template id="__bundler_thumbnail" data-bg-color="#237450">
+    <svg viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
+      <rect width="1200" height="800" fill="#237450"/>
+      <circle cx="600" cy="360" r="150" fill="#EAFEF2"/>
+      <text x="600" y="415" text-anchor="middle" font-family="Sarabun, sans-serif" font-size="130" font-weight="700" fill="#237450">สอ</text>
+      <rect x="420" y="570" width="360" height="20" rx="10" fill="#EAFEF2" opacity="0.9"/>
+      <rect x="500" y="618" width="200" height="14" rx="7" fill="#EAFEF2" opacity="0.55"/>
+    </svg>
+  </template>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ระบบ ERP สหกรณ์ออมทรัพย์ สอ.กสท. — รวมทุกระบบ</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap">
+  <script src="css/sys-scope.js"></script>
+  <link rel="stylesheet" href="shared/erp-core.css">
+  <link rel="stylesheet" href="css/base.css">
+
+  <!-- Tailwind CSS v4.2.0 — utility layer only (Preflight intentionally excluded
+       so utilities compose with the Ant Design system instead of resetting it).
+       Config injected via script so the offline bundler doesn't try to inline
+       Tailwind's virtual @imports (resolved by the runtime itself). -->
+  <script>
+    (function () {
+      var s = document.createElement('style');
+      s.setAttribute('type', 'text/tailwindcss');
+      s.textContent =
+        '@layer theme, base, components, utilities;' +
+        '@import "tailwindcss/theme.css" layer(theme);' +
+        '@import "tailwindcss/utilities.css" layer(utilities);' +
+        '@theme{' +
+          '--color-primary:#237450;--color-primary-hover:#438b67;' +
+          '--color-success:#389E0D;--color-warning:#D48806;' +
+          '--color-danger:#CF1322;--color-info:#0958D9;' +
+          '--font-sans:"Sarabun","IBM Plex Sans Thai",-apple-system,sans-serif;' +
+          '--radius-DEFAULT:4px;}';
+      document.head.appendChild(s);
+    })();
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  
+  
+  <meta name="ext-resource-dependency" content="logo.png" data-resource-id="logo" />
+  <script>window.__resources = window.__resources || { logo: 'logo.png' };</script>
+  <template id="__bundler_thumbnail" data-bg-color="#0f4c35">
+    <svg viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
+      <rect width="1200" height="800" fill="#0f4c35"/>
+      <rect x="360" y="200" width="480" height="400" rx="28" fill="#ffffff" opacity="0.95"/>
+      <rect x="410" y="262" width="250" height="26" rx="13" fill="#0f4c35"/>
+      <rect x="410" y="320" width="380" height="16" rx="8" fill="#0f4c35" opacity="0.25"/>
+      <rect x="410" y="356" width="330" height="16" rx="8" fill="#0f4c35" opacity="0.25"/>
+      <rect x="410" y="392" width="360" height="16" rx="8" fill="#0f4c35" opacity="0.25"/>
+      <rect x="410" y="460" width="180" height="52" rx="12" fill="#c8a24a"/>
+    </svg>
+  </template>
+  
+</head>
+<body>
+  <div id="root"></div>
+
+  
+
+  <!-- React + Babel (pinned, with integrity) -->
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <!-- shared/ — ใช้ร่วมกับระบบ ERP สหกรณ์ (แก้ที่ shared/ ที่เดียว แล้วซิงก์กลับ) -->
+  <script type="text/babel" src="shared/erp-components.jsx"></script>
+  <script type="text/babel" src="src/000-ErpAdapters.jsx"></script>
+
+  <!-- Data + helpers -->
+  <script type="text/babel" src="src/001-MEMBERS_LIST.jsx"></script>
+  <script type="text/babel" src="src/002-GUAR_SEARCH_TYPES.jsx"></script>
+  <script type="text/babel" src="src/003-LOAN_BAN_TYPES.jsx"></script>
+  <script type="text/babel" src="src/004-INTEREST_TX_CODES.jsx"></script>
+  <script type="text/babel" src="src/005-LT_OPTS.jsx"></script>
+  <script type="text/babel" src="src/006-LP_OPTS.jsx"></script>
+  <script type="text/babel" src="src/007-LOT_PAY_METHODS.jsx"></script>
+  <script type="text/babel" src="src/008-lmSplitName.jsx"></script>
+  <script type="text/babel" src="src/009-LOAN_PURPOSE_CONST_SEED.jsx"></script>
+  <script type="text/babel" src="src/010-LG_SEED.jsx"></script>
+  <script type="text/babel" src="src/011-GG_OPTS.jsx"></script>
+  <script type="text/babel" src="src/012-IR_SEED.jsx"></script>
+  <script type="text/babel" src="src/013-lrLoanTypeOptions.jsx"></script>
+  <script type="text/babel" src="src/014-lrMonthsBetween.jsx"></script>
+  <script type="text/babel" src="src/015-LA_APPROVER.jsx"></script>
+  <script type="text/babel" src="src/016-LD_APPROVER.jsx"></script>
+  <script type="text/babel" src="src/017-LPO_OFFICER.jsx"></script>
+  <script type="text/babel" src="src/018-LC_TYPES.jsx"></script>
+  <script type="text/babel" src="src/019-LA_TYPES.jsx"></script>
+  <script type="text/babel" src="src/020-SV_TODAY.jsx"></script>
+  <script type="text/babel" src="src/021-IV_ASSET_GROUPS.jsx"></script>
+  <script type="text/babel" src="src/022-SCH_OPTS.jsx"></script>
+  <script type="text/babel" src="src/023-CHILD_TITLE_OPTS.jsx"></script>
+  <script type="text/babel" src="src/024-SCHREQ_OPTS.jsx"></script>
+  <script type="text/babel" src="src/025-WA_APPROVER.jsx"></script>
+  <script type="text/babel" src="src/026-RELIEF_WELFARES.jsx"></script>
+  <script type="text/babel" src="src/027-RELIEF_TYPE_MODE_LABEL.jsx"></script>
+  <script type="text/babel" src="src/028-DN_SIGNERS.jsx"></script>
+  <script type="text/babel" src="src/029-ORQ_STATUS.jsx"></script>
+  <script type="text/babel" src="src/030-PO_TXN_CODES.jsx"></script>
+  <script type="text/babel" src="src/031-GCN_SIGNERS.jsx"></script>
+  <script type="text/babel" src="src/032-GT_TRANSFER_TYPES.jsx"></script>
+  <script type="text/babel" src="src/033-ICR_CHANGE_TYPES.jsx"></script>
+  <script type="text/babel" src="src/034-MT_TODAY.jsx"></script>
+  <script type="text/babel" src="src/035-RSN_TODAY.jsx"></script>
+  <script type="text/babel" src="src/036-msToday.jsx"></script>
+  <script type="text/babel" src="src/037-CCD_COLLATERAL_TYPES.jsx"></script>
+  <script type="text/babel" src="src/038-LC_CREDIT_STATUS.jsx"></script>
+  <script type="text/babel" src="src/039-ATM_ACT.jsx"></script>
+  <script type="text/babel" src="src/040-SHC_SEND_STATUS.jsx"></script>
+  <script type="text/babel" src="src/041-PD_YEARS.jsx"></script>
+  <script type="text/babel" src="src/042-DVK_YEARS.jsx"></script>
+  <script type="text/babel" src="src/043-DCT_YEARS.jsx"></script>
+  <script type="text/babel" src="src/044-ADV_YEARS.jsx"></script>
+  <script type="text/babel" src="src/045-SW_USER.jsx"></script>
+  <script type="text/babel" src="src/046-SRF_PAY_TYPES.jsx"></script>
+  <script type="text/babel" src="src/047-SRC_ORDER_STATUS.jsx"></script>
+  <script type="text/babel" src="src/048-DS_INCOME_FIELDS.jsx"></script>
+  <script type="text/babel" src="src/049-SQ_USER.jsx"></script>
+  <script type="text/babel" src="src/050-CS_USER.jsx"></script>
+  <script type="text/babel" src="src/051-JC_TODAY.jsx"></script>
+  <script type="text/babel" src="src/052-RS_TODAY.jsx"></script>
+  <script type="text/babel" src="src/053-DSP_TYPES.jsx"></script>
+  <script type="text/babel" src="src/054-DIV_AFFIL_PAYTYPES.jsx"></script>
+  <script type="text/babel" src="src/055-AD_REGIONS.jsx"></script>
+  <script type="text/babel" src="src/056-AFFIL_SEED.jsx"></script>
+  <script type="text/babel" src="src/057-DRC_METHODS.jsx"></script>
+  <script type="text/babel" src="src/058-MEMBER_RESTRUCT.jsx"></script>
+  <script type="text/babel" src="src/059-DBA_TYPES.jsx"></script>
+  <script type="text/babel" src="src/060-CT_SIGNERS.jsx"></script>
+  <script type="text/babel" src="src/061-LIT_USER.jsx"></script>
+  <script type="text/babel" src="src/062-LEGAL_STATUS.jsx"></script>
+  <script type="text/babel" src="src/063-BUD_OPTS.jsx"></script>
+  <script type="text/babel" src="src/064-VCH_PAYEE_TYPES.jsx"></script>
+  <script type="text/babel" src="src/065-PVR_STATUS.jsx"></script>
+  <script type="text/babel" src="src/066-RCV_PAYER_TYPES.jsx"></script>
+  <script type="text/babel" src="src/067-FIN_RCV_TYPES.jsx"></script>
+  <script type="text/babel" src="src/068-FBT_TXN_TYPES.jsx"></script>
+  <script type="text/babel" src="src/069-FCX_METHODS.jsx"></script>
+  <script type="text/babel" src="src/070-PC_GL.jsx"></script>
+  <script type="text/babel" src="src/071-PA_TYPES.jsx"></script>
+  <script type="text/babel" src="src/072-PR_STATUS.jsx"></script>
+  <script type="text/babel" src="src/073-INSURANCE_POLICY_NAMES.jsx"></script>
+  <script type="text/babel" src="src/074-INSURANCE_RENEWAL_TYPES.jsx"></script>
+  <script type="text/babel" src="src/075-INS_CO_TYPES.jsx"></script>
+  <script type="text/babel" src="src/076-CL_INSURANCE_TYPES.jsx"></script>
+  <script type="text/babel" src="src/077-CR_REQ_TYPES.jsx"></script>
+  <script type="text/babel" src="src/078-SCHED_SEARCH_TYPES.jsx"></script>
+  <script type="text/babel" src="src/079-AST_CATEGORIES.jsx"></script>
+  <script async src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+  <script type="text/babel" src="src/080-P.jsx"></script>
+  <script type="text/babel" src="src/081-ACCT_CAT_OPTS.jsx"></script>
+  <script type="text/babel" src="src/082-COA_OPTS.jsx"></script>
+  <script type="text/babel" src="src/083-CFW_TXN_TYPES.jsx"></script>
+  <script type="text/babel" src="src/084-JV_TYPES.jsx"></script>
+  <script type="text/babel" src="src/085-DPC_USER.jsx"></script>
+  <script type="text/babel" src="src/086-DAT_OPTS.jsx"></script>
+  <script type="text/babel" src="src/087-DEP_TXN_ACCOUNTS_SEED.jsx"></script>
+  <script type="text/babel" src="src/088-DEP_DAILY_TERMINAL.jsx"></script>
+  <script type="text/babel" src="src/089-DPC_TXN_TYPES.jsx"></script>
+  <script type="text/babel" src="src/090-DEP_BASIC_EXTRA.jsx"></script>
+  <script type="text/babel" src="src/091-DEP_MULTI_DATA.jsx"></script>
+  <script type="text/babel" src="src/092-_M.jsx"></script>
+  <script type="text/babel" src="src/093-IV_MARKET_CATEGORIES.jsx"></script>
+  <script type="text/babel" src="src/094-COOP_BANK_ACCOUNTS.jsx"></script>
+  <script type="text/babel" src="src/095-AGENT_REMIT_AGENTS.jsx"></script>
+  <script type="text/babel" src="src/096-AGENT_RETURN_TXN_TYPE.jsx"></script>
+  <script type="text/babel" src="src/097-AGP_MONTHS.jsx"></script>
+  <script type="text/babel" src="src/098-ARC_PAY_TYPES.jsx"></script>
+  <script type="text/babel" src="src/099-ABR_MONTHS.jsx"></script>
+  <script type="text/babel" src="src/100-MO_PAYER_TYPES.jsx"></script>
+  <script type="text/babel" src="src/101-DEP_OPS_TODAY.jsx"></script>
+  <script type="text/babel" src="src/102-IV_FUND_TAG_COLORS.jsx"></script>
+  <script type="text/babel" src="src/103-ADM_SYSTEMS.jsx"></script>
+  <script type="text/babel" src="src/104-SEM_TYPES.jsx"></script>
+  <script type="text/babel" src="src/105-DCS_STATUS.jsx"></script>
+  <script type="text/babel" src="src/106-DXC_STATUS.jsx"></script>
+  <script type="text/babel" src="src/107-WG_TYPES.jsx"></script>
+  <script type="text/babel" src="src/108-__agentStore.jsx"></script>
+
+  <!-- Tweaks shell (must load before app.jsx so useTweaks is in scope) -->
+  <script type="text/babel" src="src/109-__TWEAKS_STYLE.jsx"></script>
+
+  <!-- Components -->
+  <script type="text/babel" src="src/110-Icon.jsx"></script>
+  <script type="text/babel" src="src/111-msInitial.jsx"></script>
+  <script type="text/babel" src="src/112-csNorm.jsx"></script>
+  <script type="text/babel" src="src/113-EditCtx.jsx"></script>
+  <script type="text/babel" src="src/114-FIN_CFG.jsx"></script>
+  <script type="text/babel" src="src/115-FbtField.jsx"></script>
+  <script type="text/babel" src="src/116-fcxRegOf.jsx"></script>
+  <script type="text/babel" src="src/117-CASH_TELLERS.jsx"></script>
+  <script type="text/babel" src="src/118-CCL_KEY.jsx"></script>
+  <script type="text/babel" src="src/119-CF_KEY.jsx"></script>
+  <script type="text/babel" src="src/120-useTable.jsx"></script>
+  <script type="text/babel" src="src/121-COOP_NAME_FULL.jsx"></script>
+  <script type="text/babel" src="src/122-MemberPrintSheet.jsx"></script>
+  <script type="text/babel" src="src/123-mfStatusTone.jsx"></script>
+  <script type="text/babel" src="src/124-rsClassLabel.jsx"></script>
+  <script type="text/babel" src="src/125-lcMoney.jsx"></script>
+  <script type="text/babel" src="src/126-ssdMoney.jsx"></script>
+  <script type="text/babel" src="src/127-rcMoney.jsx"></script>
+  <script type="text/babel" src="src/128-SearchPage.jsx"></script>
+  <script type="text/babel" src="src/129-COOP_INFO_DEFAULTS.jsx"></script>
+  <script type="text/babel" src="src/130-auLoad.jsx"></script>
+  <script type="text/babel" src="src/131-rpLoad.jsx"></script>
+  <script type="text/babel" src="src/132-ugLoad.jsx"></script>
+  <script type="text/babel" src="src/133-BK_USER.jsx"></script>
+  <script type="text/babel" src="src/134-SCH_DOCNO_DEFAULT.jsx"></script>
+  <script type="text/babel" src="src/135-MFField.jsx"></script>
+  <script type="text/babel" src="src/136-auditInitials.jsx"></script>
+  <script type="text/babel" src="src/137-DEPOSIT_ADJUST_MENU.jsx"></script>
+  <script type="text/babel" src="src/138-fctToday.jsx"></script>
+  <script type="text/babel" src="src/139-cpsToday.jsx"></script>
+  <script type="text/babel" src="src/140-RCS_COOP.jsx"></script>
+  <script type="text/babel" src="src/141-rcToday.jsx"></script>
+  <script type="text/babel" src="src/142-rc2Today.jsx"></script>
+  <script type="text/babel" src="src/143-GField.jsx"></script>
+  <script type="text/babel" src="src/144-lbLoanTypePill.jsx"></script>
+  <script type="text/babel" src="src/145-ieLoanTypePill.jsx"></script>
+  <script type="text/babel" src="src/146-insPayPill.jsx"></script>
+  <script type="text/babel" src="src/147-iaToday.jsx"></script>
+  <script type="text/babel" src="src/148-cdToday.jsx"></script>
+  <script type="text/babel" src="src/149-spToday.jsx"></script>
+  <script type="text/babel" src="src/150-cxToday.jsx"></script>
+  <script type="text/babel" src="src/151-clcToday.jsx"></script>
+  <script type="text/babel" src="src/152-IR_PAGE_SIZE.jsx"></script>
+  <script type="text/babel" src="src/153-_insCoSeq.jsx"></script>
+  <script type="text/babel" src="src/154-ClFld.jsx"></script>
+  <script type="text/babel" src="src/155-CrRow.jsx"></script>
+  <script type="text/babel" src="src/156-CRF_USER.jsx"></script>
+  <script type="text/babel" src="src/157-schStatusPill.jsx"></script>
+  <script type="text/babel" src="src/158-_ltUidSeq.jsx"></script>
+  <script type="text/babel" src="src/159-LpGroup.jsx"></script>
+  <script type="text/babel" src="src/160-_lpUidSeq.jsx"></script>
+  <script type="text/babel" src="src/161-_lgUidSeq.jsx"></script>
+  <script type="text/babel" src="src/162-GC_MEMBER_TYPES.jsx"></script>
+  <script type="text/babel" src="src/163-_gcUidSeq.jsx"></script>
+  <script type="text/babel" src="src/164-lotPill.jsx"></script>
+  <script type="text/babel" src="src/164b-LotReports.jsx"></script>
+  <script type="text/babel" src="src/165-LmMemberSearchModal.jsx"></script>
+  <script src="src/479-numText.js"></script>
+  <script type="text/babel" src="src/166-Orig.jsx"></script>
+  <script src="src/167-TH_MON.js"></script>
+  <script src="src/168-SCREEN.js" defer=""></script>
+  <script type="text/babel" src="src/169-R.jsx"></script>
+  <script type="text/babel" src="src/170-R.jsx"></script>
+  <script type="text/babel" src="src/171-Orig.jsx"></script>
+  <script type="text/babel" src="src/172-Orig.jsx"></script>
+  <script src="src/173-KEY.js"></script>
+  <script type="text/babel" src="src/174-R.jsx"></script>
+  <script src="src/175-run.js" defer=""></script>
+  <script type="text/babel" src="src/176-R.jsx"></script>
+  <script type="text/babel" src="src/177-R.jsx"></script>
+  <script type="text/babel" src="src/178-LrqField.jsx"></script>
+  <script type="text/babel" src="src/179-LA_PILL_COLOR.jsx"></script>
+  <script type="text/babel" src="src/180-ldChecksPill.jsx"></script>
+  <script type="text/babel" src="src/181-LpoCell.jsx"></script>
+  <script type="text/babel" src="src/182-R.jsx"></script>
+  <script type="text/babel" src="src/183-LcField.jsx"></script>
+  <script type="text/babel" src="src/184-laThaiDate.jsx"></script>
+  <script type="text/babel" src="src/185-laInitial.jsx"></script>
+  <script type="text/babel" src="src/185b-LegalDocsPrint.jsx"></script>
+  <script type="text/babel" src="src/186-SV_MONTHS_TH.jsx"></script>
+  <script type="text/babel" src="src/186b-SurveyPermitPrint.jsx"></script>
+  <script type="text/babel" src="src/187-SVR_MONTHS_ABBR.jsx"></script>
+  <script type="text/babel" src="src/187b-SurveyReportPrint.jsx"></script>
+  <script type="text/babel" src="src/188-poToday.jsx"></script>
+  <script type="text/babel" src="src/188b-PoNoticePrint.jsx"></script>
+  <script type="text/babel" src="src/189-LRQ_ORG.jsx"></script>
+  <script type="text/babel" src="src/189b-SpecialContractPrint.jsx"></script>
+  <script type="text/babel" src="src/189c-SpecialLoanContractPrint.jsx"></script>
+  <script type="text/babel" src="src/190-LY_COOP.jsx"></script>
+  <script type="text/babel" src="src/191-TaxCertTab.jsx"></script>
+  <script type="text/babel" src="src/192-_lpuUidSeq.jsx"></script>
+  <script type="text/babel" src="src/193-RL_USER.jsx"></script>
+  <script type="text/babel" src="src/194-DividendTransferPage.jsx"></script>
+  <script type="text/babel" src="src/194b-InterestCertIssuePage.jsx"></script>
+  <script type="text/babel" src="src/195-_ggUidSeq.jsx"></script>
+  <script type="text/babel" src="src/196-R.jsx"></script>
+  <script type="text/babel" src="src/197-_irUidSeq.jsx"></script>
+  <script type="text/babel" src="src/197c-SalaryRemainConfig.jsx"></script>
+  <script src="src/197d-share_terms_data.js"></script>
+  <script type="text/babel" src="src/198-_shUidSeq.jsx"></script>
+  <script type="text/babel" src="src/199-TCX_YEARS.jsx"></script>
+  <script type="text/babel" src="src/200-_ivtUidSeq.jsx"></script>
+  <script type="text/babel" src="src/201-_issUidSeq.jsx"></script>
+  <script type="text/babel" src="src/202-ivlToday.jsx"></script>
+  <script type="text/babel" src="src/203-ivToday.jsx"></script>
+  <script type="text/babel" src="src/204-pfChip.jsx"></script>
+  <script type="text/babel" src="src/205-MpDelta.jsx"></script>
+  <script type="text/babel" src="src/206-invLoadLimitsForCheck.jsx"></script>
+  <script type="text/babel" src="src/207-IMP_STEPS.jsx"></script>
+  <script type="text/babel" src="src/208-rcPortName.jsx"></script>
+  <script type="text/babel" src="src/209-mtLastCoupon.jsx"></script>
+  <script type="text/babel" src="src/210-slSaleValue.jsx"></script>
+  <script type="text/babel" src="src/211-TH_MONTH.jsx"></script>
+  <script type="text/babel" src="src/212-lcLoadLimits.jsx"></script>
+  <script type="text/babel" src="src/213-cbBuildLeaves.jsx"></script>
+  <script type="text/babel" src="src/214-CHQ_PAY_PILL.jsx"></script>
+  <script type="text/babel" src="src/215-BF_TRANSFER_TYPES.jsx"></script>
+  <script type="text/babel" src="src/216-arBankName.jsx"></script>
+  <script type="text/babel" src="src/217-moToday.jsx"></script>
+  <script type="text/babel" src="src/218-MOR_KEY.jsx"></script>
+  <script type="text/babel" src="src/219-DepTransferPage.jsx"></script>
+  <script type="text/babel" src="src/220-DEPC_TELLER.jsx"></script>
+  <script type="text/babel" src="src/221-DEP_INT_SCOPES.jsx"></script>
+  <script type="text/babel" src="src/222-DEP_PROJ_PERIODS.jsx"></script>
+  <script type="text/babel" src="src/223-PBW_PER_PAGE.jsx"></script>
+  <script type="text/babel" src="src/224-DepTaxCertPage.jsx"></script>
+  <script type="text/babel" src="src/225-DepImportPage.jsx"></script>
+  <script type="text/babel" src="src/226-DEP_MULTI_CFG.jsx"></script>
+  <script type="text/babel" src="src/227-depApvStamp.jsx"></script>
+  <script type="text/babel" src="src/228-DEP_CHQ_CFG.jsx"></script>
+  <script type="text/babel" src="src/229-DEP_MA_CFG.jsx"></script>
+  <script type="text/babel" src="src/230-DBF_TYPES.jsx"></script>
+  <script type="text/babel" src="src/231-_ftUidSeq.jsx"></script>
+  <script type="text/babel" src="src/232-bdLeafCats.jsx"></script>
+  <script type="text/babel" src="src/233-_schUidSeq.jsx"></script>
+  <script type="text/babel" src="src/234-SR_USER.jsx"></script>
+  <script type="text/babel" src="src/235-SSEL_USER.jsx"></script>
+  <script type="text/babel" src="src/236-SA_APPROVER.jsx"></script>
+  <script type="text/babel" src="src/237-WA_PILL_COLOR.jsx"></script>
+  <script type="text/babel" src="src/238-semLoad.jsx"></script>
+  <script type="text/babel" src="src/239-SpField.jsx"></script>
+  <script type="text/babel" src="src/240-DCS_USER.jsx"></script>
+  <script type="text/babel" src="src/241-DXC_USER.jsx"></script>
+  <script type="text/babel" src="src/242-WG_USER.jsx"></script>
+  <script type="text/babel" src="src/243-printRelief.jsx"></script>
+  <script type="text/babel" src="src/244-RU_USER.jsx"></script>
+  <script type="text/babel" src="src/245-RTC_USER.jsx"></script>
+  <script type="text/babel" src="src/246-RuListView.jsx"></script>
+  <script type="text/babel" src="src/247-budClone.jsx"></script>
+  <script type="text/babel" src="src/248-bpPlansLoad.jsx"></script>
+  <script type="text/babel" src="src/249-VchField.jsx"></script>
+  <script type="text/babel" src="src/250-vchFlatLeaves.jsx"></script>
+  <script type="text/babel" src="src/251-printWhtCert.jsx"></script>
+  <script type="text/babel" src="src/252-WhtRegisterWorkspace.jsx"></script>
+  <script type="text/babel" src="src/253-vchLoad.jsx"></script>
+  <script type="text/babel" src="src/254-VA_PENDING.jsx"></script>
+  <script type="text/babel" src="src/255-KEY.jsx"></script>
+  <script type="text/babel" src="src/256-DayOpenWorkspace.jsx"></script>
+  <script type="text/babel" src="src/257-dcPendingCheques.jsx"></script>
+  <script type="text/babel" src="src/258-CI_TYPES.jsx"></script>
+  <script type="text/babel" src="src/259-printVoucherRecv.jsx"></script>
+  <script type="text/babel" src="src/260-PvrField.jsx"></script>
+  <script type="text/babel" src="src/261-rcvClaimStatusPill.jsx"></script>
+  <script type="text/babel" src="src/262-RcvField.jsx"></script>
+  <script type="text/babel" src="src/263-printReceiptDoc.jsx"></script>
+  <script type="text/babel" src="src/264-rcvTodayIso.jsx"></script>
+  <script type="text/babel" src="src/265-SearchSelect.jsx"></script>
+  <script type="text/babel" src="src/266-AsField.jsx"></script>
+  <script type="text/babel" src="src/267-AsDV.jsx"></script>
+  <script type="text/babel" src="src/268-printAssetSticker.jsx"></script>
+  <script type="text/babel" src="src/269-AssetDeleteModal.jsx"></script>
+  <script type="text/babel" src="src/270-SField.jsx"></script>
+  <script type="text/babel" src="src/271-acLoad.jsx"></script>
+  <script type="text/babel" src="src/272-ACCT_SYSCODE_SEED.jsx"></script>
+  <script type="text/babel" src="src/273-ACCT_TYPE_SEED.jsx"></script>
+  <script type="text/babel" src="src/274-ACCT_CATCONST_SEED.jsx"></script>
+  <script type="text/babel" src="src/275-ACCT_JBOOK_SEED.jsx"></script>
+  <script type="text/babel" src="src/276-ACCT_FYEAR_SEED.jsx"></script>
+  <script type="text/babel" src="src/277-obMoney.jsx"></script>
+  <script type="text/babel" src="src/278-ACCT_MAPCOA_SEED.jsx"></script>
+  <script type="text/babel" src="src/279-FS_STATEMENTS.jsx"></script>
+  <script type="text/babel" src="src/280-CFW_PER_PAGE.jsx"></script>
+  <script type="text/babel" src="src/281-AS_GL_OPTS.jsx"></script>
+  <script type="text/babel" src="src/114-FIN_CFG.jsx"></script>
+  <script type="text/babel" src="src/282-pcNum.jsx"></script>
+  <script type="text/babel" src="src/283-PaField.jsx"></script>
+  <script type="text/babel" src="src/284-PrField.jsx"></script>
+  <script type="text/babel" src="src/285-_pacUidSeq.jsx"></script>
+  <script type="text/babel" src="src/286-FT_WHT_FORMS.jsx"></script>
+  <script type="text/babel" src="src/287-CF_STUB_FIELDS.jsx"></script>
+  <script type="text/babel" src="src/288-BA_BANKS.jsx"></script>
+  <script type="text/babel" src="src/289-EX_TYPES.jsx"></script>
+  <script type="text/babel" src="src/290-BT_KINDS.jsx"></script>
+  <script type="text/babel" src="src/291-ArKpis.jsx"></script>
+  <script type="text/babel" src="src/292-jvToday.jsx"></script>
+  <script type="text/babel" src="src/293-cjToday.jsx"></script>
+  <script type="text/babel" src="src/294-ApvKpis.jsx"></script>
+  <script type="text/babel" src="src/295-PLG_SEED.jsx"></script>
+  <script type="text/babel" src="src/296-coaClone.jsx"></script>
+  <script type="text/babel" src="src/297-DtGroup.jsx"></script>
+  <script type="text/babel" src="src/298-_datUidSeq.jsx"></script>
+  <script type="text/babel" src="src/299-SCFG_USER.jsx"></script>
+  <script type="text/babel" src="src/300-TT_PAGE_SIZE.jsx"></script>
+  <script type="text/babel" src="src/301-_drUidSeq.jsx"></script>
+  <script type="text/babel" src="src/302-_feeUidSeq.jsx"></script>
+  <script type="text/babel" src="src/303-FNL_USER.jsx"></script>
+  <script type="text/babel" src="src/304-PBK_USER.jsx"></script>
+  <script type="text/babel" src="src/305-BK_TYPES.jsx"></script>
+  <script type="text/babel" src="src/306-depPrintSlip.jsx"></script>
+  <script type="text/babel" src="src/307-DbiKv.jsx"></script>
+  <script type="text/babel" src="src/308-OPEN_USER.jsx"></script>
+  <script type="text/babel" src="src/309-ATM_USER.jsx"></script>
+  <script type="text/babel" src="src/310-ATM_CLOSE_REASONS.jsx"></script>
+  <script type="text/babel" src="src/311-_epSeq.jsx"></script>
+  <script type="text/babel" src="src/312-EDIT_ACC_USER.jsx"></script>
+  <script type="text/babel" src="src/313-DEP_USER.jsx"></script>
+  <script type="text/babel" src="src/314-DMC_COLLECT_ALL.jsx"></script>
+  <script type="text/babel" src="src/315-DEP_DF_MONTHS.jsx"></script>
+  <script type="text/babel" src="src/316-DEP_CO_MONTHS.jsx"></script>
+  <script type="text/babel" src="src/317-DEP_PT_MONTHS.jsx"></script>
+  <script type="text/babel" src="src/318-WD_USER.jsx"></script>
+  <script type="text/babel" src="src/319-CLOSE_USER.jsx"></script>
+  <script type="text/babel" src="src/320-FRZ_USER.jsx"></script>
+  <script type="text/babel" src="src/321-ATM_FREEZE_TYPES.jsx"></script>
+  <script type="text/babel" src="src/322-RC_USER.jsx"></script>
+
+  <script type="text/babel" src="src/323-printDebtNotice.jsx"></script>
+  <script type="text/babel" src="src/324-DN_USER.jsx"></script>
+  <script type="text/babel" src="src/325-DnListView.jsx"></script>
+  <script type="text/babel" src="src/326-DNC_REASONS.jsx"></script>
+  <script type="text/babel" src="src/327-printOrgRequest.jsx"></script>
+  <script type="text/babel" src="src/328-OrqCreateForm.jsx"></script>
+  <script type="text/babel" src="src/329-OrqListView.jsx"></script>
+  <script type="text/babel" src="src/330-emsNorm.jsx"></script>
+  <script type="text/babel" src="src/331-GtField.jsx"></script>
+  <script type="text/babel" src="src/332-GT_CLOSED_PERIOD_END.jsx"></script>
+  <script type="text/babel" src="src/333-printGuarantorChange.jsx"></script>
+  <script type="text/babel" src="src/334-GCN_USER.jsx"></script>
+  <script type="text/babel" src="src/335-GcnListView.jsx"></script>
+  <script type="text/babel" src="src/336-GtReturnSourceModal.jsx"></script>
+
+  <script type="text/babel" src="src/337-icrToday.jsx"></script>
+  <script type="text/babel" src="src/338-ICR_PILL_COLOR.jsx"></script>
+  <script type="text/babel" src="src/339-MtSecHead.jsx"></script>
+  <script type="text/babel" src="src/340-ccdToday.jsx"></script>
+  <script type="text/babel" src="src/341-lcToday.jsx"></script>
+  <script type="text/babel" src="src/342-atmToday.jsx"></script>
+  <script type="text/babel" src="src/343-SHC_PILL_COLOR.jsx"></script>
+  <script type="text/babel" src="src/344-swToday.jsx"></script>
+  <script type="text/babel" src="src/345-hswToday.jsx"></script>
+  <script type="text/babel" src="src/346-srfToday.jsx"></script>
+  <script type="text/babel" src="src/347-fsrToday.jsx"></script>
+  <script type="text/babel" src="src/348-shdToday.jsx"></script>
+  <script type="text/babel" src="src/349-srcToday.jsx"></script>
+  <script type="text/babel" src="src/350-RsnFld.jsx"></script>
+  <script type="text/babel" src="src/351-MsFld.jsx"></script>
+  <script type="text/babel" src="src/352-DBA_PILL_COLOR.jsx"></script>
+  <script type="text/babel" src="src/353-DbaKv.jsx"></script>
+
+  <script type="text/babel" src="src/354-dsToday.jsx"></script>
+  <script type="text/babel" src="src/355-DsAmtRow.jsx"></script>
+  <script type="text/babel" src="src/356-SqTodayBadge.jsx"></script>
+  <script type="text/babel" src="src/357-SQ_ATT_SEQ.jsx"></script>
+  <script type="text/babel" src="src/358-sqdGender.jsx"></script>
+  <script type="text/babel" src="src/359-csBlankForm.jsx"></script>
+  <script type="text/babel" src="src/360-PD_USER.jsx"></script>
+  <script type="text/babel" src="src/361-dvkM.jsx"></script>
+  <script type="text/babel" src="src/362-dcM.jsx"></script>
+  <script type="text/babel" src="src/363-advM.jsx"></script>
+  <script type="text/babel" src="src/364-dspToday.jsx"></script>
+  <script type="text/babel" src="src/365-daFmtAt.jsx"></script>
+  <script type="text/babel" src="src/366-AD_USER.jsx"></script>
+  <script type="text/babel" src="src/367-_afSeq.jsx"></script>
+  <script type="text/babel" src="src/368-drcToday.jsx"></script>
+
+  <script type="text/babel" src="src/369-printContractTermination.jsx"></script>
+  <script type="text/babel" src="src/370-CT_USER.jsx"></script>
+  <script type="text/babel" src="src/371-CT_WL_STATUS.jsx"></script>
+  <script type="text/babel" src="src/372-litToday.jsx"></script>
+  <script type="text/babel" src="src/373-jcToday.jsx"></script>
+  <script type="text/babel" src="src/374-rsToday.jsx"></script>
+  <script type="text/babel" src="src/375-LsRow.jsx"></script>
+
+  <!-- ระบบลูกหนี้ตัวแทน — ค่าคงที่ -->
+  <script type="text/babel" src="src/376-_agSeq.jsx"></script>
+  <script type="text/babel" src="src/377-ArcField.jsx"></script>
+  <script type="text/babel" src="src/378-AbrField.jsx"></script>
+  <script type="text/babel" src="src/379-AAJ_TXN_TYPES.jsx"></script>
+  <script type="text/babel" src="src/380-AP_MONTHS.jsx"></script>
+  <script type="text/babel" src="src/381-ARM_MONTHS.jsx"></script>
+  <script type="text/babel" src="src/382-AgrField.jsx"></script>
+  <script type="text/babel" src="src/383-AgpField.jsx"></script>
+  <script type="text/babel" src="src/384-actToday.jsx"></script>
+
+  <script type="text/babel" src="src/385-DSSection.jsx"></script>
+  <!-- Popup รายละเอียดรายการในไทม์ไลน์ประวัติ -->
+  <script type="text/babel" src="src/386-Base.jsx"></script>
+  <style>.tx-item { cursor: pointer; }</style>
+
+  <!-- Member registry: history popup + full print -->
+  <script type="text/babel" src="src/387-TxHistoryModal.jsx"></script>
+  <script type="text/babel" src="src/388-pcxToday.jsx"></script>
+  <script type="text/babel" src="src/389-PCX_IC_ROWS.jsx"></script>
+  <script type="text/babel" src="src/390-pcxContractDate.jsx"></script>
+  <script type="text/babel" src="src/391-PMB_USER.jsx"></script>
+  <script type="text/babel" src="src/392-ClaimEligibilityPage.jsx"></script>
+  <script type="text/babel" src="src/393-loadProducts.jsx"></script>
+  <script type="text/babel" src="src/394-LR_PENDING_SEED.jsx"></script>
+  <script type="text/babel" src="src/395-LcMemberInfo.jsx"></script>
+  <script type="text/babel" src="src/396-FRZ_USER2.jsx"></script>
+  <script type="text/babel" src="src/397-DtDateRow.jsx"></script>
+  <script type="text/babel" src="src/398-ADM_CONST_GROUPS.jsx"></script>
+  <script type="text/babel" src="src/399-MOD.jsx"></script>
+  <script src="src/400-css.js"></script>
+  <script src="src/401-OLD.js"></script>
+  <script src="src/402-LOAN_TYPES.js"></script>
+  <script type="text/babel" src="src/403-DF_TABS.jsx"></script>
+  <script type="text/babel" src="src/404-srf24DetectMember.jsx"></script>
+  <script type="text/babel" src="src/405-Base.jsx"></script>
+  <script type="text/babel" src="src/406-__memberSearchFieldPatch.jsx"></script>
+  <script type="text/babel" src="src/407-fcx2RegOf.jsx"></script>
+  <script type="text/babel" src="src/408-ADR_SEL_KEY.jsx"></script>
+  <script type="text/babel" src="src/409-st.jsx"></script>
+  <script type="text/babel" src="src/410-ArcField.jsx"></script>
+  <script type="text/babel" src="src/411-PAGE.jsx"></script>
+  <script src="src/412-MATCH.js" defer=""></script>
+  <script type="text/babel" src="src/413-LP2_G.jsx"></script>
+  <script type="text/babel" src="src/414-G.jsx"></script>
+  <script type="text/babel" src="src/415-G.jsx"></script>
+  <script type="text/babel" src="src/416-TARGETS.jsx"></script>
+  <script type="text/babel" src="src/417-NAMES.jsx"></script>
+  <script src="src/418-G.js" defer=""></script>
+  <script src="src/419-MATCH.js" defer=""></script>
+  <script src="src/420-FROM.js" defer=""></script>
+  <script src="src/421-HEAD.js" defer=""></script>
+  <script type="text/babel" src="src/422-R.jsx"></script>
+  <script src="src/423-TARGET.js" defer=""></script>
+  <script src="src/424-MIN_ROWS.js" defer=""></script>
+  <script type="text/babel" src="src/425-VCH2_PAY_TYPES.jsx"></script>
+  <script type="text/babel" src="src/426-R.jsx"></script>
+  <script src="src/428-KEY.js"></script>
+  <script type="text/babel" src="src/429-WsStdSearchModal.jsx"></script>
+  <!-- ระบบรวม: ไม่กำหนด __PAGE_SCOPE เพื่อเปิดใช้งานทุกเมนู -->
+  <script src="src/430-SCOPE.js"></script>
+  <!-- Popup ประวัติราคาประเมิน/ทบทวนราคา (บันทึกหลักทรัพย์) -->
+  <script type="text/babel" src="src/432-LcApprHistory.jsx"></script>
+  <!-- ค่าคงที่ › โครงการเงินกู้ -->
+  <script type="text/babel" src="src/433-LPJ_SEED.jsx"></script>
+  <script type="text/babel" src="src/434-CremationMembers.jsx"></script>
+  <!-- App -->
+  <script type="text/babel" src="src/431-TWEAK_DEFAULTS.jsx"></script>
+
+  <!-- ═══ Overlay: งานที่พัฒนาในระบบรวม (ทะเบียนสมาชิก · แจ้งเปลี่ยนสถานะ · ใบสำคัญจ่าย)
+       3 เมนูนี้ไม่ได้มาจากโปรเจ็คย่อย — ห้ามทับตอนซิงก์ ═══ -->
+  <!-- ซิงค์ 2026-10-01: เงินฝาก/การเงิน/บัญชี/ลูกหนี้ตัวแทน (b394a9af) -->
+  <script type="text/babel" src="src/462-DepProjectConfigPage.jsx"></script>
+  <script type="text/babel" src="src/463-DepCounterSession.jsx"></script>
+  <script type="text/babel" src="src/464-DepCounterLoanPage.jsx"></script>
+  <script type="text/babel" src="src/465-DepCounterVaultPage.jsx"></script>
+  <script type="text/babel" src="src/466-DepProcOpenPage.jsx"></script>
+  <script type="text/babel" src="src/467-FinBothPage.jsx"></script>
+  <script type="text/babel" src="src/468-ThaiDateField.jsx"></script>
+  <script type="text/babel" src="src/469-AgentAdjustV2.jsx"></script>
+  <script type="text/babel" src="src/470-AgentAffilTrash.jsx"></script>
+  
+  <script type="text/babel" src="src/472-ChequeUnifiedPage.jsx"></script>
+  <script type="text/babel" src="src/440-voucher_form_v2.jsx"></script>
+  <script src="src/441-voucher_no_draft.js"></script>
+  <script type="text/babel" src="src/442-new_member_registry.js"></script>
+  <script type="text/babel" src="src/443-add_member_v2.jsx"></script>
+  <script type="text/babel" src="src/444-member_detail_v2.jsx"></script>
+  <script type="text/babel" src="src/445-collection_year_filter.jsx"></script>
+  <script type="text/babel" src="src/446-deduction_print_sheet.jsx"></script>
+  <link rel="stylesheet" href="src/460-member-registry.css">
+  <link rel="stylesheet" href="css/dep.css">
+  <link rel="stylesheet" href="css/credit.css">
+  <script type="text/babel" src="src/447-list_member_search_ds.jsx"></script>
+  <script src="src/457-saved_badge.js"></script>
+  <script src="src/458-bottom_action_bar.js"></script>
+  <script type="text/babel" src="src/459-member_interest_cert_tab.jsx"></script>
+  <script type="text/babel" src="src/461-member_saved_badge.js"></script>
+
+  <!-- ═══ ซิงก์: ประมวลผล (2026-11-09) — เมนูประมวลผลและจัดเก็บ (จากโปรเจ็ค สอ.กสท ระบบประมวลผล)
+       ไฟล์คอมไพล์แล้ว โหลดเป็นสคริปต์ธรรมดา ไม่ต้องผ่าน Babel
+       450/453/455 ซิงก์จากต้นทาง · 452/454 คงของระบบรวม (ดู project/sync-manifest.json) ═══ -->
+  <script src="src/480-process_login_user.js"></script>
+  <script src="src/450-process_monthly.js"></script>
+  <script src="src/451-process_const.js"></script>
+  <script src="src/452-process_lookup.js"></script>
+  <script src="src/453-process_closing.js"></script>
+  <script src="src/454-process_cancel.js"></script>
+  <script src="src/455-process_dividend.js"></script>
+  <script src="src/456-process_new_routes.js"></script>
+
+
+</body></html>
