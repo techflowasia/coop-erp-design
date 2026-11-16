@@ -65,30 +65,62 @@ window.lrMaxPeriodsFor = (product, amount) => {
 //   • แถวตามเงินกู้ — ยอดทั้งก้อนใช้อัตราของช่วงที่ยอดตกอยู่
 //       ยอดที่ใช้เทียบ = ยอดอนุมัติ (ณ วันขอกู้ ยอดคงเหลือ = ยอดอนุมัติ)
 //   • แถวตามช่วงเวลา — ใช้แถวที่ครอบคลุมงวด/เดือนที่ระบุ (ใบคำขอ = งวดที่ 1)
-window.lrProductRate = (product, amount, tableRate, month) => {
+//   • เลือกแถวที่ตรงทั้ง ประเภทสมาชิก · การครบกำหนด · ช่วง
+//       – แถว “ไม่ระบุ” ประเภทสมาชิก ใช้ได้กับทุกคน · แถวที่ระบุตรงประเภทมีสิทธิ์ก่อน
+//       – การครบกำหนด เทียบเมื่อประเภทเงินกู้กำหนดไว้ (settings.dueType) เท่านั้น
+//       – แถวที่ช่วงไม่สมบูรณ์ (ถึง = 0 / ว่าง) ไม่ถูกเลือก
+// ประเภทสมาชิกของผู้กู้ → รหัสตัวเลือก memberTypeRight (null = ไม่ทราบ → ใช้ได้เฉพาะแถว “ไม่ระบุ”)
+window.lrMemberTypeCode = (member) => {
+  if (!member) return null;
+  if (member.memberTypeRight) return member.memberTypeRight;
+  const t = String(member.memberType || member.type || '');
+  if (t.indexOf('สมทบ') >= 0) return 'associate';
+  return null;
+};
+window.lrProductRate = (product, amount, tableRate, month, opts) => {
   const num = (v) => { const n = Number(String(v == null ? '' : v).replace(/,/g, '')); return isFinite(n) ? n : 0; };
+  const blank = (v) => v === '' || v == null;
   const amt = num(amount);
   const m = month || 1;
-  const timeRow = ((product && product.interestTiers) || []).find(r =>
-    m >= num(r.monthFrom) && m <= (num(r.monthTo) || Infinity)) || null;
-  const amtRow = ((product && product.amountInterestTiers) || []).find(r =>
-    amt >= num(r.amountFrom) && amt <= (num(r.amountTo) || Infinity)) || null;
+  const o = opts || {};
+  const mt = o.memberTypeCode || null;
+  const due = o.dueType || '';
+  const mtOk = (r) => { const v = (r.memberType && r.memberType !== 'regular') ? r.memberType : 'none'; return v === 'none' || (mt && v === mt); };
+  const dueOk = (r) => !due || !r.dueType || r.dueType === due;
+  const pick = (rows, inRange) => {
+    const ok = (rows || []).filter(r => mtOk(r) && dueOk(r) && inRange(r));
+    const specific = ok.find(r => r.memberType && r.memberType !== 'none' && r.memberType !== 'regular');
+    return specific || ok[0] || null;
+  };
+  const timeRow = pick(product && product.interestTiers, r =>
+    num(r.monthTo) > 0 && m >= num(r.monthFrom) && m <= num(r.monthTo));
+  const amtRow = pick(product && product.amountInterestTiers, r =>
+    !blank(r.amountFrom) && num(r.amountTo) > 0 && amt >= num(r.amountFrom) && amt <= num(r.amountTo));
   let base = num(tableRate), baseFrom = 'table';
   if (timeRow && timeRow.form === 'fixed') { base = num(timeRow.rate != null && timeRow.rate !== '' ? timeRow.rate : timeRow.fixedRate); baseFrom = 'time'; }
   if (amtRow && amtRow.form === 'fixed') { base = num(amtRow.rate); baseFrom = 'amount'; }
   const amountAdjust = amtRow ? num(amtRow.adjust) : 0;
   const timeAdjust = timeRow ? num(timeRow.adjust) : 0;
   const rate = Math.max(0, Math.round((base + amountAdjust + timeAdjust) * 10000) / 10000);
-  return { rate, base, baseFrom, amountAdjust, timeAdjust, amountRow: amtRow, timeRow };
+  return { rate, base, baseFrom, amountAdjust, timeAdjust, amountRow: amtRow, timeRow, lookupAmount: amt };
 };
 
 // ─── สรุปค่าที่ "ดึงจากค่าคงที่" เมื่อเลือกประเภทเงินกู้ ──────────────
 //  ใช้แสดงผลและคำนวณงวด/ดอกเบี้ย — ทุกค่าผูกกับ window.LP_SEED / IR_SEED
-window.lrDeriveFromProduct = (product, amount, asOf) => {
+window.lrDeriveFromProduct = (product, amount, asOf, member) => {
   if (!product) return null;
   const s = product.settings || {};
-  const rateInfo = window.lrRateFor(s.rateTable, amount, asOf);
-  const rateCalc = window.lrProductRate(product, amount, rateInfo ? rateInfo.rate : 0, 1);
+  // ยอดที่ใช้หาแถวอัตรา — “ดูชั้นจาก” ยอดอนุมัติ (1) = ยอดอนุมัติหลังปัดเศษ · ยอดคงเหลือ (2) = จำนวนเงินขอกู้
+  const lookupAmount = (s.interestTierBasis === '1' && window.lrRound)
+    ? window.lrRound(Number(amount) || 0, s.roundLoanMode, s.roundLoanFactor)
+    : (Number(amount) || 0);
+  const rateInfo = window.lrRateFor(s.rateTable, lookupAmount, asOf);
+  const rateCalc = window.lrProductRate(product, lookupAmount, rateInfo ? rateInfo.rate : 0, 1,
+    { memberTypeCode: window.lrMemberTypeCode(member), dueType: s.dueType || '' });
+  // ช่องเพิ่ม/ลดของใบคำขอ — ปิดเมื่ออัตรามาจากแถวคงที่ หรือขั้นอัตราที่ใช้ไม่ได้ติ๊ก “อัตราเพิ่ม/ลด (ใช้)”
+  const fixedFrom = rateCalc.baseFrom === 'amount' ? 'อัตราคงที่ตามเงินกู้'
+    : rateCalc.baseFrom === 'time' ? 'อัตราคงที่ตามช่วงเวลา' : '';
+  const allowAdjust = !fixedFrom && !!(rateInfo && rateInfo.useAdjust);
   return {
     productCode: product.code,
     productName: product.name,
@@ -99,6 +131,9 @@ window.lrDeriveFromProduct = (product, amount, asOf) => {
     rate: rateCalc.rate,
     tableRate: rateInfo ? rateInfo.rate : 0,
     rateParts: rateCalc,
+    rateLookupAmount: lookupAmount,
+    rateFixedFrom: fixedFrom,
+    rateAllowAdjust: allowAdjust,
     rateEffective: rateInfo ? rateInfo.effectiveDate : null,
     interestRateForm: s.interestRateForm,
     interestRateFormLabel: window.lpLabel ? window.lpLabel('interestRateForm', s.interestRateForm) : s.interestRateForm,

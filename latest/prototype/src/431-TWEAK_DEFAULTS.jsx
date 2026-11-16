@@ -673,13 +673,15 @@ function App() {
         ) : route.view === 'deposit' && route.page === 'poontawee' ? (
           <DepPoontaweeProcessPage onToast={showToast} />
         ) : route.view === 'deposit' && route.page === 'interest-calc' ? (
-          <DepInterestCalcPage onToast={showToast} />
+          <DepInterestAccruedCalcPage key="interest-calc" initialMode="period" onToast={showToast} />
         ) : route.view === 'deposit' && route.page === 'interest-pay' ? (
           <DepInterestPayPage onToast={showToast} />
         ) : route.view === 'deposit' && route.page === 'interest-accrued' ? (
-          <DepInterestAccruedPage onToast={showToast} />
+          <DepInterestAccruedReportPage key="interest-accrued" onToast={showToast} />
         ) : route.view === 'deposit' && route.page === 'interest-accrued-calc' ? (
           <DepInterestAccruedCalcPage onToast={showToast} />
+        ) : route.view === 'deposit' && route.page === 'rpt-interest-accrued' ? (
+          <DepInterestAccruedReportPage onToast={showToast} />
         ) : route.view === 'deposit' && route.page === 'interest-projection' ? (
           <DepInterestProjectionPage onToast={showToast} />
         ) : route.view === 'deposit' && route.page === 'passbook' ? (

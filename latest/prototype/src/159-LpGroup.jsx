@@ -493,6 +493,10 @@ function LpTabLimit({ record, editing, onSettings, onTable }) {
   const addCRow = () => onTable('limitCollateral', [...cRows, { useShare: true, useDeposit: false, useAsset: false, shareValue: 0, deposit: 0, asset: 0, maxAmount: 0 }]);
   const delCRow = (i) => onTable('limitCollateral', cRows.filter((_, idx) => idx !== i));
 
+  // วิธีกำหนดสิทธิ — 1 ตามหลักประกัน · 2 แบบกำหนดเอง · 5 รวมหนี้เก่าที่หักกลบ · 6 ปันผลเฉลี่ยคืน
+  //  (ค่าเดิมที่ตัดออกแล้ว เช่น 4 คิดจากเงินเดือนคงเหลือ → แสดงเป็นแบบกำหนดเอง)
+  const lm = ['1', '2', '5', '6'].includes(String(s.limitMethod)) ? String(s.limitMethod) : '2';
+
   // ล้อกับค่าคงที่ “วงเงินกู้กลุ่ม”
   const grp = window.lgFind(s.limitGroup);
   const grpCap = grp ? Number(grp.maxAmount) || 0 : 0;
@@ -505,9 +509,14 @@ function LpTabLimit({ record, editing, onSettings, onTable }) {
         <div className="l2-cols">
           <div className="l2-col">
             <LpGroup title="กำหนดวงเงินกู้">
-              <LpRow label="วงเงินกู้กลุ่ม"><LpSel group="limitGroup" v={s.limitGroup} editing={editing} onChange={(v) => set('limitGroup', v)} /></LpRow>
-              <LpRow label="เพดานรวมของกลุ่ม (ค่าคงที่วงเงินกู้กลุ่ม)">
-                <LpDis v={<span style={{ fontStyle: 'italic' }}>{grpCap ? fmt.money(grpCap, 2) + ' บาท' : '—'}</span>} />
+              {/* เพดานรวมของกลุ่ม — ข้อความแสดงอย่างเดียวใต้ช่องวงเงินกู้กลุ่ม (เปลี่ยนตามกลุ่มทันที) */}
+              <LpRow label="วงเงินกู้กลุ่ม">
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 4, width: '100%', minWidth: 0 }}>
+                  <LpSel group="limitGroup" v={s.limitGroup} editing={editing} onChange={(v) => set('limitGroup', v)} />
+                  <div className="muted" style={{ fontSize: 11.5, lineHeight: 1.4 }}>
+                    เพดานรวมของกลุ่ม {grpCap ? fmt.money(grpCap, 2) + ' บาท' : '—'}
+                  </div>
+                </div>
               </LpRow>
               <LpRow label="วงเงินกู้สูงสุด"><LpNum v={s.maxLoanAmount} editing={editing} decimals={2} suffix="บาท" onChange={(v) => set('maxLoanAmount', v)} /></LpRow>
               {overGrpCap && (
@@ -515,7 +524,7 @@ function LpTabLimit({ record, editing, onSettings, onTable }) {
                   <Icon name="info" size={13} /> วงเงินกู้สูงสุดของผลิตภัณฑ์สูงกว่าเพดานรวมของกลุ่ม — ระบบจะใช้เพดานกลุ่ม {fmt.money(grpCap, 2)} บาท เป็นเกณฑ์
                 </div>
               )}
-              <LpRow label="วิธีกำหนดสิทธิ"><LpSel group="limitMethod" v={s.limitMethod} editing={editing} onChange={(v) => set('limitMethod', v)} /></LpRow>
+              <LpRow label="วิธีกำหนดสิทธิ"><LpSel group="limitMethod" v={lm} editing={editing} onChange={(v) => set('limitMethod', v)} /></LpRow>
               <LpRow label="ดูช่วงเวลาจาก"><LpSel group="periodRef" v={s.periodRef} editing={editing} onChange={(v) => set('periodRef', v)} /></LpRow>
             </LpGroup>
           </div>
@@ -544,10 +553,50 @@ function LpTabLimit({ record, editing, onSettings, onTable }) {
         </div>
       </div>
 
-      {/* ── สิทธิจากหลักประกัน (วิธีกำหนดวงเงิน = 1) ── */}
+      {/* ── สิทธิกู้ปันผล-เฉลี่ยคืน (วิธีกำหนดสิทธิ = ปันผลเฉลี่ยคืน) ── */}
+      {lm === '6' && (
+      <div style={{ marginTop: 12 }}>
+        <LpTableShell title="สิทธิกู้ปันผล-เฉลี่ยคืน" editing={editing} minWidth={900}
+          sub="คำนวณสิทธิกู้จากยอดปันผล + เฉลี่ยคืนของปีที่กำหนด หักฌาปนกิจตามสัดส่วน และต้องได้ยอดสุทธิไม่ต่ำกว่าขั้นต่ำที่ให้กู้">
+          <thead>
+            <tr>
+              <th className="center" style={{ width: 190 }}>วันที่ประมาณการจ่ายปันผลปีถัดไป</th>
+              <th className="center" style={{ width: 170 }}>ปีที่นำยอดปันผล+เฉลี่ยคืน มาใช้คำนวณ</th>
+              <th className="center">สิทธิกู้ที่ % จากยอดปันผล+เฉลี่ยคืน</th>
+              <th className="center">หักฌาปนกิจ (สสธร. + สส.ชสอ.) ไว้ที่ %</th>
+              <th className="center">ยอดสุทธิขั้นต่ำที่ให้กู้ (บาท)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td className="num-cell" style={{ textAlign: 'center' }}>
+                {editing
+                  ? <ErpDate value={s.divNextPayDate || ''} onChange={(v) => set('divNextPayDate', v)} />
+                  : <span className="sh-grid-num" style={{ display: 'block', textAlign: 'center' }}>{s.divNextPayDate ? fmt.date(s.divNextPayDate) : '—'}</span>}
+              </td>
+              <td className="num-cell" style={{ textAlign: 'center' }}>
+                {editing
+                  // พิมพ์ปี พ.ศ. เอง (ตัวเลข 4 หลัก)
+                  ? <input className="sh-grid-input" inputMode="numeric" maxLength={4} placeholder="เช่น 2569"
+                           style={{ maxWidth: 'none', width: '100%', textAlign: 'center' }}
+                           value={s.divCalcYear || ''}
+                           onChange={(e) => set('divCalcYear', e.target.value.replace(/[^0-9]/g, '').slice(0, 4))} />
+                  : <span className="sh-grid-num" style={{ display: 'block', textAlign: 'center' }}>{s.divCalcYear || '—'}</span>}
+              </td>
+              <td className="num-cell"><LpPctUseCell editing={editing} v={s.divRightPct ?? ''} onChange={(v) => set('divRightPct', v)} /></td>
+              <td className="num-cell"><LpPctUseCell editing={editing} v={s.divCremationPct ?? ''} onChange={(v) => set('divCremationPct', v)} /></td>
+              <td className="num-cell"><LpNumCell editing={editing} v={s.divMinNet ?? ''} decimals={2} onChange={(v) => set('divMinNet', v)} /></td>
+            </tr>
+          </tbody>
+        </LpTableShell>
+      </div>
+      )}
+
+      {/* ── สิทธิจากหลักประกัน (วิธีกำหนดสิทธิ = ตามหลักประกัน) ── */}
+      {lm === '1' && (
       <div style={{ marginTop: 12 }}>
         <LpTableShell title="สิทธิจากหลักประกัน" count={cRows.length} editing={editing} onAdd={addCRow} minWidth={720}
-          sub="ติ๊กเลือกหลักประกันที่ต้องการใช้ในแต่ละแถว แล้วกำหนดเป็นเปอร์เซ็นต์ของมูลค่าหลักประกันนั้น (ทุนเรือนหุ้น + เงินฝาก + หลักทรัพย์ รวมกันไม่เกิน 90%) พร้อมเพดานวงเงินกู้สูงสุด">
+          sub="กำหนดเปอร์เซ็นต์ของมูลค่าหลักประกันแต่ละประเภท (ทุนเรือนหุ้น · เงินฝาก · หลักทรัพย์) พร้อมเพดานวงเงินกู้สูงสุด">
           <thead>
             <tr>
               <th className="center">ทุนเรือนหุ้น (%)</th>
@@ -559,49 +608,60 @@ function LpTabLimit({ record, editing, onSettings, onTable }) {
           </thead>
           <tbody>
             {cRows.length === 0 && <tr><td colSpan={editing ? 5 : 4} className="center muted" style={{ padding: '24px' }}>ยังไม่มีเงื่อนไข — กด “เพิ่มแถว” เพื่อกำหนดวงเงินตามหลักประกัน</td></tr>}
-            {cRows.map((r, i) => {
-              const pv = (use, val) => (use !== false ? (Number(val) || 0) : 0);
-              const sh = pv(r.useShare, r.shareValue), dp = pv(r.useDeposit, r.deposit), as = pv(r.useAsset, r.asset);
-              const total = sh + dp + as;
-              const over = total > 90;
-              const cap = (self) => Math.max(0, +(90 - (total - self)).toFixed(2));
-              return (
-              <React.Fragment key={i}>
-              <tr>
-                <td className="num-cell"><LpPctUseCell editing={editing} on={r.useShare !== false} v={r.shareValue} max={cap(sh)} onToggle={(b) => setCRow(i, 'useShare', b)} onChange={(v) => setCRow(i, 'shareValue', v)} /></td>
-                <td className="num-cell"><LpPctUseCell editing={editing} on={r.useDeposit !== false} v={r.deposit} max={cap(dp)} onToggle={(b) => setCRow(i, 'useDeposit', b)} onChange={(v) => setCRow(i, 'deposit', v)} /></td>
-                <td className="num-cell"><LpPctUseCell editing={editing} on={r.useAsset !== false} v={r.asset} max={cap(as)} onToggle={(b) => setCRow(i, 'useAsset', b)} onChange={(v) => setCRow(i, 'asset', v)} /></td>
+            {cRows.map((r, i) => (
+              // ไม่มีการติ๊กเลือกหลักประกัน และไม่จำกัดผลรวม 90% แล้ว — แต่ละช่องกรอกได้ 0–100%
+              <tr key={i}>
+                <td className="num-cell"><LpPctUseCell editing={editing} v={r.shareValue} onChange={(v) => setCRow(i, 'shareValue', v)} /></td>
+                <td className="num-cell"><LpPctUseCell editing={editing} v={r.deposit} onChange={(v) => setCRow(i, 'deposit', v)} /></td>
+                <td className="num-cell"><LpPctUseCell editing={editing} v={r.asset} onChange={(v) => setCRow(i, 'asset', v)} /></td>
                 <td className="num-cell"><LpNumCell editing={editing} v={r.maxAmount} decimals={2} onChange={(v) => setCRow(i, 'maxAmount', v)} /></td>
                 <LpDelCell editing={editing} onDel={() => delCRow(i)} />
               </tr>
-              {editing && (
-                <tr>
-                  <td colSpan={3} style={{ padding: '4px 12px 8px', borderTop: 'none', fontSize: 12, textAlign: 'left', color: over ? '#CF1322' : 'rgba(0,0,0,.45)' }}>
-                    ทุนเรือนหุ้น + เงินฝาก + หลักทรัพย์ ต้องรวมกันไม่เกิน 90% · รวม {total.toFixed(2)}%{over ? ' — เกินกำหนด กรุณาปรับลด' : ''}
-                  </td>
-                  <td colSpan={2} style={{ borderTop: 'none' }} />
-                </tr>
-              )}
-              </React.Fragment>
-              );
-            })}
+            ))}
           </tbody>
         </LpTableShell>
       </div>
+      )}
 
+      {/* ── สิทธิแบบกำหนดเอง (วิธีกำหนดสิทธิ = แบบกำหนดเอง) ── */}
+      {lm === '2' && (
       <div style={{ marginTop: 12 }}>
-      <LpTableShell title="สิทธิแบบกำหนดเอง" count={rows.length} editing={editing} onAdd={addRow} minWidth={1250}
+      {/* ช่องกรอกในตารางนี้กว้างเต็มคอลัมน์ — ตัวเลขไม่ถูกบัง */}
+      {/* (ตารางนี้ถูกย้ายเข้าการ์ดวิธีกำหนดสิทธิ — จึงอ้างตารางผ่าน colgroup.lp-cr-cols) */}
+      <style>{'table.sh-grid:has(> colgroup.lp-cr-cols){table-layout:fixed;}' +
+               'table.sh-grid:has(> colgroup.lp-cr-cols) .sh-grid-input{max-width:none!important;width:100%;min-width:0;}' +
+               /* คอลัมน์แรก (ประเภทสมาชิก) ตรึงไว้ตอนเลื่อนซ้าย-ขวา */
+               'table.sh-grid:has(> colgroup.lp-cr-cols) thead tr:first-child > th:first-child,' +
+               'table.sh-grid:has(> colgroup.lp-cr-cols) tbody td:first-child{position:sticky;left:0;z-index:2;' +
+               'box-shadow:inset -1px 0 0 var(--divider,#f0f0f0),4px 0 6px -4px rgba(0,0,0,.12);}' +
+               'table.sh-grid:has(> colgroup.lp-cr-cols) thead tr:first-child > th:first-child{z-index:3;background:var(--bg-subtle,#fafafa);}' +
+               'table.sh-grid:has(> colgroup.lp-cr-cols) tbody td:first-child{background:var(--bg-panel,#fff);}' +
+               'table.sh-grid:has(> colgroup.lp-cr-cols) tbody td[colspan]{position:static;box-shadow:none;}' +
+               'table.sh-grid:has(> colgroup.lp-cr-cols) td{padding-left:6px;padding-right:6px;}'}</style>
+      <LpTableShell title="สิทธิแบบกำหนดเอง" count={rows.length} editing={editing} onAdd={addRow} minWidth={editing ? 1970 : 1920}
         sub="ตารางขั้นบันได (Matrix) ประเมินวงเงินกู้สูงสุดรายบุคคล ตามระยะเวลา / หุ้น / เงินเดือน">
+        <colgroup className="lp-cr-cols">
+          {/* ทุกคอลัมน์กว้างเท่ากัน 160px (12 คอลัมน์ข้อมูล) + คอลัมน์ปุ่มลบ */}
+          {Array.from({ length: 12 }, (_, i) => <col key={i} style={{ width: 160 }} />)}
+          {editing && <col style={{ width: 50 }} />}
+        </colgroup>
         <thead>
           <tr>
-            <th rowSpan={2} className="center" style={{ width: 170 }}>ประเภทสมาชิก</th>
-            <th colSpan={2} className="center group-col">ระยะเวลา (เดือน)</th>
+            <th rowSpan={2} className="center">ประเภทสมาชิก</th>
+            {/* หัวคอลัมน์ระยะเวลา — ตามค่า “ดูช่วงเวลาจาก” */}
+            <th colSpan={2} className="center group-col">
+              {(() => {
+                // ข้อความในวงเล็บ = ค่าที่เลือกใน “ดูช่วงเวลาจาก” (ยังไม่เลือก → เดือน)
+                const ref = String(window.lpLabel ? window.lpLabel('periodRef', s.periodRef) : '').replace(/^\s*\d+\s*:\s*/, '');
+                return 'ระยะเวลา (' + (ref && ref !== '—' ? ref : 'เดือน') + ')';
+              })()}
+            </th>
             <th colSpan={2} className="center group-col">มีหุ้น (บาท)</th>
             <th colSpan={2} className="center group-col">เงินเดือน</th>
             <th colSpan={2} className="center group-col">สิทธิการกู้</th>
-            <th rowSpan={2} className="center" style={{ width: 130 }}>วงเงินกู้สูงสุด</th>
+            <th rowSpan={2} className="center">วงเงินกู้สูงสุด</th>
             <th colSpan={2} className="center group-col">ช่วงสมาชิก</th>
-            {editing && <th rowSpan={2} className="center" style={{ width: 46 }} />}
+            {editing && <th rowSpan={2} className="center" />}
           </tr>
           <tr>
             <th className="center sub-col">&ge;</th><th className="center sub-col">&lt;</th>
@@ -633,6 +693,7 @@ function LpTabLimit({ record, editing, onSettings, onTable }) {
         </tbody>
       </LpTableShell>
       </div>
+      )}
     </>
   );
 }
@@ -866,13 +927,57 @@ function LpTabOffset({ record, editing, onSettings, onTable }) {
   const set = (k, v) => onSettings({ ...s, [k]: v });
   const rows = record.offsetLoans;
   const setRow = (i, k, v) => onTable('offsetLoans', rows.map((r, idx) => idx === i ? { ...r, [k]: v } : r));
-  const addRow = () => onTable('offsetLoans', [...rows, { loanType: '', zeroInt: false, normal: true, refi: false }]);
+  const addRow = () => onTable('offsetLoans', [...rows, { loanType: '', zeroInt: false, normal: true, refi: false, minPeriods: 0, minPaidPct: 0 }]);
   const delRow = (i) => onTable('offsetLoans', rows.filter((_, idx) => idx !== i));
 
   const bRows = record.banLoans || [];
   const setBRow = (i, k, v) => onTable('banLoans', bRows.map((r, idx) => idx === i ? { ...r, [k]: v } : r));
-  const addBRow = () => onTable('banLoans', [...bRows, { loanType: '', paidPeriods: 0, paidPercent: 0 }]);
+  const addBRow = () => onTable('banLoans', [...bRows, { loanType: '', paidPeriods: 0 }]);
   const delBRow = (i) => onTable('banLoans', bRows.filter((_, idx) => idx !== i));
+
+  // ── ตัวเลือกประเภทเงินกู้ (ทั้งสองตาราง) ──
+  //  เรียงตามรหัส · แสดงทุกสถานะ (ปิดใช้งานต่อท้าย "(ปิดใช้งาน)") · ไม่มีประเภทของตัวเอง
+  const typeOpts = React.useMemo(() => {
+    let list = [];
+    try { const sv = localStorage.getItem('loan_types'); list = sv ? JSON.parse(sv) : (window.LP_SEED || []); } catch (e) { list = window.LP_SEED || []; }
+    const seen = new Set();
+    return list
+      .filter(p => p && p.name && p.id !== record.id && String(p.code) !== String(record.code))
+      .sort((a, b) => String(a.code).localeCompare(String(b.code), 'th', { numeric: true }))
+      .filter(p => (seen.has(p.name) ? false : (seen.add(p.name), true)))
+      // เก็บเป็น "รหัส — ชื่อ" ให้ตัวตรวจในใบคำขอกู้ดึงรหัสได้
+      .map(p => ({ v: p.code + ' — ' + p.name, name: p.name, l: p.code + ' - ' + p.name + (p.enabled === false ? ' (ปิดใช้งาน)' : '') }));
+  }, [record.id, record.code]);
+  // ค่าเดิมที่เก็บเป็นชื่ออย่างเดียว → จับคู่ตามชื่อ
+  const optOf = (v) => typeOpts.find(o => o.v === v || o.name === v);
+  const typeLabel = (v) => (optOf(v) || {}).l || v;
+  const sameType = (a, b) => !!a && !!b && (a === b || (optOf(a) && optOf(a) === optOf(b)));
+  // ประเภทเดียวกันห้ามอยู่ทั้งตารางหักกลบและตารางห้ามกู้ (และห้ามซ้ำในตารางเดียวกัน)
+  const [warn, setWarn] = React.useState({ offset: '', ban: '' });
+  const pickOffset = (i, v) => {
+    if (v && bRows.some(r => sameType(r.loanType, v))) return setWarn({ offset: 'มีประเภทเงินกู้นี้ในตารางห้ามกู้แล้ว', ban: '' });
+    if (v && rows.some((r, j) => j !== i && sameType(r.loanType, v))) return setWarn({ offset: 'มีประเภทเงินกู้นี้ในตารางหักกลบแล้ว', ban: '' });
+    setWarn({ offset: '', ban: '' }); setRow(i, 'loanType', v);
+  };
+  const pickBan = (i, v) => {
+    if (v && rows.some(r => sameType(r.loanType, v))) return setWarn({ offset: '', ban: 'มีประเภทเงินกู้นี้ในตารางหักกลบแล้ว' });
+    if (v && bRows.some((r, j) => j !== i && sameType(r.loanType, v))) return setWarn({ offset: '', ban: 'มีประเภทเงินกู้นี้ในตารางห้ามกู้แล้ว' });
+    setWarn({ offset: '', ban: '' }); setBRow(i, 'loanType', v);
+  };
+  const typeCell = (v, onPick) => (editing ? (
+    <select className="sh-grid-input" style={{ maxWidth: 'none', width: '100%', textAlign: 'left', fontFamily: 'inherit' }}
+            value={(optOf(v) || {}).v || v || ''} onChange={(e) => onPick(e.target.value)}>
+      <option value="">— เลือกประเภทเงินกู้ —</option>
+      {typeOpts.map(o => {
+        // ประเภทที่ถูกเลือกไปแล้ว (ในตารางใดตารางหนึ่ง) → ตัวสีเทา เลือกซ้ำไม่ได้ · ยกเว้นค่าของแถวนี้เอง
+        const taken = !sameType(o.v, v) && [...rows, ...bRows].some(r => sameType(r.loanType, o.v));
+        return <option key={o.v} value={o.v} disabled={taken} style={taken ? { color: '#bfbfbf' } : undefined}>{o.l}</option>;
+      })}
+      {v && !optOf(v) ? <option value={v}>{v}</option> : null}
+    </select>
+  ) : <span>{v ? typeLabel(v) : <span className="muted">—</span>}</span>);
+  const warnBox = (msg) => (editing && msg
+    ? <div className="dep-error" style={{ marginTop: 6 }}><Icon name="info" size={13} /> {msg}</div> : null);
 
   return (
     <>
@@ -893,62 +998,64 @@ function LpTabOffset({ record, editing, onSettings, onTable }) {
         </div>
       </div>
 
-      <LpTableShell title="เงินกู้ที่ต้องหักกลบ" count={rows.length} editing={editing} onAdd={addRow} minWidth={720}
-        sub="ระบุประเภทเงินกู้เดิมที่อนุญาตให้หักกลบ (ปิดยอด) ด้วยเงินกู้ประเภทนี้">
+      <LpTableShell title="เงินกู้ที่ต้องหักกลบ" count={rows.length} editing={editing} onAdd={addRow} minWidth={1000}
+        sub="ระบุประเภทเงินกู้เดิมที่อนุญาตให้หักกลบ (ปิดยอด) ด้วยเงินกู้ประเภทนี้ — หักกลบได้เมื่อผ่อนชำระแล้วไม่น้อยกว่า N งวด หรือ X% ของยอดกู้">
         <thead>
           <tr>
-            <th rowSpan={2} style={{ minWidth: 200 }}>เงินกู้ที่ต้องหักกลบ</th>
+            <th rowSpan={2} style={{ minWidth: 260 }}>เงินกู้ที่ต้องหักกลบ</th>
             <th colSpan={3} className="center group-col">อนุญาตหักกลบ</th>
+            <th colSpan={2} className="center group-col">หักกลบได้เมื่อผ่อนชำระแล้วไม่น้อยกว่า</th>
             {editing && <th rowSpan={2} className="center" style={{ width: 46 }} />}
           </tr>
           <tr>
             <th className="center sub-col">ดอกเบี้ยศูนย์</th><th className="center sub-col">สัญญาตัวเอง</th><th className="center sub-col">สัญญาค้ำประกัน</th>
+            <th className="center sub-col" style={{ width: 130 }}>N งวด</th><th className="center sub-col" style={{ width: 150 }}>หรือ X% ของยอดกู้</th>
           </tr>
         </thead>
         <tbody>
-          {rows.length === 0 && <tr><td colSpan={editing ? 5 : 4} className="center muted" style={{ padding: '24px' }}>ยังไม่มีเงินกู้ที่ต้องหักกลบ — กด “เพิ่มแถว”</td></tr>}
+          {rows.length === 0 && <tr><td colSpan={editing ? 7 : 6} className="center muted" style={{ padding: '24px' }}>{editing ? 'ยังไม่มีเงินกู้ที่ต้องหักกลบ — กด “เพิ่มแถว”' : 'ยังไม่มีเงินกู้ที่ต้องหักกลบ'}</td></tr>}
           {rows.map((r, i) => (
             <tr key={i}>
-              <td><LpTxtCell editing={editing} v={r.loanType} onChange={(v) => setRow(i, 'loanType', v)} /></td>
+              <td>{typeCell(r.loanType, (v) => pickOffset(i, v))}</td>
               {['zeroInt', 'normal', 'refi'].map(k => (
                 <td key={k} className="center" style={{ borderLeft: '1px solid var(--divider)' }}>
                   <input type="checkbox" className="ct-check" checked={!!r[k]} disabled={!editing} onChange={(e) => setRow(i, k, e.target.checked)} />
                 </td>
               ))}
+              <td className="num-cell lp-offset-cell" style={{ borderLeft: '1px solid var(--divider)' }}><LpNumCell editing={editing} v={r.minPeriods ?? 0} full onChange={(v) => setRow(i, 'minPeriods', v)} /></td>
+              <td className="num-cell"><LpPctUseCell editing={editing} v={r.minPaidPct ?? 0} onChange={(v) => setRow(i, 'minPaidPct', v)} /></td>
               <LpDelCell editing={editing} onDel={() => delRow(i)} />
             </tr>
           ))}
         </tbody>
       </LpTableShell>
+      {warnBox(warn.offset)}
 
       <div style={{ marginTop: 12 }}>
         <LpTableShell title="เงินกู้ที่ห้ามกู้" count={bRows.length} editing={editing} onAdd={addBRow} minWidth={720}
           sub="ระบุประเภทเงินกู้ที่ห้ามมีสัญญาค้างอยู่ขณะขอกู้ประเภทนี้ — เว้นแต่ชำระมาแล้วตามเกณฑ์ที่กำหนด">
           <thead>
             <tr>
-              <th rowSpan={2} style={{ minWidth: 200 }}>เงินกู้ที่ห้ามกู้</th>
-              <th colSpan={2} className="center group-col">ชำระมาแล้ว</th>
-              {editing && <th rowSpan={2} className="center" style={{ width: 46 }} />}
-            </tr>
-            <tr>
-              <th className="center sub-col">จำนวนงวด</th><th className="center sub-col">จำนวนเปอร์เซ็นต์</th>
+              <th style={{ minWidth: 260 }}>เงินกู้ที่ห้ามกู้</th>
+              <th className="center group-col" style={{ width: '30%' }}>ชำระมาแล้ว (จำนวนงวด)</th>
+              {editing && <th className="center" style={{ width: 46 }} />}
             </tr>
           </thead>
           <tbody>
-            {bRows.length === 0 && <tr><td colSpan={editing ? 4 : 3} className="center muted" style={{ padding: '24px' }}>ยังไม่มีเงินกู้ที่ห้ามกู้ — กด “เพิ่มแถว”</td></tr>}
+            {bRows.length === 0 && <tr><td colSpan={editing ? 3 : 2} className="center muted" style={{ padding: '24px' }}>{editing ? 'ยังไม่มีเงินกู้ที่ห้ามกู้ — กด “เพิ่มแถว”' : 'ยังไม่มีเงินกู้ที่ห้ามกู้'}</td></tr>}
             {bRows.map((r, i) => (
               <tr key={i}>
-                <td><LpTxtCell editing={editing} v={r.loanType} onChange={(v) => setBRow(i, 'loanType', v)} /></td>
-                <td className="num-cell lp-offset-cell" style={{ borderLeft: '1px solid var(--divider)', width: '22%' }}><LpNumCell editing={editing} v={r.paidPeriods} full onChange={(v) => setBRow(i, 'paidPeriods', v)} /></td>
-                <td className="num-cell lp-offset-cell" style={{ width: '22%' }}><LpNumCell editing={editing} v={r.paidPercent} full onChange={(v) => setBRow(i, 'paidPercent', v)} /></td>
+                <td>{typeCell(r.loanType, (v) => pickBan(i, v))}</td>
+                <td className="num-cell lp-offset-cell" style={{ borderLeft: '1px solid var(--divider)' }}><LpNumCell editing={editing} v={r.paidPeriods} full onChange={(v) => setBRow(i, 'paidPeriods', v)} /></td>
                 <LpDelCell editing={editing} onDel={() => delBRow(i)} />
               </tr>
             ))}
           </tbody>
         </LpTableShell>
+        {warnBox(warn.ban)}
       </div>
       <div className="lt-list-foot muted">
-        <Icon name="info" size={12} /> เกณฑ์ “ชำระมาแล้ว” ของตารางเงินกู้ที่ห้ามกู้ — ถ้าชำระถึงเกณฑ์จึงจะขอกู้ประเภทนี้ได้
+        <Icon name="info" size={12} /> ตารางเงินกู้ที่ห้ามกู้ใช้เกณฑ์จำนวนงวดที่ชำระมาแล้วเท่านั้น — เกณฑ์ร้อยละที่ชำระแล้วอยู่ในตารางเงินกู้ที่ต้องหักกลบ · ประเภทเงินกู้เดียวกันอยู่ได้เพียงตารางเดียว
       </div>
     </>
   );
@@ -962,7 +1069,7 @@ function LpTabInstallment({ record, editing, onSettings, onTable }) {
   const set = (k, v) => onSettings({ ...s, [k]: v });
   const rows = record.installmentLimits;
   const setRow = (i, k, v) => onTable('installmentLimits', rows.map((r, idx) => idx === i ? { ...r, [k]: v } : r));
-  const addRow = () => onTable('installmentLimits', [...rows, { loanFrom: 0, loanTo: 0, ageFrom: 0, ageTo: 720, pvd: '-1', maxPeriods: 0, notExceedRetire: true, purpose: '' }]);
+  const addRow = () => onTable('installmentLimits', [...rows, { loanFrom: 0, loanTo: 0, ageFrom: 0, ageTo: 720, pvd: '-1', maxPeriods: 0, notExceedRetire: true, note: '' }]);
   const delRow = (i) => onTable('installmentLimits', rows.filter((_, idx) => idx !== i));
 
   return (
@@ -1006,18 +1113,33 @@ function LpTabInstallment({ record, editing, onSettings, onTable }) {
         </div>
       </div>
 
-      <LpTableShell title="ตารางจำนวนงวดการส่งชำระ" count={rows.length} editing={editing} onAdd={addRow} minWidth={1120}
+      {/* ช่องกรอกในตารางนี้กว้างเต็มคอลัมน์ (อ้างตารางผ่าน colgroup.lp-inst-cols) */}
+      <style>{'table.sh-grid:has(> colgroup.lp-inst-cols){table-layout:fixed;}' +
+               'table.sh-grid:has(> colgroup.lp-inst-cols) .sh-grid-input,' +
+               'table.sh-grid:has(> colgroup.lp-inst-cols) .l2-select{max-width:none!important;width:100%!important;min-width:0!important;}' +
+               'table.sh-grid:has(> colgroup.lp-inst-cols) td{padding-left:6px;padding-right:6px;}'}</style>
+      <LpTableShell title="ตารางจำนวนงวดการส่งชำระ" count={rows.length} editing={editing} onAdd={addRow} minWidth={editing ? 1560 : 1510}
         sub="กำหนดเพดานจำนวนงวดชำระสูงสุดตามวงเงินกู้ / ระยะเวลา / สถานะกองทุน">
+        <colgroup className="lp-inst-cols">
+          <col style={{ width: 140 }} /><col style={{ width: 150 }} />
+          <col style={{ width: 110 }} /><col style={{ width: 130 }} />
+          <col style={{ width: 230 }} />
+          <col style={{ width: 110 }} />
+          <col style={{ width: 220 }} />
+          <col style={{ width: 110 }} />
+          <col style={{ width: 310 }} />
+          {editing && <col style={{ width: 50 }} />}
+        </colgroup>
         <thead>
           <tr>
             <th colSpan={2} className="center group-col">วงเงินกู้</th>
             <th colSpan={2} className="center group-col">ระยะเวลา (เดือน)</th>
-            <th rowSpan={2} className="center" style={{ width: 130 }}>กองทุนสำรองฯ</th>
-            <th rowSpan={2} className="center" style={{ width: 90 }}>งวดสูงสุด</th>
-            <th rowSpan={2} className="center" style={{ minWidth: 180 }}>ประเภทหลักประกัน</th>
-            <th rowSpan={2} className="center" style={{ width: 90 }}>ไม่เกินเกษียณ</th>
-            <th rowSpan={2} style={{ minWidth: 130 }}>วัตถุประสงค์</th>
-            {editing && <th rowSpan={2} className="center" style={{ width: 46 }} />}
+            <th rowSpan={2} className="center">กองทุนสำรองฯ</th>
+            <th rowSpan={2} className="center">งวดสูงสุด</th>
+            <th rowSpan={2} className="center">ประเภทหลักประกัน</th>
+            <th rowSpan={2} className="center">ไม่เกินเกษียณ</th>
+            <th rowSpan={2}>หมายเหตุ</th>
+            {editing && <th rowSpan={2} className="center" />}
           </tr>
           <tr>
             <th className="center sub-col">&ge;</th><th className="center sub-col">&lt;</th>
@@ -1029,7 +1151,7 @@ function LpTabInstallment({ record, editing, onSettings, onTable }) {
           {rows.map((r, i) => (
             <tr key={i} style={editing ? { verticalAlign: 'top' } : undefined}>
               <td className="num-cell"><LpNumCell editing={editing} v={r.loanFrom} decimals={0} onChange={(v) => setRow(i, 'loanFrom', v)} /></td>
-              <td className="num-cell"><LpUnlCell editing={editing} v={r.loanTo} decimals={0} inf={999999999} onChange={(v) => setRow(i, 'loanTo', v)} /></td>
+              <td className="num-cell"><LpNumCell editing={editing} v={r.loanTo} decimals={0} onChange={(v) => setRow(i, 'loanTo', v)} /></td>
               <td className="num-cell"><LpNumCell editing={editing} v={r.ageFrom} onChange={(v) => setRow(i, 'ageFrom', v)} /></td>
               <td className="num-cell"><LpUnlCell editing={editing} v={r.ageTo} inf={999} onChange={(v) => setRow(i, 'ageTo', v)} /></td>
               <td className="num-cell" style={{ textAlign: 'center' }}><LpSelCell editing={editing} group="pvdCheck" v={r.pvd} onChange={(v) => setRow(i, 'pvd', v)} /></td>
@@ -1038,7 +1160,11 @@ function LpTabInstallment({ record, editing, onSettings, onTable }) {
               <td className="center" style={{ borderLeft: '1px solid var(--divider)' }}>
                 <input type="checkbox" className="ct-check" checked={!!r.notExceedRetire} disabled={!editing} onChange={(e) => setRow(i, 'notExceedRetire', e.target.checked)} />
               </td>
-              <td><LpPurposeCell editing={editing} v={r.purpose} onChange={(v) => setRow(i, 'purpose', v)} /></td>
+              {/* หมายเหตุ — กรอกข้อความอิสระ ไม่บังคับ */}
+              <td>{editing
+                ? <input className="sh-grid-input" style={{ textAlign: 'left', fontFamily: 'inherit' }} placeholder="ระบุหมายเหตุ (ถ้ามี)"
+                         value={r.note || ''} onChange={(e) => setRow(i, 'note', e.target.value)} />
+                : <span>{r.note || <span className="muted">—</span>}</span>}</td>
               <LpDelCell editing={editing} onDel={() => delRow(i)} />
             </tr>
           ))}
@@ -1061,6 +1187,34 @@ function LpTabRestrict({ record, editing, onTable }) {
   const setRed = (i, k, v) => onTable('reduceRules', reds.map((r, idx) => idx === i ? { ...r, [k]: v } : r));
   const addRed = () => onTable('reduceRules', [...reds, { loanType: '', periodFrom: 0, periodTo: 999, salaryMult: 0, maxAmount: 0 }]);
   const delRed = (i) => onTable('reduceRules', reds.filter((_, idx) => idx !== i));
+  // ── ลดสิทธิ์ — จัดกลุ่มตามโครงการ ──
+  //  มีโครงการแล้ว → รวมกลุ่มตามโครงการ · ยังไม่เลือกโครงการ → รวมตามรหัสกลุ่ม (grp) ที่ได้ตอนกด "เพิ่มช่วงงวด"
+  const redGroups = [];
+  reds.forEach((r, i) => {
+    const key = r.loanType ? 'p:' + r.loanType : (r.grp ? 'g:' + r.grp : 'new:' + i);
+    let g = redGroups.find(x => x.key === key);
+    if (!g) { g = { key, loanType: r.loanType || '', idx: [] }; redGroups.push(g); }
+    g.idx.push(i);
+  });
+  const setGroupProject = (g, v) => onTable('reduceRules', reds.map((r, idx) => g.idx.includes(idx) ? { ...r, loanType: v } : r));
+  const addRange = (g) => {
+    const last = g.idx[g.idx.length - 1];
+    const maxTo = Math.max(...g.idx.map(i => Number(reds[i].periodTo) || 0));
+    const from = maxTo >= 999 ? 0 : maxTo + 1;
+    // ผูกแถวใหม่กับกลุ่มเดิมด้วยรหัสกลุ่ม — ใช้ได้แม้ยังไม่เลือกโครงการ
+    const gid = reds[g.idx[0]].grp || ('G' + Date.now().toString(36));
+    const next = reds.map((r, idx) => (g.idx.includes(idx) && !r.grp ? { ...r, grp: gid } : r));
+    next.splice(last + 1, 0, { loanType: g.loanType, grp: gid, periodFrom: from, periodTo: 999, salaryMult: 0, maxAmount: 0 });
+    onTable('reduceRules', next);
+  };
+  // ช่วงงวดในโครงการเดียวกันห้ามซ้อนกัน
+  const redOverlaps = (g) => {
+    const rs = g.idx.map((i, k) => ({ k: k + 1, a: Number(reds[i].periodFrom) || 0, b: (reds[i].periodTo === '' || reds[i].periodTo == null) ? 999 : Number(reds[i].periodTo) }));
+    for (let x = 0; x < rs.length; x++) for (let y = x + 1; y < rs.length; y++) {
+      if (rs[x].a <= rs[y].b && rs[y].a <= rs[x].b) return 'ช่วงงวดซ้อนกัน (ช่วงที่ ' + rs[x].k + ' กับช่วงที่ ' + rs[y].k + ') — กรุณาปรับไม่ให้ช่วงงวดในโครงการเดียวกันทับกัน';
+    }
+    return '';
+  };
   // โครงการเงินกู้ — แสดงโครงการย่อยทั้งหมดเรียงต่อกัน (ไม่มีหัวข้อโครงการใหญ่)
   const projects = (window.lpjLoad ? window.lpjLoad() : (window.LPJ_SEED || []));
   const subOpts = projects.flatMap(p => (p.rounds || []).map(r => ({ v: r.id, l: r.name })));
@@ -1099,7 +1253,7 @@ function LpTabRestrict({ record, editing, onTable }) {
             <tr key={i}>
               <td><SubSel rows={bans} i={i} v={r.loanType} onChange={(v) => setBan(i, 'loanType', v)} /></td>
               <td className="num-cell">{editing
-                ? <input className="sh-grid-input" type="number" min="1" max="999" step="1" placeholder="N" style={{ maxWidth: 'none', width: '100%' }}
+                ? <input className="sh-grid-input" type="number" min="1" max="999" step="1" placeholder="0" style={{ maxWidth: 'none', width: '100%' }}
                          value={banN(r)} onChange={(e) => { const v = e.target.value; setBan(i, 'minPeriods', v === '' ? '' : Math.min(999, Math.max(1, Math.round(Number(v))))); }} />
                 : <span className="sh-grid-num">{banN(r) === '' ? '—' : '< ' + banN(r) + ' งวด'}</span>}</td>
               <LpDelCell editing={editing} onDel={() => delBan(i)} />
@@ -1109,7 +1263,7 @@ function LpTabRestrict({ record, editing, onTable }) {
       </LpTableShell>
 
       <LpTableShell title="ลดสิทธิ์วงเงินกู้ ถ้ามีหนี้เดิมต่อไปนี้" count={reds.length} editing={editing} onAdd={addRed} minWidth={900}
-        sub="ยืดหยุ่นกว่ากฎห้ามกู้ — อนุญาตให้กู้ได้แต่ลดเพดานวงเงินตามจำนวนงวดที่ผ่อนสัญญาเดิมมาแล้ว">
+        sub="ยืดหยุ่นกว่ากฎห้ามกู้ — อนุญาตให้กู้ได้แต่ลดเพดานวงเงินตามจำนวนงวดที่ผ่อนสัญญาเดิมมาแล้ว · จัดกลุ่มตามโครงการ แต่ละโครงการมีช่วงงวดเป็นแถวย่อย และช่วงงวดในโครงการเดียวกันห้ามซ้อนกัน">
         <thead>
           <tr>
             <th rowSpan={2} style={{ minWidth: 200 }}>โครงการเงินกู้ที่มีแล้ว</th>
@@ -1124,16 +1278,50 @@ function LpTabRestrict({ record, editing, onTable }) {
         </thead>
         <tbody>
           {reds.length === 0 && <tr><td colSpan={editing ? 6 : 5} className="center muted" style={{ padding: '20px' }}>ไม่มีเงื่อนไขลดสิทธิ์</td></tr>}
-          {reds.map((r, i) => (
-            <tr key={i} style={editing ? { verticalAlign: 'top' } : undefined}>
-              <td><SubSel rows={reds} i={i} v={r.loanType} onChange={(v) => setRed(i, 'loanType', v)} /></td>
-              <td className="num-cell"><LpNumCell editing={editing} full v={r.periodFrom} onChange={(v) => setRed(i, 'periodFrom', v)} /></td>
-              <td className="num-cell"><LpUnlCell editing={editing} v={r.periodTo} inf={999} onChange={(v) => setRed(i, 'periodTo', v)} /></td>
-              <td className="num-cell"><LpNumCell editing={editing} full v={r.salaryMult} onChange={(v) => setRed(i, 'salaryMult', v)} /></td>
-              <td className="num-cell"><LpNumCell editing={editing} full v={r.maxAmount} decimals={0} onChange={(v) => setRed(i, 'maxAmount', v)} /></td>
-              <LpDelCell editing={editing} onDel={() => delRed(i)} />
-            </tr>
-          ))}
+          {redGroups.map((g, gi) => {
+            const ov = redOverlaps(g);
+            return (
+              <React.Fragment key={g.key}>
+                {g.idx.map((i, k) => {
+                  const r = reds[i];
+                  return (
+                    <tr key={i} style={{ verticalAlign: 'top', borderTop: k === 0 && gi > 0 ? '2px solid var(--divider)' : undefined }}>
+                      {k === 0 && (
+                        <td rowSpan={g.idx.length} style={{ background: 'var(--bg-subtle, #fafafa)', borderRight: '1px solid var(--divider)' }}>
+                          {/* dropdown โครงการ + ลิงก์ "+ เพิ่มช่วงงวด" อยู่ใต้ dropdown (เรียงแนวตั้ง) */}
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 6, width: '100%' }}>
+                            <div style={{ width: '100%' }}>
+                              <SubSel rows={redGroups.map(x => ({ loanType: x.loanType }))} i={gi} v={g.loanType} onChange={(v) => setGroupProject(g, v)} />
+                            </div>
+                            {editing && (
+                              <span role="button" tabIndex={0} onClick={() => addRange(g)}
+                                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); addRange(g); } }}
+                                    style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12.5, fontWeight: 500,
+                                             color: 'var(--primary, #237450)', cursor: 'pointer', whiteSpace: 'nowrap', lineHeight: 1.4 }}>
+                                <Icon name="plus" size={12} /> เพิ่มช่วงงวด
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                      )}
+                      <td className="num-cell"><LpNumCell editing={editing} full v={r.periodFrom} onChange={(v) => setRed(i, 'periodFrom', v)} /></td>
+                      <td className="num-cell"><LpUnlCell editing={editing} v={r.periodTo} inf={999} onChange={(v) => setRed(i, 'periodTo', v)} /></td>
+                      <td className="num-cell"><LpNumCell editing={editing} full v={r.salaryMult} onChange={(v) => setRed(i, 'salaryMult', v)} /></td>
+                      <td className="num-cell"><LpNumCell editing={editing} full v={r.maxAmount} decimals={0} onChange={(v) => setRed(i, 'maxAmount', v)} /></td>
+                      <LpDelCell editing={editing} onDel={() => delRed(i)} />
+                    </tr>
+                  );
+                })}
+                {ov && (
+                  <tr>
+                    <td colSpan={editing ? 6 : 5} style={{ borderTop: 'none', padding: '2px 12px 8px', fontSize: 12, color: '#CF1322' }}>
+                      <Icon name="info" size={12} /> {ov}
+                    </td>
+                  </tr>
+                )}
+              </React.Fragment>
+            );
+          })}
         </tbody>
       </LpTableShell>
     </>

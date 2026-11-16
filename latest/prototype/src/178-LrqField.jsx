@@ -418,7 +418,7 @@ function RequestDocsSummaryModal({ summary, reqNo, onClose }) {
 // ── Popup "ตารางอัตราดอกเบี้ย" — เงื่อนไขการคิดดอกเบี้ยตามช่วงเวลา (อ่านอย่างเดียว) ──
 //  ดึง tier จริงของประเภทเงินกู้ที่เลือก (sync กับค่าคงที่ประเภทเงินกู้)
 //  + ตารางตามเงินกู้ (ถ้ามี) · ไฮไลต์แถวที่ใช้กับคำขอนี้ · บรรทัดสรุปที่มาของอัตรา
-function LrqRateTierModal({ product, amount, reqDate, rateAdd, rateReduce, onClose }) {
+function LrqRateTierModal({ product, amount, reqDate, member, rateAdd, rateReduce, onClose }) {
   React.useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', onKey);
@@ -428,21 +428,22 @@ function LrqRateTierModal({ product, amount, reqDate, rateAdd, rateReduce, onClo
   const s = (product && product.settings) || {};
   const rows = (product && product.interestTiers) || [];
   const aRows = (product && product.amountInterestTiers) || [];
-  const derived = product && window.lrDeriveFromProduct ? window.lrDeriveFromProduct(product, amount, reqDate) : null;
+  const derived = product && window.lrDeriveFromProduct ? window.lrDeriveFromProduct(product, amount, reqDate, member) : null;
   const parts = (derived && derived.rateParts) || null;
   const isHit = (r, key) => !!(parts && parts[key] === r);
   const hitStyle = { background: '#eafef2', fontWeight: 600 };
   const fixedRateOf = (r) => Number(r.rate != null && r.rate !== '' ? r.rate : r.fixedRate) || 0;
   const pct = (v, d) => (Number(v) || 0).toFixed(d == null ? 2 : d) + '%';
   const sgn = (v) => (v < 0 ? '− ' : '+ ') + Math.abs(v).toFixed(2);
-  const amtLabel = (v, inf) => (inf && Number(v) >= 999999999 ? 'ไม่จำกัด' : fmt.money(Number(v) || 0, 2));
+  const amtLabel = (v, inf) => (inf && Number(v) >= (window.LP_AMT_INF || 99999999999) ? 'ไม่จำกัด' : fmt.money(Number(v) || 0, 2));
   // บรรทัดสรุป: อัตราพื้นฐาน ± ตามช่วงเวลา ± ตามเงินกู้ + เพิ่ม − ลด = อัตราที่ใช้
   const summary = (() => {
     if (!parts) return null;
     const baseSrc = parts.baseFrom === 'amount' ? 'คงที่ ตามเงินกู้'
       : parts.baseFrom === 'time' ? 'คงที่ ตามช่วงเวลา'
       : ('ตาราง ' + (derived.rateTable || '—'));
-    const add = Number(rateAdd) || 0, red = Number(rateReduce) || 0;
+    const adjOk = !!derived.rateAllowAdjust;
+    const add = adjOk ? (Number(rateAdd) || 0) : 0, red = adjOk ? (Number(rateReduce) || 0) : 0;
     const seg = [parts.base.toFixed(2) + ' (' + baseSrc + ')'];
     if (parts.timeAdjust) seg.push(sgn(parts.timeAdjust) + ' (ช่วงเวลา)');
     if (parts.amountAdjust) seg.push(sgn(parts.amountAdjust) + ' (เงินกู้)');
@@ -580,7 +581,7 @@ function LrqRateTierModal({ product, amount, reqDate, rateAdd, rateReduce, onClo
               <b style={{ color: 'rgba(0,0,0,.88)' }}>อัตราที่ใช้กับคำขอนี้ (งวดที่ 1):</b>{' '}
               <span className="mono">{summary}</span>
               {(rows.length > 0 || aRows.length > 0) && (
-                <div className="muted" style={{ fontSize: 11.5, marginTop: 2 }}>แถวที่ไฮไลต์คือแถวที่ใช้กับยอดขอกู้และงวดแรกของคำขอนี้</div>
+                <div className="muted" style={{ fontSize: 11.5, marginTop: 2 }}>แถวที่ไฮไลต์คือแถวที่ใช้กับงวดแรกของคำขอนี้ · ยอดที่ใช้หาแถว {fmt.money(Number(derived.rateLookupAmount) || 0, 2)} บาท ({s.interestTierBasis === '1' ? 'ยอดอนุมัติหลังปัดเศษ' : 'จำนวนเงินขอกู้'})</div>
               )}
             </div>
           )}
@@ -1417,7 +1418,7 @@ function LoanRequestForm({ initial, onBack, onToast, reviewMode, statusBadge, de
   useEffect(() => {
     setF(p => (projectOptions.some(o => o.v === p.projectKey) || p.projectKey === autoKey ? p : { ...p, projectKey: autoKey }));
   }, [autoKey, projectOptions]);
-  const derived = window.lrDeriveFromProduct(product, f.amount, f.reqDate);
+  const derived = window.lrDeriveFromProduct(product, f.amount, f.reqDate, f.member);
 
   // ── เครื่องคำนวณกลาง — ผูกค่าคงที่ของผลิตภัณฑ์ทั้งหมด (Flow 15 ขั้น) ──
   const C0 = window.lrCalc(f);
@@ -1502,7 +1503,7 @@ function LoanRequestForm({ initial, onBack, onToast, reviewMode, statusBadge, de
       purpose: ss.defaultPurpose || prev.purpose,
       rateAdd: 0, rateReduce: 0,
     }));
-    const d = window.lrDeriveFromProduct(p, f.amount, f.reqDate);
+    const d = window.lrDeriveFromProduct(p, f.amount, f.reqDate, f.member);
     onToast && onToast(
       `ดึงค่าคงที่ ${p ? p.code + ' — ' + p.name : ''} · ดอกเบี้ย ${d ? d.rate.toFixed(2) : 0}% · งวดสูงสุด ${d ? d.maxPeriods : 0} · ${ss.needCollateral ? 'ต้องมีหลักประกัน' : 'ไม่บังคับหลักประกัน'}`
     );
@@ -1975,17 +1976,28 @@ function LoanRequestForm({ initial, onBack, onToast, reviewMode, statusBadge, de
                 <LrqSub>อัตราดอกเบี้ย</LrqSub>
                 <div className="lrq-grid c2">
                   <LrqField label="รูปแบบ" bound><input className="cfg-input lrq-ro" value={derived ? lrqT(derived.interestRateFormLabel) : '—'} readOnly /></LrqField>
-                  <LrqField label="อัตราดอกเบี้ย" bound hint={derived ? `ตาราง ${derived.rateTable}` : ''}>
+                  <LrqField label="อัตราดอกเบี้ย" bound hint={derived ? (derived.rateFixedFrom || `ตาราง ${derived.rateTable}`) : ''}>
                     <input className="cfg-input lrq-num" value={netRate.toFixed(3) + '%'} readOnly />
                   </LrqField>
-                  <LrqField label="เพิ่ม">
-                    <input className="cfg-input lrq-num" value={(Number(f.rateAdd) || 0).toFixed(3) + '%'}
-                           onChange={e => set('rateAdd', Number(String(e.target.value).replace(/[^0-9.]/g, '')) || 0)} />
-                  </LrqField>
-                  <LrqField label="ลด">
-                    <input className="cfg-input lrq-num" value={(Number(f.rateReduce) || 0).toFixed(3) + '%'}
-                           onChange={e => set('rateReduce', Number(String(e.target.value).replace(/[^0-9.]/g, '')) || 0)} />
-                  </LrqField>
+                  {(() => {
+                    // ปิดช่องเพิ่ม/ลด (และเป็น 0) เมื่ออัตรามาจากแถวคงที่ หรือขั้นอัตราไม่ได้ติ๊ก “อัตราเพิ่ม/ลด (ใช้)”
+                    const adjOk = !!(derived && derived.rateAllowAdjust);
+                    const why = derived && derived.rateFixedFrom ? derived.rateFixedFrom + ' — ปรับเพิ่ม/ลดไม่ได้' : 'ขั้นอัตราที่ใช้ไม่เปิดให้ปรับเพิ่ม/ลด';
+                    return (
+                      <>
+                        <LrqField label="เพิ่ม">
+                          <input className={"cfg-input lrq-num" + (adjOk ? '' : ' lrq-ro')} readOnly={!adjOk} title={adjOk ? undefined : why}
+                                 value={(adjOk ? (Number(f.rateAdd) || 0) : 0).toFixed(3) + '%'}
+                                 onChange={adjOk ? (e => set('rateAdd', Number(String(e.target.value).replace(/[^0-9.]/g, '')) || 0)) : undefined} />
+                        </LrqField>
+                        <LrqField label="ลด">
+                          <input className={"cfg-input lrq-num" + (adjOk ? '' : ' lrq-ro')} readOnly={!adjOk} title={adjOk ? undefined : why}
+                                 value={(adjOk ? (Number(f.rateReduce) || 0) : 0).toFixed(3) + '%'}
+                                 onChange={adjOk ? (e => set('rateReduce', Number(String(e.target.value).replace(/[^0-9.]/g, '')) || 0)) : undefined} />
+                        </LrqField>
+                      </>
+                    );
+                  })()}
                 </div>
                 <div className="lrq-inline-row">
                   <span className="lrq-lbl">ตารางดอกเบี้ย</span>
@@ -2495,7 +2507,7 @@ function LoanRequestForm({ initial, onBack, onToast, reviewMode, statusBadge, de
       {docReqSummary && <RequestDocsSummaryModal summary={docReqSummary} reqNo={f.reqNo} onClose={() => setDocReqSummary(null)} />}
       {agentModal && <AgentArrearsModal rows={(f.agentArrears && f.agentArrears.length) ? f.agentArrears : ((window.LR_DEMO && window.LR_DEMO.agentArrears) || [])} member={f.member} onClose={() => setAgentModal(false)} />}
       {pctModal && <SalaryRemainModal data={pctData} onClose={() => setPctModal(false)} />}
-      {rateTierModal && <LrqRateTierModal product={product} amount={f.amount} reqDate={f.reqDate} rateAdd={f.rateAdd} rateReduce={f.rateReduce} onClose={() => setRateTierModal(false)} />}
+      {rateTierModal && <LrqRateTierModal product={product} amount={f.amount} reqDate={f.reqDate} member={f.member} rateAdd={f.rateAdd} rateReduce={f.rateReduce} onClose={() => setRateTierModal(false)} />}
       {reqHist && <LrqReqHistoryModal hist={reqHistory} reqNo={(reqMeta && (reqMeta.reqNo || reqMeta.crmNo)) || f.reqNo} memberName={f.member && f.member.name} onClose={() => setReqHist(false)} />}
       {offsetModal && <LrqOffsetModal row={offsetModal} onClose={() => setOffsetModal(null)} />}
       {clearConfirm && (

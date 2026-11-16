@@ -8,7 +8,7 @@
 // ── รายการตัวเลือก (dropdown) ────────────────────────────────────
 window.LC_TYPES = ['โฉนด', 'นส3', 'นส3ก', 'โฉนดตราจอง', 'ห้องชุด', 'สิ่งปลูกสร้าง'];
 window.LC_TITLE_TYPES = ['โฉนด', 'นส3', 'นส3ก', 'โฉนดตราจอง'];   // ประเภทที่ใช้ฟอร์มโฉนด/ที่ดิน
-window.LC_MARITAL = ['โสด', 'สมรส (ชายxหญิง)', 'หย่าร้าง', 'หม้าย'];
+window.LC_MARITAL = ['โสด', 'สมรส', 'หย่าร้าง', 'หม้าย'];
 window.LC_BUILDING_TYPES = ['บ้านเดี่ยว', 'บ้านแฝด', 'ทาวน์เฮาส์', 'ตึกแถว / อาคารพาณิชย์', 'อาคารสำนักงาน', 'โรงงาน / โกดัง', 'อื่นๆ'];
 window.LC_USAGE = ['ที่อยู่อาศัย', 'พาณิชยกรรม', 'อุตสาหกรรม', 'เกษตรกรรม'];
 window.LC_STRUCTURE = ['คอนกรีตเสริมเหล็ก', 'ครึ่งตึกครึ่งไม้', 'ไม้', 'เหล็ก / โครงสร้างสำเร็จรูป'];
@@ -19,7 +19,7 @@ window.LC_LAND_PROVINCES = ['กรุงเทพมหานคร', 'นน�
 // ── ผู้ถือกรรมสิทธิ์ตัวอย่าง ──────────────────────────────────────
 function lcOwners() {
   return [
-    { name: 'นายสมชาย ใจดี', citizenId: '1234567890123', age: 50, marital: 'สมรส (ชายxหญิง)', spouse: 'นางสมหญิง ใจดี', father: '-', mother: '-' },
+    { name: 'นายสมชาย ใจดี', citizenId: '1234567890123', age: 50, marital: 'สมรส', spouse: 'นางสมหญิง ใจดี', father: '-', mother: '-' },
     { name: 'นางสาวเจนจิรา อักษร', citizenId: '1234567890123', age: 48, marital: 'โสด', spouse: '-', father: 'นายจิตร อักษร', mother: 'นางมาลี อักษร' },
   ];
 }
@@ -70,12 +70,12 @@ function lcMake(type, prov, extra, sub) {
 
 // ── หลักทรัพย์ของสมาชิกตัวอย่าง (คีย์ตามเลขทะเบียน) ──────────────────
 // เจ้าของหลักทรัพย์ = สมาชิกผู้กู้ (ข้อมูลตรงกับทะเบียนสมาชิก)
-const LC_OWNER_058241 = [{ name: 'นายสมชาย ใจดี รักษ์ออม', citizenId: '3101800123456', age: 50, marital: 'สมรส (ชายxหญิง)', spouse: 'นางสาวพรพิมล ทองคำ', father: '-', mother: '-' }];
+const LC_OWNER_058241 = [{ name: 'นายสมชาย ใจดี รักษ์ออม', citizenId: '3101800123456', age: 50, marital: 'สมรส', spouse: 'นางสาวพรพิมล ทองคำ', father: '-', mother: '-' }];
 window.LC_BY_MEMBER = {
   'M-058241': [
     // แปลงที่ 1 — ที่ดินตั้งบ้าน (สิ่งปลูกสร้างผูกกับโฉนดนี้)
     lcMake('โฉนด', 'สมุทรปราการ', {
-      code: 'TL-2567-00841', titleNo: '12345', volume: '124', page: '45', moo: '3',
+      code: 'TL-67-00841', titleNo: '12345', volume: '124', page: '45', moo: '3',
       rawang: '5136 II 4826', landNo: '210', surveyPage: '3312',
       locProvince: 'สมุทรปราการ', locAmphoe: 'บางพลี', locTambon: 'บางแก้ว',
       rai: '0', ngan: '1', wa: '35',
@@ -87,7 +87,7 @@ window.LC_BY_MEMBER = {
     }),
     // แปลงที่ 2 — ติดกับโฉนด 12345 (ด้านทิศเหนือ) ใช้เป็นที่จอดรถ/สวน
     lcMake('โฉนด', 'สมุทรปราการ', {
-      code: 'TL-2567-00842', titleNo: '12346', volume: '124', page: '46', moo: '3',
+      code: 'TL-67-00842', titleNo: '12346', volume: '124', page: '46', moo: '3',
       rawang: '5136 II 4826', landNo: '211', surveyPage: '3313',
       locProvince: 'สมุทรปราการ', locAmphoe: 'บางพลี', locTambon: 'บางแก้ว',
       rai: '0', ngan: '0', wa: '60',
@@ -99,7 +99,7 @@ window.LC_BY_MEMBER = {
     }),
     // สิ่งปลูกสร้าง — บ้านเดี่ยวสร้างคร่อมโฉนด 12345 + 12346 (ต้องผูกโฉนดอย่างน้อย 1 แปลงเสมอ)
     lcMake('สิ่งปลูกสร้าง', 'สมุทรปราการ', {
-      code: 'BD-2567-00204',
+      code: 'BD-67-00204',
       refTitleNo: '12345', refLandOfficeProvince: 'สมุทรปราการ', refLandOfficeBranch: 'บางพลี',
       coopPrice: '2,652,000.00', summaryPrice: '2,652,000.00',
       note: 'บ้านเดี่ยว 2 ชั้น สภาพดี มีรั้วรอบ',
@@ -111,13 +111,13 @@ window.LC_BY_MEMBER = {
         yearBuilt: '2557', yearDone: '2558', ageYears: '11', floors: '2', usableArea: '210', width: '10', length: '10.5',
         structure: 'คอนกรีตเสริมเหล็ก', wallMat: 'ก่ออิฐฉาบปูน', roofMat: 'กระเบื้องคอนกรีต', floorMat: 'คอนกรีตปูกระเบื้อง', ceilingMat: 'ยิปซั่มบอร์ด',
         bedrooms: '3', bathrooms: '3', kitchens: '1', parking: '2', amenities: 'โรงจอดรถ, ลานซักล้าง, ระเบียงชั้น 2',
-        buildAppraisal: '3,400,000.00', appraisalPerSqm: '16,190.00', depreciation: '22', residualValue: '2,652,000.00', totalValue: '4,839,000.00',
+        buildAppraisal: '3,400,000.00', appraisalPerSqm: '16,190.00', depreciation: '20', residualValue: '2,652,000.00', totalValue: '4,839,000.00',
         buildStatus: 'ก่อสร้างแล้วเสร็จ', permitNo: 'อ.1 456/2557', obligation: 'ไม่มีภาระผูกพัน',
       }),
     }, true),
     // สิ่งปลูกสร้าง — โรงจอดรถ/ห้องเก็บของ บนโฉนด 12345 (โฉนดเดียวมีสิ่งปลูกสร้างได้หลายรายการ)
     lcMake('สิ่งปลูกสร้าง', 'สมุทรปราการ', {
-      code: 'BD-2567-00205',
+      code: 'BD-67-00205',
       refTitleNo: '12345', refLandOfficeProvince: 'สมุทรปราการ', refLandOfficeBranch: 'บางพลี',
       coopPrice: '180,000.00', summaryPrice: '180,000.00',
       note: 'โรงจอดรถโครงเหล็ก หลังคาเมทัลชีท ด้านหน้าบ้าน',
@@ -133,7 +133,7 @@ window.LC_BY_MEMBER = {
     }, true),
     // ห้องชุด — อยู่บนที่ดินของนิติบุคคลอาคารชุด (โฉนด 45872 ไม่ใช่หลักทรัพย์ของสมาชิก)
     lcMake('ห้องชุด', 'สมุทรปราการ', {
-      code: 'CD-2567-00119',
+      code: 'CD-67-00119',
       refTitleNo: '45872', refLandOfficeProvince: 'สมุทรปราการ', refLandOfficeBranch: 'บางพลี',
       condo: { roomNo: '18/305', floor: '3', buildingNo: 'A', roomName: 'เดอะ กรีน เรสซิเดนซ์', regNo: 'อช.115/2560', titleNos: '45872', areaSqm: '48.50', province: 'สมุทรปราการ', amphoe: 'บางพลี', tambon: 'บางแก้ว' },
       govPrice: '2,425,000.00', coopPerSqm: '55,000.00', coopPrice: '2,667,500.00', summaryPrice: '2,425,000.00',
@@ -141,7 +141,7 @@ window.LC_BY_MEMBER = {
       owners: LC_OWNER_058241,
     }),
     lcMake('นส3ก', 'ปทุมธานี', {
-      code: 'TL-2566-00688', titleNo: '1180', volume: '12', page: '80', moo: '5',
+      code: 'TL-66-00688', titleNo: '1180', volume: '12', page: '80', moo: '5',
       rawang: '5136 IV 2210', landNo: '45', surveyPage: '880',
       locProvince: 'ปทุมธานี', locAmphoe: 'ลาดหลุมแก้ว', locTambon: 'คูขวาง',
       rai: '2', ngan: '0', wa: '00', landOfficeProvince: 'ปทุมธานี', landOfficeBranch: 'ลาดหลุมแก้ว',

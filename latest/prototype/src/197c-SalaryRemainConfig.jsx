@@ -21,7 +21,18 @@ const srBtn = (primary) => ({
 });
 const srMkSet = (o) => ({ noRange: !!(o && o.noRange), from: (o && o.from) || '', to: (o && o.to) || '',
   type: (o && o.type) || 'amount', value: (o && o.value != null) ? o.value : 0, cap: (o && o.cap != null) ? o.cap : '' });
-const SR_TYPE_LABEL = { amount: 'บาท', percent: 'เปอร์เซ็นต์', min: 'ร้อยละหรือบาท แล้วแต่จำนวนใดน้อยกว่า' };
+const SR_TYPE_LABEL = { amount: 'บาท', percent: 'ร้อยละ', min: 'ร้อยละหรือบาท แล้วแต่จำนวนใดน้อยกว่า' };
+// เรียงชุดข้อมูล: ชุด “ไม่กำหนดช่วงสมาชิก” ขึ้นก่อน → ตามเลขสมาชิกเริ่มต้นจากน้อยไปมาก
+const srSortSets = (sets) => (sets || []).slice().sort((a, b) =>
+  (a.noRange === b.noRange ? 0 : a.noRange ? -1 : 1) || ((Number(a.from) || 0) - (Number(b.from) || 0)));
+// ประเภทเงินกู้ที่ใช้เงื่อนไขนี้ (ทุกสถานะ) — { code, name, enabled }
+const srUsedTypes = (v) => {
+  const all = window.lpTypesAll ? window.lpTypesAll() : (window.LP_SEED || []);
+  return all.filter(p => {
+    const s = p.settings || {};
+    return s.salaryRemainRule === v || (window.lpSalaryRemainRuleOf && window.lpSalaryRemainRuleOf(s) === v);
+  }).sort((a, b) => String(a.code).localeCompare(String(b.code), 'th', { numeric: true }));
+};
 // ── ตรวจข้อมูลเงื่อนไข (ก-02 · ก-03 · ก-05) — คืน { key: ข้อความ } ──
 const SR_CODE_RE = /^[A-Za-z0-9-]+$/;
 function srValidateHead(code, name, list, selfV) {
@@ -42,7 +53,7 @@ function srValidateSets(sets) {
     if (x.value === '' || !(v > 0)) e['v' + j] = 'ค่าขั้นต่ำต้องมากกว่า 0';
     else if ((x.type === 'percent' || x.type === 'min') && v > 100) e['v' + j] = 'ร้อยละต้องไม่เกิน 100';
     else if ((x.type === 'percent' || x.type === 'min') && !/^\d+(\.\d{1,2})?$/.test(String(x.value))) e['v' + j] = 'ร้อยละทศนิยมไม่เกิน 2 ตำแหน่ง';
-    if (x.type === 'min' && !(Number(x.cap) > 0)) e['c' + j] = 'กรุณาระบุจำนวนเงินสูงสุด (บาท) ให้มากกว่า 0';
+    if (x.type === 'min' && !(Number(x.cap) > 0)) e['c' + j] = 'กรุณาระบุจำนวนเงิน (บาท) ให้มากกว่า 0';
     if (!x.noRange) {
       if (x.from === '' || x.to === '') e['r' + j] = 'กรุณาระบุช่วงเลขสมาชิกให้ครบ หรือเลือก “ไม่กำหนดช่วงสมาชิก”';
       else if (Number(x.from) > Number(x.to)) e['r' + j] = 'เลขสมาชิก ตั้งแต่ ต้องไม่มากกว่า ถึง';
@@ -86,7 +97,7 @@ function srSaveAll(list) {
 }
 const srPct = (v) => fmt.money(Number(v) || 0, 2).replace(/\.00$/, '') + '%';
 const srSetText = (x) => (x.type === 'percent' ? srPct(x.value)
-    : x.type === 'min' ? srPct(x.value) + ' / สูงสุด ' + fmt.money(Number(x.cap) || 0, 0) + ' บาท'
+    : x.type === 'min' ? srPct(x.value) + ' หรือ ' + fmt.money(Number(x.cap) || 0, 0) + ' บาท แล้วแต่จำนวนใดน้อยกว่า'
     : '฿' + fmt.money(Number(x.value) || 0, 0))
   + (x.noRange ? '' : ` (${x.from}–${x.to})`);
 
@@ -114,7 +125,8 @@ function SrDetail({ record, list, onBack, onSave, startEditing, onHistory }) {
   const [savedAt, setSavedAt] = useState(null);
   useEffect(() => { if (!editing) setDraft(record); }, [record, editing]);
 
-  const cur = editing ? draft : record;
+  // โหมดดู — แสดงชุดตามลำดับ (ไม่กำหนดช่วงก่อน → เลขสมาชิกน้อยไปมาก)
+  const cur = editing ? draft : { ...record, sets: srSortSets(record.sets) };
   const usedBy = window.lpSalaryRuleUsedBy ? window.lpSalaryRuleUsedBy(record.v) : [];
   const setHdr = (k, v) => { setErr(''); setErrs(e => ({ ...e, [k]: '' })); setDraft(d => ({ ...d, [k]: v })); };
   const setSet = (j, k, v) => { setErr(''); setErrs({}); setDraft(d => ({ ...d, sets: d.sets.map((x, jj) => {
@@ -127,13 +139,13 @@ function SrDetail({ record, list, onBack, onSave, startEditing, onHistory }) {
   const delSet = (j) => setDraft(d => ({ ...d, sets: d.sets.filter((_, jj) => jj !== j) }));
   const startEdit = () => { setDraft(record); setErr(''); setErrs({}); setEditing(true); };
   const cancel = () => { setDraft(record); setErr(''); setErrs({}); setEditing(false); };
-  const commit = () => { setAskUsed(false); onSave({ ...draft, code: draft.code.trim(), l: draft.l.trim() }); setSavedAt(new Date()); setEditing(false); };
+  const commit = () => { setAskUsed(false); onSave({ ...draft, code: draft.code.trim(), l: draft.l.trim(), sets: srSortSets(draft.sets) }); setSavedAt(new Date()); setEditing(false); };
   const save = () => {
     const e = { ...srValidateHead(draft.code, draft.l, list || [], record.v), ...srValidateSets(draft.sets) };
     setErrs(e);
     if (Object.keys(e).length) return setErr(e.sets || 'กรุณาตรวจสอบข้อมูลที่ระบุ');
     // ก-02 ข้อ 7 — แก้ชื่อหรือชุดข้อมูลของเงื่อนไขที่ประเภทเงินกู้ใช้อยู่ → ถามก่อน
-    const setsChanged = JSON.stringify(record.sets) !== JSON.stringify(draft.sets);
+    const setsChanged = JSON.stringify(srSortSets(record.sets)) !== JSON.stringify(srSortSets(draft.sets));
     if (usedBy.length && (setsChanged || String(record.l).trim() !== String(draft.l).trim())) return setAskUsed(true);
     commit();
   };
@@ -198,7 +210,7 @@ function SrDetail({ record, list, onBack, onSave, startEditing, onHistory }) {
         <div className="sh-grid-head">
           <div>
             <div className="sh-grid-title">ชุดข้อมูลเงินเดือนคงเหลือ <span className="muted" style={{ fontWeight: 400 }}>· {cur.sets.length} ชุด</span></div>
-            <div className="muted" style={{ fontSize: 11.5, marginTop: 2 }}>แต่ละชุดกำหนดช่วงเลขสมาชิก + ประเภท (บาท / เปอร์เซ็นต์) + ค่าขั้นต่ำ · ช่วงเลขสมาชิกห้ามซ้อนกัน</div>
+            <div className="muted" style={{ fontSize: 11.5, marginTop: 2 }}>แต่ละชุดกำหนดช่วงเลขสมาชิก + ประเภท (บาท / ร้อยละ / ร้อยละหรือบาท แล้วแต่จำนวนใดน้อยกว่า) + เงินเดือนคงเหลือขั้นต่ำ · ช่วงเลขสมาชิกห้ามซ้อนกัน · เลขสมาชิกไม่เกิน 6 หลัก (กรอก 1 ได้ ไม่ต้องเป็น 000001)</div>
           </div>
           {editing && <button className="btn primary sm" onClick={addSet}><Icon name="plus" /> เพิ่มแถว</button>}
         </div>
@@ -208,8 +220,8 @@ function SrDetail({ record, list, onBack, onSave, startEditing, onHistory }) {
               <tr>
                 <th className="center" style={{ width: 64 }}>ลำดับที่</th>
                 <th className="center">ช่วงเลขสมาชิก (ตั้งแต่ – ถึง)</th>
-                <th className="center" style={{ width: 200 }}>ประเภท</th>
-                <th className="center" style={{ width: 200 }}>ค่า</th>
+                <th className="center" style={{ width: 290 }}>ประเภท</th>
+                <th className="center" style={{ width: 240 }}>เงินเดือนคงเหลือขั้นต่ำ</th>
                 {editing && <th className="center" style={{ width: 52 }} />}
               </tr>
             </thead>
@@ -241,8 +253,8 @@ function SrDetail({ record, list, onBack, onSave, startEditing, onHistory }) {
                     {editing
                       ? <select className="sh-grid-input" value={x.type} onChange={(e) => setSet(j, 'type', e.target.value)} style={srSelStyle}>
                           <option value="amount">บาท</option>
-                          <option value="percent">เปอร์เซ็นต์</option>
-                          {x.type === 'min' && <option value="min" disabled>ร้อยละหรือบาท แล้วแต่จำนวนใดน้อยกว่า (เลิกใช้)</option>}
+                          <option value="percent">ร้อยละ</option>
+                          <option value="min">ร้อยละหรือบาท แล้วแต่จำนวนใดน้อยกว่า</option>
                         </select>
                       : (SR_TYPE_LABEL[x.type] || 'บาท')}
                   </td>
@@ -253,7 +265,7 @@ function SrDetail({ record, list, onBack, onSave, startEditing, onHistory }) {
                             <label style={{ display: 'grid', gridTemplateColumns: '68px minmax(0,1fr)', alignItems: 'center', gap: 6, fontSize: 11.5, color: 'rgba(0,0,0,.65)' }}>ร้อยละ
                               <input className="sh-grid-input" style={{ width: '100%', maxWidth: 'none' }} type="number" step="0.01" value={x.value} onChange={(e) => setSet(j, 'value', e.target.value)} /></label>
                             <SrErr msg={errs['v' + j]} />
-                            <label style={{ display: 'grid', gridTemplateColumns: '68px minmax(0,1fr)', alignItems: 'center', gap: 6, fontSize: 11.5, color: 'rgba(0,0,0,.65)' }}>สูงสุด (บาท)
+                            <label style={{ display: 'grid', gridTemplateColumns: '68px minmax(0,1fr)', alignItems: 'center', gap: 6, fontSize: 11.5, color: 'rgba(0,0,0,.65)' }}>หรือ (บาท)
                               <input className="sh-grid-input" style={{ width: '100%', maxWidth: 'none' }} type="number" value={x.cap} onChange={(e) => setSet(j, 'cap', e.target.value)} /></label>
                             <SrErr msg={errs['c' + j]} />
                           </div>
@@ -342,6 +354,52 @@ function SrAddModal({ list, onClose, onCreate }) {
   );
 }
 
+// ── Popup รายชื่อประเภทเงินกู้ที่ใช้เงื่อนไขนี้ — "รหัส — ชื่อ — สถานะ" ──
+function SrUsedByModal({ rule, onClose }) {
+  const rows = srUsedTypes(rule.v);
+  return (
+    <>
+      <div className="modal-backdrop" onClick={onClose} />
+      <div className="modal-card" role="dialog" aria-modal="true" style={{ width: 560, maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
+        <div className="modal-head">
+          <div className="gc-modal-ico"><Icon name="loans" /></div>
+          <div style={{ minWidth: 0 }}>
+            <h2>ประเภทเงินกู้ที่ใช้เงื่อนไขนี้</h2>
+            <div className="muted" style={{ fontSize: 11 }}>{rule.code} · {rule.l} — {rows.length} ประเภท</div>
+          </div>
+          <button className="close-btn" onClick={onClose} aria-label="ปิด"><Icon name="close" /></button>
+        </div>
+        <div className="modal-body" style={{ overflow: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <thead>
+              <tr style={{ background: '#fafafa' }}>
+                <th style={{ ...SR_TH, width: 80 }}>รหัส</th>
+                <th style={SR_TH}>ชื่อประเภทเงินกู้</th>
+                <th style={{ ...SR_TH, width: 110, textAlign: 'center' }}>สถานะ</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map(p => (
+                <tr key={p.id || p.code}>
+                  <td style={{ ...SR_TD, ...SR_MONO }}>{p.code}</td>
+                  <td style={SR_TD}>{p.name}</td>
+                  <td style={{ ...SR_TD, textAlign: 'center' }}>
+                    <span className={'pill ' + (p.enabled !== false ? 'ok' : 'neutral')}>{p.enabled !== false ? 'เปิดใช้งาน' : 'ปิดใช้งาน'}</span>
+                  </td>
+                </tr>
+              ))}
+              {rows.length === 0 && <tr><td colSpan={3} style={{ ...SR_TD, textAlign: 'center', color: 'rgba(0,0,0,.45)' }}>ไม่มีประเภทเงินกู้ที่ใช้เงื่อนไขนี้</td></tr>}
+            </tbody>
+          </table>
+        </div>
+        <div style={{ padding: '12px 18px', borderTop: '1px solid ' + SR_LINE, display: 'flex', justifyContent: 'flex-end' }}>
+          <button className="btn" onClick={onClose}>ปิด</button>
+        </div>
+      </div>
+    </>
+  );
+}
+
 function SrToggleModal({ target, turningOn, usedBy, onClose, onConfirm }) {
   const blocked = !turningOn && usedBy.length > 0;
   return (
@@ -393,6 +451,7 @@ function SalaryRemainConfigPage({ onToast }) {
   const [hist, setHist] = useState(null);
   const [q, setQ] = useState('');
   const [applied, setApplied] = useState('');
+  const [usedOf, setUsedOf] = useState(null);   // เงื่อนไขที่เปิดดูรายชื่อประเภทเงินกู้ที่ใช้
 
   const list = all.filter(r => r.check !== false);   // ไม่แสดงตัวเลือกระบบ “ไม่เช็คเงินเดือนคงเหลือ”
   const persist = (next) => { setAll(next); srSaveAll(next); };
@@ -505,7 +564,7 @@ function SalaryRemainConfigPage({ onToast }) {
                 <tr style={{ background: '#fafafa' }}>
                   <th style={{ ...SR_TH, width: 100 }}>รหัส</th>
                   <th style={{ ...SR_TH, minWidth: 240 }}>ชื่อเงื่อนไข</th>
-                  <th style={{ ...SR_TH, minWidth: 200 }}>ค่าขั้นต่ำ (ช่วงเลขสมาชิก)</th>
+                  <th style={{ ...SR_TH, minWidth: 200 }}>เงินเดือนคงเหลือขั้นต่ำ (ช่วงเลขสมาชิก)</th>
                   <th style={{ ...SR_TH, width: 110, textAlign: 'center' }}>ประเภทเงินกู้ที่ใช้</th>
                   <th style={{ ...SR_TH, width: 108, textAlign: 'center' }}>สถานะ</th>
                   <th style={{ ...SR_TH, width: 70, textAlign: 'center' }}>ใช้งาน</th>
@@ -523,9 +582,17 @@ function SalaryRemainConfigPage({ onToast }) {
                         {r.note && <span style={{ display: 'block', fontSize: 11, color: 'rgba(0,0,0,.45)', marginTop: 3 }}>{r.note}</span>}
                       </td>
                       <td style={{ ...SR_TD, ...SR_MONO }}>
-                        {r.sets.map((x, j) => <span key={j} style={{ display: 'block' }}>{srSetText(x)}</span>)}
+                        {srSortSets(r.sets).map((x, j) => <span key={j} style={{ display: 'block' }}>{srSetText(x)}</span>)}
                       </td>
-                      <td style={{ ...SR_TD, ...SR_MONO, textAlign: 'center' }}>{used || <span style={{ color: 'rgba(0,0,0,.35)' }}>—</span>}</td>
+                      {/* จำนวนประเภทเงินกู้ที่ใช้ — เป็นปุ่ม กดแล้วเปิดรายชื่อ */}
+                      <td style={{ ...SR_TD, ...SR_MONO, textAlign: 'center' }}>
+                        {used
+                          ? <button type="button" onClick={() => setUsedOf(r)} title="ดูรายชื่อประเภทเงินกู้ที่ใช้"
+                                    style={{ minWidth: 36, height: 26, padding: '0 10px', border: '1px solid ' + SR_G, borderRadius: 9999,
+                                             background: 'var(--primary-50, #eafef2)', color: SR_G, fontFamily: 'inherit', fontSize: 12.5,
+                                             fontWeight: 600, cursor: 'pointer' }}>{used}</button>
+                          : <span style={{ color: 'rgba(0,0,0,.35)' }}>—</span>}
+                      </td>
                       <td style={{ ...SR_TD, textAlign: 'center' }}>
                         <span className={'pill ' + (r.enabled ? 'ok' : 'neutral')}>{r.enabled ? 'เปิดใช้งาน' : 'ปิดใช้งาน'}</span>
                       </td>
@@ -565,6 +632,7 @@ function SalaryRemainConfigPage({ onToast }) {
       </div>
 
       {adding && <SrAddModal list={list} onClose={() => setAdding(false)} onCreate={handleCreate} />}
+      {usedOf && <SrUsedByModal rule={usedOf} onClose={() => setUsedOf(null)} />}
       {toggleTarget && <SrToggleModal target={toggleTarget.rec} turningOn={toggleTarget.turningOn}
                                       usedBy={window.lpSalaryRuleUsedBy ? window.lpSalaryRuleUsedBy(toggleTarget.rec.v) : []}
                                       onClose={() => setToggleTarget(null)} onConfirm={applyToggle} />}

@@ -321,10 +321,7 @@ function CoaRow({ node, level, expanded, forceOpen, q, onToggle, onAct, onToggle
           </span>
         </td>
         <td className="center">
-          <button className={"ac-switch" + (node.enabled ? ' on' : '')} onClick={() => onToggleEnabled(node)}
-                  title={node.enabled ? 'คลิกเพื่อปิดใช้งาน' : 'คลิกเพื่อเปิดใช้งาน'} aria-pressed={node.enabled}>
-            <span className="ac-switch-track"><span className="ac-switch-knob" /></span>
-          </button>
+          <window.ConstSwitch on={node.enabled} onClick={() => onToggleEnabled(node)} />
         </td>
         <td className="center">
           <div style={{ display: 'inline-flex', gap: 6, justifyContent: 'center' }}>
@@ -413,8 +410,17 @@ function ChartOfAccountsPage({ onToast }) {
   };
 
   const [askOff, setAskOff] = useState(null);
+  // บัญชีที่ถูกใช้อยู่ — ปิดใช้งานไม่ได้: มีบัญชีย่อยที่เปิดใช้งาน หรือถูกผูกเป็นคู่บัญชีในประเภทคู่บัญชี (เงินฝาก)
+  const coaInUse = (n) => {
+    const kids = []; const walk = (l) => (l || []).forEach(x => { if (x.enabled) kids.push(x); walk(x.children); }); walk(n.children);
+    if (kids.length) return `บัญชี “${n.code}” มีบัญชีย่อยที่เปิดใช้งาน ${kids.length} บัญชี: ${kids.slice(0, 5).map(x => x.code).join(', ')}${kids.length > 5 ? ' …' : ''} — ปิดบัญชีย่อยก่อน`;
+    let pairs = []; try { pairs = (window.depTxnPairLoad ? window.depTxnPairLoad() : []).filter(p => p.enabled !== false && String(p.code) === String(n.code)); } catch (e) {}
+    if (pairs.length) return `บัญชี “${n.code}” ถูกผูกเป็นคู่บัญชีในเมนูประเภทคู่บัญชี (เงินฝาก) ${pairs.length} รายการ — ปิดหรือเปลี่ยนคู่บัญชีก่อน`;
+    return null;
+  };
   const requestToggle = (n) => window.depConfirmOff
-    ? window.depConfirmOff(n.enabled, n.code + ' · ' + n.name, () => toggleEnabled(n), 'บัญชีนี้จะไม่แสดงเป็นตัวเลือกตอนลงรายการบัญชี', 'ปิดการใช้งานบัญชี')
+    ? window.depConfirmOff(n.enabled, n.code + ' · ' + n.name, () => toggleEnabled(n), 'บัญชีนี้จะไม่แสดงเป็นตัวเลือกตอนลงรายการบัญชี', 'ปิดการใช้งานบัญชี',
+        { effectOn: 'บัญชีนี้จะแสดงเป็นตัวเลือกตอนลงรายการบัญชีอีกครั้ง', blocked: () => coaInUse(n) })
     : (n.enabled ? setAskOff(n) : toggleEnabled(n));
   const toggleEnabled = (n) => {
     setAskOff(null);

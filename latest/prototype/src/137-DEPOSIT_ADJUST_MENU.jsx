@@ -14,10 +14,11 @@ const DEPOSIT_ADJUST_MENU = [
   { id: 'unfreezeAtm',label: 'ยกเลิกอายัดบัญชีเงินฝาก ATM', active: false },
 ];
 
+// ตัวค้นหา — เลขที่ใบรายการเป็นตัวหลัก (ชี้ไปที่ใบที่จะยกเลิกได้ตรงที่สุด) · ตัวอย่างจริงเติมจากข้อมูลในหน้า
 const SEARCH_MODES = [
-  { id: 'account', label: 'เลขที่บัญชี',     placeholder: 'เช่น 001-2-58241-0',  example: '001-2-58241-0' },
-  { id: 'member',  label: 'เลขสมาชิก',      placeholder: 'เช่น M-058241',        example: 'M-058241' },
-  { id: 'slip',    label: 'เลขที่ใบรายการ',  placeholder: 'เช่น DP6906-044120',   example: 'DP6906-044120' },
+  { id: 'slip',    label: 'เลขที่ใบรายการ',  placeholder: 'เช่น TX-2569-11-4401', example: 'TX-2569-11-4401' },
+  { id: 'account', label: 'เลขที่บัญชี',     placeholder: 'เช่น 001-2-58241-0',   example: '001-2-58241-0' },
+  { id: 'member',  label: 'เลขสมาชิก',      placeholder: 'เช่น 58241',            example: '58241' },
 ];
 
 function formatWorkDate(iso) {
@@ -27,36 +28,109 @@ function formatWorkDate(iso) {
   return `${dd}/${mm}/${d.getFullYear() + 543}`;
 }
 
+// ════════════════════════════════════════════════════════════════════
+//  ข้อมูลจริง — บัญชีเงินฝาก (dep_txn_accounts) + ประวัติรายการ (dep_txn_ledger)
+//  รหัส/ชื่อรายการจากค่าคงที่ "รหัสรายการเงินฝาก" · วันทำการเดียวกับหน้าฝาก/ถอน
+// ════════════════════════════════════════════════════════════════════
+const CT_FLOW = { deposit: 1, 'transfer-in': 1, withdraw: -1, 'transfer-out': -1 };
+const ctWorkIso = () => (window.dpcToday ? window.dpcToday() : String(window.DEP_OPS_TODAY || window.DEPOSIT_WORKING_DATE || new Date().toISOString()).slice(0, 10));
+const ctTxnCode = (l) => l.code || (String(l.channel || '').match(/^([A-Z]{2,4})\s/) || [])[1] || '';
+function ctCodeInfo(code, l) {
+  let r = null;
+  try { r = (window.depTxnTypeLoad ? window.depTxnTypeLoad() : []).find(x => x.code === code); } catch (e) {}
+  const flow = CT_FLOW[l.type] != null ? CT_FLOW[l.type] : ((r && r.side) || 1);
+  return { label: (r && r.name) || String(l.channel || code).replace(/^[A-Z]{2,4}\s/, ''), flow };
+}
+// ใบรายการที่ยกเลิกในหน้านี้ไม่ได้ (พร้อมเหตุผล)
+function ctBlockReason(l, code, reg) {
+  if (l.ref === 'CLOSE' || /^CL/.test(code) || /ปิดบัญชี/.test(l.channel || '')) return 'รายการปิดบัญชี — ยกเลิกในหน้านี้ไม่ได้';
+  if (code === 'RCL' || (code === 'FEE' && /เช็คคืน/.test(l.channel || ''))) return 'รายการคืนเช็ค — ยกเลิกในหน้านี้ไม่ได้';
+  if (code === 'DCP' || /เช็ค/.test(l.channel || '') && l.type === 'deposit') {
+    const c = ctChqOf(l, reg);
+    if (c && c.status !== 'pending') return 'เช็คฉบับนี้' + (c.status === 'cleared' ? 'ผ่านเช็คแล้ว' : c.status === 'returned' ? 'คืนเช็คแล้ว' : 'ถูกยกเลิกแล้ว') + ' — ยกเลิกไม่ได้';
+  }
+  return '';
+}
+// เช็คในทะเบียนเช็คที่ตรงกับรายการฝากเช็ค
+function ctChqOf(l, reg) {
+  const ref = String(l.ref || '');
+  return (reg || []).find(c => c.accNo === l.accNo && Number(c.amount) === Number(l.amount) && (!c.sendDate || c.sendDate === l.date)
+    && (!c.chqNo || ref.includes(c.chqNo))) || null;
+}
+// รายการคู่ของการโอนระหว่างบัญชี (ขาออก ↔ ขาเข้า)
+function ctPairOf(l, ledger) {
+  if (l.type !== 'transfer-out' && l.type !== 'transfer-in') return null;
+  const want = l.type === 'transfer-out' ? 'transfer-in' : 'transfer-out';
+  return ledger.find(x => x.type === want && x.accNo === l.ref && x.ref === l.accNo && Number(x.amount) === Number(l.amount) && x.date === l.date && !x.cancelled) || null;
+}
+function ctBuildRecords() {
+  const accs = window.depTxnLoadAccounts ? window.depTxnLoadAccounts() : [];
+  const lg = window.depTxnLoadLedger ? window.depTxnLoadLedger() : [];
+  const reg = window.depChqRegLoad ? window.depChqRegLoad() : [];
+  const wd = ctWorkIso();
+  const ST = { active: 'ใช้งาน', pending: 'รออนุมัติเปิด', closed: 'ปิดบัญชีแล้ว', rejected: 'ไม่อนุมัติ' };
+  return accs.map(a => {
+    const rule = window.dpcRules ? window.dpcRules(a, { type: 'withdraw', date: wd, amt: 0, moves: [] }) : null;
+    const minBal = rule ? rule.minBal : 0;
+    return {
+      accNo: a.accNo, memberCode: a.member, memberName: a.name, accType: [a.typeCode, a.type].filter(Boolean).join(' '), accTypeCode: a.typeCode,
+      status: ST[a.status] || a.status || 'ใช้งาน', balance: Number(a.balance) || 0, withdrawable: Math.max(0, (Number(a.balance) || 0) - minBal), minBal,
+      rate: Number(a.rate) || 0, accInterest: Number(a.accrued || a.ytdInterest || 0), openDate: a.openDate,
+      txns: lg.filter(l => l.accNo === a.accNo && !l.reversalOf).map(l => {
+        const code = ctTxnCode(l), ci = ctCodeInfo(code, l), block = l.cancelled ? '' : ctBlockReason(l, code, reg);
+        return { slip: l.id, code, label: ci.label, flow: ci.flow, desc: (l.channel || ci.label) + (l.ref && l.ref !== '—' && l.ref !== code ? ' · ' + l.ref : ''),
+          amount: Number(l.amount) || 0, fee: Number(l.fee) || 0, sysFee: Number(l.sysFee) || 0, penalty: Number(l.penalty) || 0,
+          by: l.by, date: l.date, time: l.time || '', cancelled: !!l.cancelled, cancelInfo: l.cancelInfo,
+          cancellable: !block, blockReason: block, type: l.type };
+      }),
+    };
+  });
+}
+// ผลต่อยอดเมื่อกลับรายการ — คืนค่าธรรมเนียม/ค่าปรับที่หักพร้อมรายการนั้นด้วย
+const ctDelta = (t) => -t.flow * t.amount + t.fee + t.sysFee + t.penalty;
+
+// ── ตัวอย่างรายการของวันทำการ (เติมครั้งเดียว · ยอดบัญชีปรับตามรายการจริง) ──
+function ctSeedSamples() {
+  try { if (localStorage.getItem('dep_cancel_samples_v1')) return; } catch (e) { return; }
+  try {
+    if (!window.depTxnLoadAccounts || !window.depTxnNextId) return;
+    const wd = ctWorkIso();
+    let accs = window.depTxnLoadAccounts();
+    const lg = window.depTxnLoadLedger();
+    const U1 = 'จันทร์เพ็ญ มาลี', U2 = 'สุนิสา ใจเย็น';
+    const out = [];
+    const post = (accNo, type, code, label, amount, extra) => {
+      const a = accs.find(x => x.accNo === accNo); if (!a) return null;
+      const fee = (extra && (extra.fee || 0) + (extra.sysFee || 0)) || 0;
+      const bal = Number(a.balance) + (CT_FLOW[type] || 1) * amount - fee;
+      accs = accs.map(x => x.accNo === accNo ? { ...x, balance: bal } : x);
+      const e = { id: window.depTxnNextId(), date: wd, accNo, member: a.member, type, channel: code + ' ' + label, code, amount, fee: 0, balance: bal, ref: code, by: U1, ...(extra || {}) };
+      out.push(e); return e;
+    };
+    post('001-2-58241-0', 'deposit', 'DCA', 'ฝากเพิ่มด้วยเงินสด', 2500);
+    post('001-2-58241-0', 'withdraw', 'WCA', 'ถอนด้วยเงินสด', 1500, { by: U2 });
+    post('002-5-58241-7', 'withdraw', 'WTE', 'ถอนโอนเข้าบัญชีธนาคาร', 20000, { sysFee: 200 });
+    post('001-2-58241-0', 'transfer-out', 'TRI', 'โอนระหว่างบัญชีเงินฝาก', 10000, { ref: '002-5-58241-7' });
+    post('002-5-58241-7', 'transfer-in', 'TRI', 'โอนระหว่างบัญชีเงินฝาก', 10000, { ref: '001-2-58241-0' });
+    const chq = post('001-2-70011-3', 'deposit', 'DCP', 'ฝากเพิ่มด้วยเช็คส่วนบุคคล', 15000, { ref: '0098765 ธนาคารกรุงไทย', by: U2 });
+    if (chq && window.depChqRegAdd) window.depChqRegAdd([{ chqNo: '0098765', bank: 'ธนาคารกรุงไทย', branch: 'สาขาสำนักงานใหญ่', type: 'เช็คในเขต', floatDays: 1,
+      faceDate: wd, sendDate: wd, amount: 15000, accNo: '001-2-70011-3', accName: 'ประภาพร ศรีสวัสดิ์', src: 'ตัวอย่างยกเลิกรายการ', by: U2 }]);
+    // ตัวอย่างสถานะ "ยกเลิกแล้ว" — ฝากแล้วกลับรายการ (ยอดสุทธิไม่เปลี่ยน)
+    const x = post('001-2-70011-3', 'deposit', 'DCA', 'ฝากเพิ่มด้วยเงินสด', 3000);
+    if (x) {
+      x.cancelled = true; x.cancelInfo = { by: 'อภิชาติ ศรีสุข', reason: 'บันทึกจำนวนเงินผิด', ts: wd + 'T10:15:00' };
+      post('001-2-70011-3', 'withdraw', 'DCA', 'ยกเลิก DCA ฝากเพิ่มด้วยเงินสด (ใบ ' + x.id + ')', 3000, { reversalOf: x.id, by: 'อภิชาติ ศรีสุข' });
+    }
+    window.depTxnSaveAccounts(accs);
+    window.depTxnSaveLedger([...out.reverse(), ...lg]);
+    localStorage.setItem('dep_cancel_samples_v1', wd);
+  } catch (e) {}
+}
+
 function CancelTxnPage({ onToast }) {
   const audit = React.useContext(window.AuditContext || React.createContext({ log: () => {} }));
-  // ข้อมูลตัวอย่างเพิ่มเติม — รายการวันทำรายการหลายรายการ + ตัวอย่างสถานะ "ยกเลิกแล้ว"
-  const [records, setRecords] = useState(() => {
-    const wd = String(window.DEPOSIT_WORKING_DATE).slice(0, 10);
-    const [y, m] = wd.split('-');
-    const yy = String(Number(y) + 543).slice(2) + m;
-    const staff = ['สุนิสา ใจเย็น', 'ธนพล ศรีวงศ์', 'จันทร์เพ็ญ มาลี'];
-    const samples = [
-      { code: '01', desc: 'ฝากเงินสด ผ่านเคาน์เตอร์ สาขาสำนักงานใหญ่', amount: 2500 },
-      { code: '02', desc: 'ถอนเงินสด ผ่านเคาน์เตอร์ สาขาสำนักงานใหญ่', amount: 1500 },
-      { code: '01', desc: 'ฝากเงินสด ผ่านเคาน์เตอร์ (แก้ไขยอดผิด)',      amount: 10000, cancelled: true, reason: 'บันทึกจำนวนเงินผิด' },
-      { code: '03', desc: 'โอนเงินเข้าจากบัญชีภายในสหกรณ์',            amount: 4200 },
-      { code: '02', desc: 'ถอนเงินสด ผ่านเคาน์เตอร์ (ลูกค้ายกเลิก)',    amount: 3000, cancelled: true, reason: 'สมาชิกขอยกเลิกรายการ' },
-    ];
-    return window.DEPOSIT_TX_RECORDS.map((r, ri) => {
-      const base = r.txns.map(t => ({ ...t }));
-      const have = new Set(base.map(t => t.slip));
-      const add = samples.slice(0, ri % 2 === 0 ? 5 : 4).map((s, i) => {
-        const pre = s.code === '02' ? 'WD' : s.code === '03' ? 'TF' : 'DP';
-        const slip = pre + yy + '-' + String(45100 + ri * 20 + i).padStart(6, '0');
-        return {
-          slip, code: s.code, desc: s.desc, amount: s.amount, by: staff[(ri + i) % staff.length], date: wd,
-          cancellable: true, cancelled: !!s.cancelled,
-          ...(s.cancelled ? { cancelInfo: { by: 'มนตรี ศรีสุข', reason: s.reason, ts: wd + 'T10:1' + i + ':00' } } : {}),
-        };
-      }).filter(t => !have.has(t.slip));
-      return { ...r, txns: [...add, ...base] };
-    });
-  });
+  // บัญชี + รายการจริงจากประวัติบัญชี (ไม่ใช่ข้อมูลตัวอย่างของหน้านี้)
+  const [records, setRecords] = useState(() => { ctSeedSamples(); return ctBuildRecords(); });
   const [mode, setMode]           = useState('all');
   const [pickOpen, setPickOpen]   = useState(false);
   const [pickQ, setPickQ]         = useState('');
@@ -68,7 +142,7 @@ function CancelTxnPage({ onToast }) {
   const [selected, setSelected]   = useState([]);          // slip[]
   const [confirmOpen, setConfirm] = useState(false);
 
-  const workDate = window.DEPOSIT_WORKING_DATE;
+  const workDate = ctWorkIso();
   const workIso = String(workDate).slice(0, 10);
   // ผู้ใช้งานปัจจุบัน + สิทธิ์เลือกวันที่ย้อนหลัง (หัวหน้า / ผู้มีสิทธิ์ยกเลิก)
   const me = React.useMemo(() => {
@@ -92,8 +166,18 @@ function CancelTxnPage({ onToast }) {
   // เรียงรายการล่าสุดขึ้นก่อน (วันที่-เวลา แล้วตามเลขที่ใบรายการ)
   const dayTxns = (r) => (r ? r.txns.filter(t => String(t.date).slice(0, 10) === txDate && (!highlightSlip || t.slip === highlightSlip))
     .slice().sort((a, b) => String(b.date).localeCompare(String(a.date)) || String(b.time || '').localeCompare(String(a.time || '')) || String(b.slip).localeCompare(String(a.slip))) : []);
-  const modeDef  = { label: 'เลขที่บัญชี / เลขสมาชิก / เลขที่ใบรายการ', placeholder: 'ค้นหาเลขที่บัญชี / เลขสมาชิก / เลขที่ใบรายการ', example: SEARCH_MODES[0].example };
+  // ตัวอย่างจากข้อมูลจริง — ใบรายการล่าสุดของวันทำการ (ไม่มีจึงใช้รูปแบบตั้งต้น)
+  const exModes = React.useMemo(() => {
+    const all = records.flatMap(r => r.txns.map(t => ({ r, t }))).filter(x => !x.t.cancelled);
+    const ex = all.filter(x => String(x.t.date).slice(0, 10) === workIso)[0] || all[0];
+    return ex ? SEARCH_MODES.map(m => ({ ...m, example: m.id === 'slip' ? ex.t.slip : m.id === 'account' ? ex.r.accNo : String(ex.r.memberCode) }))
+              : SEARCH_MODES;
+  }, [records]);
+  const modeDef  = { label: 'เลขที่ใบรายการ / เลขที่บัญชี / เลขสมาชิก',
+    placeholder: 'ค้นหาเลขที่ใบรายการ / เลขที่บัญชี / เลขสมาชิก — เช่น ' + exModes.map(m => m.example).join(' · '), example: exModes[0].example };
   const norm = (s) => String(s).toLowerCase().replace(/[\s-]/g, '');
+  // เลขสมาชิก — ค้นได้ทั้งมี/ไม่มีตัวอักษรหรือเลข 0 นำหน้า (M-058241 = 58241)
+  const memKey = (s) => String(s || '').replace(/\D/g, '').replace(/^0+/, '');
 
   const runSearch = (q = query, md = mode) => {
     setSearched(true);
@@ -101,12 +185,20 @@ function CancelTxnPage({ onToast }) {
     const nq = norm(q.trim());
     if (!nq) { setResults([]); setActive(null); setHL(null); return; }
     let hl = null;
-    const matched = records.filter(r => {
-      if (norm(r.accNo).includes(nq) || norm(r.memberCode).includes(nq)) return true;
+    const qk = memKey(q);
+    let hlTx = null;
+    // ใบรายการก่อน (ตรงตัวก่อน แล้วค่อยบางส่วน) → เลขที่บัญชี → เลขสมาชิก
+    const exact = records.find(r => r.txns.some(t => norm(t.slip) === nq));
+    const matched = exact ? [exact] : records.filter(r => {
       const tx = r.txns.find(t => norm(t.slip).includes(nq));
-      if (tx && !hl) hl = tx.slip;
-      return !!tx;
+      if (tx) { if (!hl) { hl = tx.slip; hlTx = tx; } return true; }
+      if (norm(r.accNo).includes(nq)) return true;
+      const mk = memKey(r.memberCode);
+      return norm(r.memberCode).includes(nq) || (qk && mk && mk === qk);
     });
+    if (exact) { hlTx = exact.txns.find(t => norm(t.slip) === nq); hl = hlTx.slip; }
+    // ใบรายการของวันอื่น → เปิดวันนั้นให้ (เฉพาะผู้มีสิทธิ์ดูย้อนหลัง)
+    if (hlTx && String(hlTx.date).slice(0, 10) !== txDate && me.canBack) pickDate(String(hlTx.date).slice(0, 10));
     setResults(matched.map(r => r.accNo));
     setHL(hl);
     setActive(matched.length === 1 ? matched[0].accNo : null);
@@ -121,46 +213,75 @@ function CancelTxnPage({ onToast }) {
   const matchedRecs = results.map(no => records.find(r => r.accNo === no)).filter(Boolean);
   const acc = activeAccNo ? records.find(r => r.accNo === activeAccNo) : null;
 
-  const ctCashSel = acc ? acc.txns.filter(t => selected.includes(t.slip))
-    .some(t => /เงินสด/.test(((window.DEPOSIT_TX_CODES || {})[t.code] || {}).label || '')) : false;
+  const ctCashSel = acc ? acc.txns.filter(t => selected.includes(t.slip)).some(t => /เงินสด/.test(t.label + ' ' + t.desc)) : false;
   const ctBlocked = !(window.depCtCashReady && window.depCtCashReady());
   const toggleSel = (slip) => setSelected(s => s.includes(slip) ? s.filter(x => x !== slip) : [...s, slip]);
-  const selectableSlips = dayTxns(acc).filter(t => !t.cancelled).map(t => t.slip);
+  const selectableSlips = dayTxns(acc).filter(t => !t.cancelled && t.cancellable !== false).map(t => t.slip);
   const allSelected = selectableSlips.length > 0 && selectableSlips.every(s => selected.includes(s));
   const toggleAll = () => setSelected(allSelected ? [] : [...selectableSlips]);
 
   const selectedTxns = acc ? acc.txns.filter(t => selected.includes(t.slip)) : [];
+  // ตรวจก่อนยกเลิก — ยอดหลังกลับรายการต้องไม่ติดลบ และไม่ต่ำกว่าคงเหลือขั้นต่ำของประเภทบัญชี
+  const selDelta = selectedTxns.reduce((s, t) => s + ctDelta(t), 0);
+  const afterCancel = acc ? acc.balance + selDelta : 0;
+  const cancelErrors = [];
+  if (acc && selectedTxns.length) {
+    if (afterCancel < 0) cancelErrors.push('ยกเลิกแล้วยอดคงเหลือติดลบ (' + fmt.money(afterCancel, 2) + ' บาท) — ยกเลิกไม่ได้');
+    else if (selDelta < 0 && acc.minBal > 0 && afterCancel < acc.minBal) cancelErrors.push('ยกเลิกแล้วยอดคงเหลือต่ำกว่าขั้นต่ำของประเภทบัญชี (' + fmt.money(acc.minBal, 2) + ' บาท)');
+    const frz = window.dpcFreezeOf ? window.dpcFreezeOf(acc.accNo) : null;
+    if (frz) {
+      const fr = window.dpcFreezeRule(frz, acc.balance);
+      if (selDelta < 0 && fr.out) cancelErrors.push('บัญชีถูกอายัด — ' + frz.label + ' · ยกเลิกรายการที่ทำให้เงินออกจากบัญชีไม่ได้');
+      else if (selDelta > 0 && fr.in) cancelErrors.push('บัญชีถูกอายัด — ' + frz.label + ' · ยกเลิกรายการที่ทำให้เงินเข้าบัญชีไม่ได้');
+      else if (selDelta < 0 && fr.amt > 0 && afterCancel < fr.amt) cancelErrors.push('ยกเลิกแล้วยอดคงเหลือต่ำกว่ายอดที่อายัดไว้ (' + fmt.money(fr.amt, 2) + ' บาท)');
+    }
+  }
 
   // ── ดำเนินการยกเลิกหลังยืนยันรหัสผู้มีสิทธิ์ ──────────────────────
   const performCancel = ({ reason }) => {
     const authorizer = { name: me.name, role: me.role };
-    const CODES = window.DEPOSIT_TX_CODES;
-    setRecords(prev => prev.map(r => {
-      if (r.accNo !== activeAccNo) return r;
-      let bal = r.balance, wd = r.withdrawable;
-      const txns = r.txns.map(t => {
-        if (!selected.includes(t.slip) || t.cancelled) return t;
-        const flow = (CODES[t.code] || { flow: 0 }).flow;
-        bal -= flow * t.amount;            // กลับรายการ
-        wd  -= flow * t.amount;
-        return { ...t, cancelled: true,
-                 cancelInfo: { by: authorizer.name, reason, ts: new Date().toISOString().slice(0, 19) } };
-      });
-      return { ...r, txns, balance: bal, withdrawable: Math.max(0, wd) };
-    }));
+    const ts = new Date().toISOString().slice(0, 19);
+    let accs = window.depTxnLoadAccounts();
+    let lg = window.depTxnLoadLedger();
+    let reg = window.depChqRegLoad ? window.depChqRegLoad() : null;
+    const add = [];
+    // กลับรายการ 1 ใบ: ทำเครื่องหมายยกเลิก + รายการกลับ + ปรับยอดบัญชี (คืนค่าธรรมเนียม/ค่าปรับที่หักพร้อมกัน)
+    const reverse = (l) => {
+      const code = ctTxnCode(l), ci = ctCodeInfo(code, l);
+      const t = { flow: ci.flow, amount: Number(l.amount) || 0, fee: Number(l.fee) || 0, sysFee: Number(l.sysFee) || 0, penalty: Number(l.penalty) || 0 };
+      const d = ctDelta(t);
+      const a = accs.find(x => x.accNo === l.accNo); if (!a) return;
+      const bal = Number(a.balance) + d;
+      accs = accs.map(x => x.accNo === l.accNo ? { ...x, balance: bal } : x);
+      lg = lg.map(x => x.id === l.id ? { ...x, cancelled: true, cancelInfo: { by: authorizer.name, reason, ts } } : x);
+      add.push({ id: window.depTxnNextId(), date: workIso, accNo: l.accNo, member: l.member, type: d >= 0 ? 'deposit' : 'withdraw',
+        channel: 'ยกเลิก ' + (code ? code + ' ' : '') + ci.label + ' (ใบ ' + l.id + ')', code, amount: Math.abs(d), fee: 0, balance: bal,
+        ref: l.id, reversalOf: l.id, by: authorizer.name });
+      if (reg && (code === 'DCP' || l.type === 'deposit')) { const c = ctChqOf(l, reg); if (c && c.status === 'pending') reg = reg.map(x => x.id === c.id ? { ...x, status: 'cancelled', actDate: workIso, reason: 'ยกเลิกรายการฝาก — ' + reason } : x); }
+    };
+    selected.forEach(slip => {
+      const l = lg.find(x => x.id === slip); if (!l || l.cancelled) return;
+      const pair = ctPairOf(l, lg);
+      reverse(l);
+      if (pair) reverse(lg.find(x => x.id === pair.id));   // โอนระหว่างบัญชี — กลับทั้งขาออกและขาเข้า
+    });
+    window.depTxnSaveAccounts(accs);
+    window.depTxnSaveLedger([...add.reverse(), ...lg]);
+    if (reg && window.depChqRegSave) window.depChqRegSave(reg);
+    setRecords(ctBuildRecords());
 
     selectedTxns.forEach(t => {
       audit.log({
         action: 'delete', module: 'เงินฝาก',
         target: `${acc.memberCode} · ${acc.memberName}`,
-        summary: `ยกเลิกรายการเงินฝาก ${t.slip} — ${(window.DEPOSIT_TX_CODES[t.code] || {}).label || ''}`,
+        summary: `ยกเลิกรายการเงินฝาก ${t.slip} — ${t.code ? t.code + ' ' : ''}${t.label || ''}`,
         user: authorizer.name, role: authorizer.role,
         changes: [
           { field: 'เลขที่ใบรายการ', before: t.slip, after: 'ยกเลิกแล้ว' },
           { field: 'บัญชี', before: acc.accNo, after: `${acc.accType}` },
-          { field: 'จำนวนเงิน', before: fmt.money(t.amount, 2), after: '— (กลับรายการ)' },
+          { field: 'จำนวนเงิน', before: fmt.money(t.amount, 2), after: '— (กลับรายการ' + (t.fee + t.sysFee + t.penalty ? ' รวมคืนค่าธรรมเนียม/ค่าปรับ ' + fmt.money(t.fee + t.sysFee + t.penalty, 2) : '') + ')' },
           { field: 'เหตุผล', before: '—', after: reason },
-          ...(String(t.date).slice(0, 10) !== String(window.DEPOSIT_WORKING_DATE).slice(0, 10)
+          ...(String(t.date).slice(0, 10) !== workIso
             ? [{ field: 'ประเภทการยกเลิก', before: '—', after: 'ยกเลิกย้อนหลัง (รายการวันที่ ' + fmt.date(t.date) + ')' }] : []),
           { field: 'ยกเลิกโดย', before: '—', after: `${authorizer.name} (${authorizer.role})` },
         ],
@@ -223,7 +344,7 @@ function CancelTxnPage({ onToast }) {
         )}
         <div className="ct-search-hint muted">
           <Icon name="info" size={12} /> ตัวอย่างสำหรับสาธิต — ลองค้นหา{' '}
-          {SEARCH_MODES.map((m, i) => (
+          {exModes.map((m, i) => (
             <React.Fragment key={m.id}>
               {i > 0 && ' · '}
               <button className="ct-example mono" onClick={() => { setQuery(m.example); runSearch(m.example); }}>{m.example}</button>
@@ -279,6 +400,7 @@ function CancelTxnPage({ onToast }) {
               <div className="ct-acct-sub">
                 <span className="pill info">{acc.accType}</span>
                 <span className="pill ok">{acc.status}</span>
+                {(() => { const f = window.dpcFreezeOf && window.dpcFreezeOf(acc.accNo); return f ? <span className="pill bad" title={f.reason || ''}>อายัด · {f.label}</span> : null; })()}
                 <span className="ct-acct-member">{acc.memberCode} · {acc.memberName}</span>
               </div>
             </div>
@@ -352,9 +474,9 @@ function CancelTxnPage({ onToast }) {
                     </td></tr>
                   )}
                   {dayTxns(acc).map((t, idx) => {
-                    const c = window.DEPOSIT_TX_CODES[t.code] || { label: t.code, pill: 'neutral', flow: 1 };
+                    const c = { label: t.label, flow: t.flow };
                     const sel = selected.includes(t.slip);
-                    const canPick = !t.cancelled;
+                    const canPick = !t.cancelled && t.cancellable !== false;
                     return (
                       <tr key={t.slip}
                           className={(t.cancelled ? 'cancelled ' : '') + (sel ? 'sel' : '')}>
@@ -364,14 +486,14 @@ function CancelTxnPage({ onToast }) {
                                    onChange={() => toggleSel(t.slip)}
                                    aria-label={`เลือก ${t.slip}`} />
                           ) : (
-                            <span className="ct-lockcell" title="ยกเลิกแล้ว">
+                            <span className="ct-lockcell" title={t.cancelled ? 'ยกเลิกแล้ว' : t.blockReason}>
                               <Icon name="lock" size={12} />
                             </span>
                           )}
                         </td>
                         <td className="center muted mono">{idx + 1}</td>
                         <td className="mono">{t.slip}</td>
-                        <td>{t.desc}</td>
+                        <td>{t.desc}{t.blockReason && !t.cancelled ? <div className="muted" style={{ fontSize: 11 }}>{t.blockReason}</div> : null}{(t.fee + t.sysFee + t.penalty) > 0 ? <div className="muted" style={{ fontSize: 11 }}>ค่าธรรมเนียม/ค่าปรับ {fmt.money(t.fee + t.sysFee + t.penalty, 2)}</div> : null}</td>
                         <td className="num" style={{ fontWeight: 600,
                               color: t.cancelled ? 'var(--text-faint)' : (c.flow < 0 ? 'var(--danger)' : 'var(--success)') }}>
                           {c.flow < 0 ? '−' : '+'} {fmt.money(t.amount, 2)}
@@ -380,8 +502,10 @@ function CancelTxnPage({ onToast }) {
                         <td className="center mono">{fmt.date(t.date)}</td>
                         <td className="center">
                           {t.cancelled
-                            ? <span className="pill bad">ยกเลิกแล้ว</span>
-                            : <span className="pill ok">ยกเลิกได้</span>}
+                            ? <span className="pill bad" title={t.cancelInfo ? 'โดย ' + t.cancelInfo.by + ' · ' + t.cancelInfo.reason : undefined}>ยกเลิกแล้ว</span>
+                            : t.cancellable === false
+                              ? <span className="pill" title={t.blockReason}>ยกเลิกไม่ได้</span>
+                              : <span className="pill ok">ยกเลิกได้</span>}
                         </td>
                       </tr>
                     );
@@ -393,6 +517,11 @@ function CancelTxnPage({ onToast }) {
 
           {/* action bar */}
           {ctBlocked && window.DepCtGateBanner && <window.DepCtGateBanner what="การยกเลิกรายการ" />}
+          {cancelErrors.length > 0 && (
+            <div className="dat-warn" style={{ marginTop: 12, background: 'var(--danger-50)', borderColor: 'color-mix(in srgb, var(--danger) 28%, transparent)', color: 'var(--danger)' }}>
+              <Icon name="info" size={14} /><div>{cancelErrors.map((e, i) => <div key={i}>{e}</div>)}</div>
+            </div>
+          )}
           <div className="ct-actionbar">
             <Icon name="info" size={13} />
             <span className="muted" style={{ fontSize: 12 }}>
@@ -400,11 +529,11 @@ function CancelTxnPage({ onToast }) {
                 ? <>เลือก <b style={{ color: 'var(--text)' }}>{selected.length}</b> รายการ · รวม{' '}
                     <b className="mono" style={{ color: 'var(--text)' }}>
                       ฿ {fmt.money(selectedTxns.reduce((a, t) => a + t.amount, 0), 2)}
-                    </b></>
+                    </b> · ยอดคงเหลือหลังยกเลิก <b className="mono" style={{ color: 'var(--text)' }}>฿ {fmt.money(afterCancel, 2)}</b></>
                 : 'ยังไม่ได้เลือกรายการที่จะยกเลิก'}
             </span>
             <span className="spacer" style={{ flex: 1 }} />
-            <button className="btn danger ct-danger-solid" disabled={selected.length === 0 || ctBlocked} onClick={() => setConfirm(true)}>
+            <button className="btn danger ct-danger-solid" disabled={selected.length === 0 || ctBlocked || cancelErrors.length > 0} onClick={() => setConfirm(true)}>
               ยกเลิกรายการที่เลือก{selected.length > 0 ? ` (${selected.length})` : ''}
             </button>
           </div>
@@ -478,7 +607,7 @@ function ConfirmCancelModal({ acc, txns, onClose, onConfirm }) {
 
           <div className="ct-confirm-list">
             {txns.map(t => {
-              const c = window.DEPOSIT_TX_CODES[t.code] || { label: t.code, flow: 1 };
+              const c = { label: (t.code ? t.code + ' ' : '') + t.label, flow: t.flow };
               return (
                 <div className="ct-confirm-row" key={t.slip}>
                   <div style={{ minWidth: 0 }}>

@@ -113,7 +113,7 @@ window.lrRequiredInsurances = (s, amt) => {
 };
 window.lrCalc = (f) => {
   const product = window.lrFindProduct(f.productId);
-  const derived = window.lrDeriveFromProduct(product, f.amount, f.reqDate);
+  const derived = window.lrDeriveFromProduct(product, f.amount, f.reqDate, f.member);
   const mem = f.member || {};
   const s0 = (product && product.settings) || {};
   // เงื่อนไขเงินเดือนคงเหลือ — ดึงจากเมนูค่าคงที่ “กำหนดเงินเดือนคงเหลือ” ตามช่วงเลขสมาชิกของผู้กู้
@@ -123,8 +123,10 @@ window.lrCalc = (f) => {
 
   // ── ดอกเบี้ยสุทธิ ──
   const baseRate = derived ? derived.rate : 0;
-  const rateAdd = Number(f.rateAdd) || 0;
-  const rateReduce = Number(f.rateReduce) || 0;
+  // เพิ่ม/ลดของใบคำขอ ใช้ได้เฉพาะเมื่อค่าคงที่เปิดให้ (ไม่ใช่แถวคงที่ และขั้นอัตราติ๊ก “อัตราเพิ่ม/ลด (ใช้)”)
+  const adjOk = !!(derived && derived.rateAllowAdjust);
+  const rateAdd = adjOk ? (Number(f.rateAdd) || 0) : 0;
+  const rateReduce = adjOk ? (Number(f.rateReduce) || 0) : 0;
   const netRate = Math.max(0, baseRate + rateAdd - rateReduce);
 
   // ── อายุสมาชิก / อายุเกิด (เดือน) ──

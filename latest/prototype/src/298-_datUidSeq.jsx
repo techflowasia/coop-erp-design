@@ -19,20 +19,35 @@ function datLoad() {
     if (s) {
       // ย้ายค่าเดิม DEP-CONST-xx → รหัสคุมเลขที่บัญชี
       const MAP = { 'DEP-CONST-S01': 'DPACCDOCNO10', 'DEP-CONST-S02': 'DPACCDOCNO11', 'DEP-CONST-F12': 'DPACCDOCNO12' };
+      const FILL = { '10': 'DPACCDOCNO10', '11': 'DPACCDOCNO11', '12': 'DPACCDOCNO12', '13': 'DPACCDOCNO13', '14': 'DPACCDOCNO14', '15': 'DPACCDOCNO15', '16': 'DPACCDOCNO16' };
       return JSON.parse(s).map(r => {
         if (!r || !r.settings) return r;
         let st = r.settings;
         if (/^DEP-CONST-/.test(st.docNo || '')) st = { ...st, docNo: MAP[st.docNo] || '' };
-        // ค่าตั้งต้นการรักษาบัญชี — เติมเฉพาะช่องที่ยังว่าง/เป็น 0
-        if (!Number(st.maintFeeAmount)) st = { ...st, maintFeeAmount: 100 };
-        if (!Number(st.maintInactiveDur)) st = { ...st, maintInactiveDur: 2, maintUnit: 'year' };
-        if (!st.maintFeeOn && Number(st.maintFeeDay) === 1) st = { ...st, maintFeeDay: 'eom' };
+        if (!st.docNo && FILL[r.code]) st = { ...st, docNo: FILL[r.code] };
+        if (st.passbookHold === 'card') st = { ...st, passbookHold: 'nobook' };
+        st = datNormMaint(st);
         return st === r.settings ? r : { ...r, settings: st };
       });
     }
   } catch (e) {}
-  return window.DEP_ACCTYPE_SEED.map(r => window.datBuildRecord(JSON.parse(JSON.stringify(r))));
+  return window.DEP_ACCTYPE_SEED.map(r => window.datBuildRecord(JSON.parse(JSON.stringify(r))))
+    .map(r => (r.code === '10' || r.code === '11') && r.settings ? { ...r, settings: { ...r.settings, monthlyDeposit: true } } : r)
+    .map(r => r.settings ? { ...r, settings: datNormMaint(r.settings) } : r);
 }
+// การรักษาบัญชี — มีทุกประเภท (ไม่มีช่องติ๊กเปิด/ปิดแล้ว) · ไม่คิดค่ารักษาบัญชี = ตั้งจำนวนเงินเป็น 0
+//  ประเภทที่เดิมไม่ได้ติ๊ก "มีค่ารักษาบัญชี" → จำนวนเงิน 0 (ผลเหมือนเดิม คือไม่คิด)
+function datNormMaint(st0) {
+  let st = st0;
+  if (st.maintFeeOn === false || st.maintFeeOn == null) {
+    st = { ...st, maintFeeOn: true, maintFeeAmount: 0 };
+    if (Number(st.maintFeeDay) === 1) st.maintFeeDay = 'eom';
+  }
+  if (st.maintFeeAmount === '' || st.maintFeeAmount == null) st = { ...st, maintFeeAmount: 0 };
+  if (!Number(st.maintInactiveDur)) st = { ...st, maintInactiveDur: 2, maintUnit: 'year' };
+  return st;
+}
+window.datNormMaint = datNormMaint;
 window.datLoad = datLoad;
 function datSaveLS(list) { try { localStorage.setItem('dep_acctypes_v2', JSON.stringify(list)); } catch (e) {} }
 
@@ -54,10 +69,11 @@ const DAT_FIELD_LABELS = {
   limitAccounts: 'จำกัดจำนวนบัญชี', maxAccounts: 'เปิดได้ (บัญชี)',
   wdCountLimit: 'จำกัดครั้งถอน', wdCountMax: 'ถอนไม่เกิน (ครั้ง)', closeAfterN: 'ถอน/ปิดบัญชีได้เมื่อเปิดบัญชีแล้ว (วัน)',
   lostBookPenaltyOn: 'ค่าปรับสมุดหาย', lostBookFee: 'ค่าปรับสมุดหาย (บาท)',
+  closeFeeOn: 'ค่าธรรมเนียมปิดบัญชี', closeFee: 'ค่าธรรมเนียมปิดบัญชี (บาท)', closeFeeGl: 'คู่บัญชีค่าธรรมเนียมปิดบัญชี',
   overWdPenaltyOn: 'ค่าปรับถอนเกินครั้ง', overWdFee: 'ค่าปรับถอนเกิน (บาท)', overWdPercent: '% ค่าปรับถอนเกิน',
   hasTerm: 'มีอายุระยะเวลาฝาก', termMonths: 'ระยะเวลาฝาก (เดือน)', whtOn: 'ภาษี ณ ที่จ่าย', taxRateMode: 'อัตราภาษี',
   earlyCloseePenaltyOn: 'ค่าปรับถอนก่อนกำหนด', earlyClosePercent: '% ค่าปรับถอนก่อน',
-  intGiveOn: 'ให้ Int./Div.', intGiveRef: 'ดู Int./Div. ที่', compoundWhen: 'การทบ Int./Div.', intCalcMethod: 'วิธีคิด Int./Div.',
+  sharePlusOn: 'ร่วมหักหุ้นพูนทวี', intGiveOn: 'ให้ Int./Div.', intGiveRef: 'ดู Int./Div. ที่', compoundWhen: 'การทบ Int./Div.', intCalcMethod: 'วิธีคิด Int./Div.',
   maintFeeOn: 'ค่ารักษาบัญชี', maintFeeAmount: 'ค่ารักษาบัญชี (บาท)',
   minIntGeneral: 'ขั้นต่ำคิด (ทั่วไป)', intReceiveMode: 'การรับ INT', earlyPayMode: 'จ่าย Int./Div. (ถอนก่อน)',
   intCalcFrom: 'คิด Int./Div. จาก', earlyIntCalc: 'การคิดดอกเบี้ยถอนก่อน', accrueOn: 'ตั้งดอกเบี้ยค้าง',
@@ -170,207 +186,7 @@ const DAT_TABS = [
   { id: 'calc',   label: 'การคิด Int./Div.' },
   { id: 'rate',   label: 'อัตรา Int./Div.' },
   { id: 'early',  label: 'ถอนก่อนกำหนด' },
-  { id: 'fees',   label: 'ค่าธรรมเนียมและค่าปรับ' },
 ];
-
-// ─── แท็บค่าธรรมเนียมและค่าปรับ (ย้ายมาจากเมนูเดิม) ──────────────
-//  กฎที่แสดง = กฎเสพาะของประเภทบัญชีนี้ + กฎกลาง (ทุกประเภท)
-//  ค่าเริ่มต้นดึงจากการตั้งค่าประเภทบัญชี (แท็บข้อกำหนดและการปรับ)
-function DatTabFees({ record, editing, onToast }) {
-  const audit = React.useContext(window.AuditContext || React.createContext({ log: () => {} }));
-  const [rules, setRules] = useState(() => (window.feeLoad ? window.feeLoad() : []));
-  const [editRec, setEditRec] = useState(null);
-  const s = record.settings || {};
-
-  const persist = (next) => { setRules(next); if (window.feeSaveLS) window.feeSaveLS(next); };
-  const mine    = rules.filter(r => r.acctType === record.name);
-  const shared  = rules.filter(r => r.acctType === 'ทุกประเภท');
-  const FT = window.DEP_FEE_TYPES || {};
-  const feeText = (r) => r.feeType === 'rate_diff' ? 'ส่วนต่างดบ.'
-    : r.feeType === 'percent' ? fmt.money(r.fee, 2) + '%' : fmt.money(r.fee, 2) + ' ฿';
-
-  // ค่าเริ่มต้นของกฎใหม่ — สืบจากการตั้งค่าประเภทบัญชีนี้
-  const blank = (txnType) => ({
-    acctType: record.name, txnType: txnType || '',
-    freeCount: Number(s.wdCountMax) || 0,
-    fee: txnType === 'ถอนเกินจำนวนครั้ง' ? (Number(s.overWdFee) || 0)
-       : txnType === 'ออกสมุดใหม่' ? (Number(s.lostBookFee) || 0) : 0,
-    feeType: 'flat', exemptCond: '',
-    showAs: 'แสดงเป็น Transaction แยกในสมุดคู่ฝาก',
-    glCode: s.glCode || '', enabled: true,
-  });
-
-  const submit = (f) => {
-    const rec = { ...f, acctType: record.name, fee: Number(f.fee) || 0, freeCount: Number(f.freeCount) || 0 };
-    if (rec.id) {
-      persist(rules.map(r => r.id === rec.id ? rec : r));
-      audit.log({ action: 'update', module: 'เงินฝาก — ค่าคงที่ประเภทบัญชี › ค่าธรรมเนียม/ค่าปรับ',
-        target: `${record.code} · ${record.name} · ${rec.txnType}`, summary: `แก้ไขกฎค่าธรรมเนียม “${rec.txnType}”` });
-      onToast && onToast('บันทึกกฎค่าธรรมเนียมเรียบร้อยแล้ว');
-    } else {
-      rec.id = 'FEE-N' + Date.now();
-      persist([rec, ...rules]);
-      audit.log({ action: 'create', module: 'เงินฝาก — ค่าคงที่ประเภทบัญชี › ค่าธรรมเนียม/ค่าปรับ',
-        target: `${record.code} · ${record.name} · ${rec.txnType}`, summary: `เพิ่มกฎค่าธรรมเนียม “${rec.txnType}”` });
-      onToast && onToast('เพิ่มกฎค่าธรรมเนียมเรียบร้อยแล้ว');
-    }
-    setEditRec(null);
-  };
-
-  const toggle = (rec) => window.depConfirmOff(rec.enabled, rec.txnType + (rec.acctType ? ' · ' + rec.acctType : ''), () => {
-    persist(rules.map(r => r.id === rec.id ? { ...r, enabled: !r.enabled } : r));
-    onToast && onToast((rec.enabled ? 'ปิด' : 'เปิด') + 'ใช้งานกฎค่าธรรมเนียมแล้ว');
-  }, 'กฎนี้จะไม่ถูกนำไปคิดค่าธรรมเนียม/ค่าปรับ', 'ปิดการใช้งานกฎค่าธรรมเนียม');
-
-  // ความสอดคล้องกับการตั้งค่าประเภทบัญชี
-  const overRule = mine.find(r => r.txnType === 'ถอนเกินจำนวนครั้ง' && r.enabled);
-  const checks = [
-    { on: !!s.wdCountLimit, label: 'จำกัดครั้งถอน / ถอนฟรีต่อเดือน',
-      cfg: s.wdCountLimit ? (Number(s.wdCountMax) || 0) + ' ครั้ง' : 'ไม่จำกัด',
-      rule: overRule ? overRule.freeCount + ' ครั้ง' : '— ยังไม่มีกฎ',
-      ok: !s.wdCountLimit || (overRule && Number(overRule.freeCount) === Number(s.wdCountMax)) },
-    { on: !!s.overWdPenaltyOn, label: 'ค่าปรับถอนเกินจำนวนครั้ง',
-      cfg: s.overWdPenaltyOn ? fmt.money(Number(s.overWdFee) || 0, 2) + ' ฿' : 'ปิด',
-      rule: overRule ? feeText(overRule) : '— ยังไม่มีกฎ',
-      ok: !s.overWdPenaltyOn || (overRule && overRule.feeType === 'flat' && Number(overRule.fee) === Number(s.overWdFee)) },
-    { on: !!s.lostBookPenaltyOn, label: 'ค่าปรับสมุดคู่ฝากหาย',
-      cfg: s.lostBookPenaltyOn ? fmt.money(Number(s.lostBookFee) || 0, 2) + ' ฿' : 'ปิด',
-      rule: (() => { const r = mine.find(x => x.txnType === 'ออกสมุดใหม่' && x.enabled); return r ? feeText(r) : '— ยังไม่มีกฎ'; })(),
-      ok: (() => { if (!s.lostBookPenaltyOn) return true; const r = mine.find(x => x.txnType === 'ออกสมุดใหม่' && x.enabled); return !!r && Number(r.fee) === Number(s.lostBookFee); })() },
-    { on: !!s.earlyCloseePenaltyOn, label: 'ค่าปรับถอน/ปิดบัญชีก่อนกำหนด',
-      cfg: s.earlyCloseePenaltyOn ? fmt.money(Number(s.earlyClosePercent) || 0, 2) + '%' : 'ปิด',
-      rule: (() => { const r = mine.find(x => x.txnType === 'ปิดบัญชีก่อนกำหนด' && x.enabled); return r ? feeText(r) : '— ยังไม่มีกฎ'; })(),
-      ok: (() => { if (!s.earlyCloseePenaltyOn) return true; const r = mine.find(x => x.txnType === 'ปิดบัญชีก่อนกำหนด' && x.enabled); return !!r; })() },
-  ];
-  const issues = checks.filter(c => c.on && !c.ok);
-
-  const syncFromSettings = () => {
-    let next = [...rules];
-    const upsert = (txnType, patch) => {
-      const i = next.findIndex(r => r.acctType === record.name && r.txnType === txnType);
-      if (i >= 0) next[i] = { ...next[i], ...patch, enabled: true };
-      else next.unshift({ ...blank(txnType), ...patch, id: 'FEE-N' + Date.now() + '-' + txnType.length, enabled: true });
-    };
-    if (s.wdCountLimit || s.overWdPenaltyOn) {
-      upsert('ถอนเกินจำนวนครั้ง', { freeCount: Number(s.wdCountMax) || 0, feeType: 'flat', fee: Number(s.overWdFee) || 0 });
-    }
-    if (s.lostBookPenaltyOn) upsert('ออกสมุดใหม่', { feeType: 'flat', fee: Number(s.lostBookFee) || 0, freeCount: 0 });
-    if (s.earlyCloseePenaltyOn) upsert('ปิดบัญชีก่อนกำหนด', { feeType: 'percent', fee: Number(s.earlyClosePercent) || 0, freeCount: 0 });
-    persist(next);
-    audit.log({ action: 'update', module: 'เงินฝาก — ค่าคงที่ประเภทบัญชี › ค่าธรรมเนียม/ค่าปรับ',
-      target: `${record.code} · ${record.name}`, summary: 'ปรับกฎค่าธรรมเนียมให้สอดคล้องกับการตั้งค่าประเภทบัญชี' });
-    onToast && onToast('ปรับกฎค่าธรรมเนียมให้สอดคล้องกับการตั้งค่าแล้ว');
-  };
-
-  const ruleRow = (r, inherited) => (
-    <tr key={r.id} className={inherited ? '' : 'clickable'} onClick={inherited ? undefined : () => setEditRec(r)}>
-      <td><b>{r.txnType}</b><div className="muted" style={{ fontSize: 11 }}>{(FT[r.feeType] || {}).label}</div></td>
-      <td className="center mono">{r.freeCount > 0 ? r.freeCount : '—'}</td>
-      <td className="right mono"><b>{feeText(r)}</b></td>
-      <td><div style={{ fontSize: 12.5 }}>{r.showAs}</div>{r.exemptCond && <div className="muted" style={{ fontSize: 11 }}>ยกเว้น: {r.exemptCond}</div>}</td>
-      <td className="center mono">{r.glCode || '—'}</td>
-      <td className="center">
-        {inherited
-          ? (r.enabled ? <span className="pill ok">ใช้งาน</span> : <span className="pill neutral">ปิด</span>)
-          : <span onClick={(e) => e.stopPropagation()}>
-              <button className={"lt-switch" + (r.enabled ? ' on' : '')} role="switch" aria-checked={r.enabled} onClick={() => toggle(r)}><span className="lt-switch-knob" /></button>
-            </span>}
-      </td>
-      <td className="center" onClick={(e) => e.stopPropagation()}>
-        {inherited
-          ? <span className="muted" style={{ fontSize: 11 }}>ทุกประเภท</span>
-          : <button className="btn ghost sm" onClick={() => setEditRec(r)}><Icon name="edit" size={13} /></button>}
-      </td>
-    </tr>
-  );
-
-  return (
-    <div className="cfg-section">
-      <div className="page-actions" style={{ marginTop: 0 }}>
-        <div>
-          <h2 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>ค่าธรรมเนียมและค่าปรับของประเภทบัญชีนี้</h2>
-          <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>
-            กฎค่าธรรมเนียม/ค่าปรับตามประเภทรายการ — คิดอัตโนมัติและแสดงเป็น Transaction แยกในสมุดคู่ฝาก
-          </div>
-        </div>
-        <span className="spacer" />
-        <button className="btn sm" onClick={syncFromSettings} title="สร้าง/ปรับกฎให้ตรงกับแท็บข้อกำหนดและการปรับ">
-          <Icon name="refresh" /> ปรับให้ตรงกับการตั้งค่า
-        </button>
-        <button className="btn primary sm" onClick={() => setEditRec(blank(''))}><Icon name="plus" /> เพิ่มค่าธรรมเนียม</button>
-      </div>
-
-      <div className="search-card" style={{ marginTop: 0, marginBottom: 0 }}>
-        <div className="section-head" style={{ marginBottom: 12 }}>
-          <h3>กฎค่าธรรมเนียม / ค่าปรับ</h3>
-        </div>
-        <div className="table-wrap"><div className="table-scroll">
-        <table className="tbl" style={{ minWidth: 900 }}>
-          <thead>
-            <tr>
-              <th style={{ minWidth: 190 }}>ประเภทรายการ</th>
-              <th className="center" style={{ width: 96 }}>ถอนฟรี/ด.</th>
-              <th className="right" style={{ width: 120 }}>ค่าธรรมเนียม</th>
-              <th style={{ minWidth: 240 }}>วิธีแสดงในสมุดคู่ฝาก</th>
-              <th className="center" style={{ width: 110 }}>GL</th>
-              <th className="center" style={{ width: 96 }}>ใช้งาน</th>
-              <th className="center" style={{ width: 90 }} />
-            </tr>
-          </thead>
-          <tbody>
-            {mine.length === 0 && shared.length === 0 && (
-              <tr><td colSpan="7" className="center muted" style={{ padding: 18 }}>ยังไม่มีกฎค่าธรรมเนียมของประเภทบัญชีนี้</td></tr>
-            )}
-            {mine.map(r => ruleRow(r, false))}
-            {shared.length > 0 && (
-              <tr><td colSpan="7" className="muted" style={{ background: 'var(--surface-2, #f7f8f7)', fontSize: 11.5, fontWeight: 600 }}>
-                กฎกลาง (ใช้กับทุกประเภทบัญชี) — แก้ไขได้ที่กฎกลางเท่านั้น
-              </td></tr>
-            )}
-            {shared.map(r => ruleRow(r, true))}
-          </tbody>
-        </table>
-        </div></div>
-      </div>
-
-      <div className="search-card" style={{ marginBottom: 0 }}>
-        <div className="section-head" style={{ marginBottom: 12 }}>
-          <h3>ความสอดคล้องกับการตั้งค่าประเภทบัญชี</h3>
-        </div>
-        <div className="table-wrap"><div className="table-scroll">
-        <table className="tbl">
-          <thead><tr>
-            <th style={{ minWidth: 240 }}>รายการตั้งค่า</th>
-            <th style={{ width: 170 }}>ค่าในแท็บข้อกำหนด/ปรับ</th>
-            <th style={{ width: 170 }}>ค่าในกฎค่าธรรมเนียม</th>
-            <th className="center" style={{ width: 120 }}>สถานะ</th>
-          </tr></thead>
-          <tbody>
-            {checks.map((c, i) => (
-              <tr key={i}>
-                <td>{c.label}{!c.on && <span className="muted" style={{ fontSize: 11 }}> · ไม่เปิดใช้</span>}</td>
-                <td className="mono">{c.cfg}</td>
-                <td className="mono">{c.rule}</td>
-                <td className="center">{!c.on ? <span className="pill neutral">ไม่ใช้</span>
-                  : c.ok ? <span className="pill ok">สอดคล้อง</span> : <span className="pill warn">ไม่ตรงกัน</span>}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        </div></div>
-      </div>
-
-      {issues.length > 0 && (
-        <div className="dep-error" style={{ marginTop: 10, background: 'var(--warning-50)', color: 'var(--warning)', borderColor: 'transparent' }}>
-          <Icon name="info" size={13} /> มี {issues.length} รายการที่ค่าปรับ/ค่าธรรมเนียมไม่ตรงกับการตั้งค่าประเภทบัญชี — กด “ปรับให้ตรงกับการตั้งค่า” เพื่อให้ระบบสร้าง/ปรับกฎให้สอดคล้อง
-        </div>
-      )}
-      {editRec && window.FeeEditModal && (
-        <window.FeeEditModal rec={editRec} lockAcctType={record.name} onClose={() => setEditRec(null)} onSubmit={submit} />
-      )}
-    </div>
-  );
-}
 
 function DatDetail({ record, onBack, onSave, onShowHistory, startEditing, onToast }) {
   const [editing, setEditing] = useState(!!startEditing);
@@ -514,7 +330,6 @@ function DatDetail({ record, onBack, onSave, onShowHistory, startEditing, onToas
           {tab === 'calc'   && <DatTabCalc {...tabProps} />}
           {tab === 'rate'   && <DatTabRate {...tabProps} />}
           {tab === 'early'  && <DatTabEarly {...tabProps} />}
-          {tab === 'fees'   && <DatTabFees record={cur} editing={editing} onToast={onToast} />}
         </div>
       </div>
 
@@ -542,8 +357,13 @@ function DatDetail({ record, onBack, onSave, onShowHistory, startEditing, onToas
 }
 
 // ─── Add modal ───────────────────────────────────────────────────────
+// รหัสประเภทเงินฝากถัดไป — ตัวเลข 2 หลัก เริ่มที่ 10 (ตามระบบเดิม) ต่อจากรหัสสูงสุดที่มีอยู่
+const datNextTypeCode = (list) => {
+  const nums = (list || []).map(r => /^\d{2}$/.test(String(r.code || '').trim()) ? Number(r.code) : 0);
+  return String(Math.max(9, ...nums) + 1);
+};
 function DatAddModal({ list, onClose, onCreate }) {
-  const [code, setCode] = useState('');
+  const [code, setCode] = useState(() => datNextTypeCode(list));
   const [name, setName] = useState('');
   const [group, setGroup] = useState(() => (window.DAT_OPTS.depGroup[0] || {}).v || '');
   const [copyFrom, setCopyFrom] = useState('__default');
@@ -552,6 +372,7 @@ function DatAddModal({ list, onClose, onCreate }) {
     e.preventDefault();
     if (!code.trim()) return setError('กรุณาระบุรหัสประเภทบัญชี');
     if (!name.trim()) return setError('กรุณาระบุชื่อประเภทบัญชี');
+    if (!/^\d{2}$/.test(code.trim()) || Number(code.trim()) < 10) return setError('รหัสประเภทเงินฝากต้องเป็นตัวเลข 2 หลัก ตั้งแต่ 10 ขึ้นไป (ใช้เป็น TT ในเลขที่บัญชี)');
     if (list.some(r => r.code === code.trim())) return setError('รหัสนี้ถูกใช้แล้ว');
     let settings, tables;
     if (copyFrom === '__default') {
@@ -565,6 +386,12 @@ function DatAddModal({ list, onClose, onCreate }) {
     }
     settings.depGroup = group;
     settings.abbr = settings.abbr || code.trim();
+    // รหัสคุมเลขที่บัญชี — ต่อจากรหัสล่าสุด (DPACCDOCNO17, 18 …)
+    settings.docNo = window.depNextCounterCode ? window.depNextCounterCode(list) : settings.docNo;
+    // ใช้รหัสคุมที่ตรงกับรหัสประเภท (DPACCDOCNO + รหัส) ถ้ายังไม่ถูกใช้
+    { const want = 'DPACCDOCNO' + code.trim(); const usedBy = list.some(r => r.settings && String(r.settings.docNo || '').toUpperCase() === want);
+      if (!usedBy) settings.docNo = want; }
+    if (settings.docNo && window.depAccCounters && !window.depAccCounters()[settings.docNo] && window.depBumpAccCounter) window.depBumpAccCounter(settings.docNo, 0);
     onCreate({
       id: datUid(), code: code.trim(), name: name.trim(), enabled: false,
       createdDate: datToday(), createdBy: DAT_USER, note: '',
@@ -594,7 +421,7 @@ function DatAddModal({ list, onClose, onCreate }) {
           <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 10 }}>
             <div>
               <label className="lt-modal-label">รหัส <span className="cfg-required">*</span></label>
-              <input className="cfg-input mono" value={code} autoFocus placeholder="F48" onChange={(e) => { setCode(e.target.value); setError(''); }} />
+              <input className="cfg-input mono" value={code} autoFocus placeholder="เช่น 17" maxLength={2} inputMode="numeric" onChange={(e) => { setCode(e.target.value.replace(/\D/g, '')); setError(''); }} />
             </div>
             <div>
               <label className="lt-modal-label">ชื่อประเภทบัญชี <span className="cfg-required">*</span></label>
@@ -811,12 +638,12 @@ function DepAccTypeConfigPage({ onToast }) {
                       <button className="btn ghost sm" title="ดูประวัติการแก้ไข" onClick={() => setHistRec(r)}><Icon name="history" size={13} /> {(r.history || []).length}</button>
                     </td>
                     <td className="center" onClick={(e) => e.stopPropagation()}>
-                      <button className={"lt-switch" + (r.enabled ? ' on' : '')} role="switch" aria-checked={r.enabled}
-                              aria-label={r.enabled ? 'ปิดใช้งาน' : 'เปิดใช้งาน'}
+                      <window.ConstSwitch on={r.enabled}
                               onClick={() => window.depConfirmOff(r.enabled, r.code + ' · ' + r.name, () => applyToggle({ rec: r, turningOn: !r.enabled }),
-                                'ระบบจะไม่เปิดรับการเปิดบัญชีใหม่ บัญชีเดิมยังคงทำรายการได้ตามปกติ', 'ปิดการใช้งานประเภทบัญชี')}>
-                        <span className="lt-switch-knob" />
-                      </button>
+                                'ระบบจะไม่เปิดรับการเปิดบัญชีใหม่ บัญชีเดิมยังคงทำรายการได้ตามปกติ', 'ปิดการใช้งานประเภทบัญชี',
+                                { effectOn: 'จะแสดงเป็นตัวเลือกในหน้าเปิดบัญชีอีกครั้ง',
+                                  blocked: () => { const ps = (window.dpjProjectsUsing ? window.dpjProjectsUsing(r.code) : []).filter(x => x.project.enabled !== false && x.round.enabled !== false);
+                                    return ps.length ? `ประเภทเงินฝาก “${r.name}” ถูกใช้อยู่ใน ${ps.length} รอบโครงการที่เปิดใช้งาน: ${ps.map(x => x.project.code + ' ' + x.round.name).join(', ')} — ปิดรอบโครงการเหล่านั้นก่อน` : null; } })} />
                     </td>
                     <td className="center" onClick={(e) => e.stopPropagation()}>
                       <button className="btn sm dat-view-btn" title="ดูรายละเอียด"

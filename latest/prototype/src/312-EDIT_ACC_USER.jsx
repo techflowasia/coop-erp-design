@@ -17,18 +17,61 @@ const DEP_EDIT_RECVPAY = [
   { v: 'toaccount', l: 'โอนเข้าบัญชี' },
   { v: 'tobank',    l: 'โอนเข้าบัญชีธนาคาร' },
 ];
+// เลขที่สมุด — ไม่มีสมุด → ว่าง · มีสมุดแต่ยังไม่มีเลข หรือเปลี่ยนประเภทเงินฝาก (TT เปลี่ยน) → ออกเลขใหม่
+function depEditBookPatch(cur, form) {
+  if (form.noBook) return { certNo: '' };
+  const today = window.dpcToday ? window.dpcToday() : new Date().toISOString().slice(0, 10);
+  const next = { ...cur, typeCode: form.typeCode };
+  const oldT = window.depBookTypeOf ? window.depBookTypeOf(cur) : null, newT = window.depBookTypeOf ? window.depBookTypeOf(next) : null;
+  const typeChanged = form.typeCode !== cur.typeCode && newT && (!oldT || oldT.code !== newT.code);
+  if (form.certNo && !typeChanged) return { certNo: form.certNo };
+  const no = window.depBookIssue ? window.depBookIssue(next, today) : '';
+  if (!no) return { certNo: form.certNo };
+  const hist = (cur.bookHistory || []).map(h => h.status === 'active' ? { ...h, status: 'closed', closedAt: today, closeReason: typeChanged ? 'เปลี่ยนประเภทบัญชี' : 'ออกเล่มใหม่' } : h);
+  if (form.certNo && !hist.some(h => h.no === form.certNo)) hist.unshift({ no: form.certNo, status: 'closed', closedAt: today, closeReason: 'เปลี่ยนประเภทบัญชี' });
+  return { certNo: no, bookHistory: [{ no, issuedAt: today, reason: typeChanged ? 'เปลี่ยนประเภทบัญชี' : 'ออกสมุด', status: 'active', by: window.DEP_OPS_USER }, ...hist] };
+}
 const DEP_EDIT_INTCOND = [
   { v: 'announce', l: 'ตามประกาศ' },
   { v: 'special',  l: 'พิเศษคงที่' },
 ];
+// ค่าตั้งของประเภทเงินฝาก (settings)
+const depEditTypeSet = (code) => { const t = (depEditTypesSafe()).find(x => x.code === code); return (t && t.settings) || {}; };
+const depEditTypesSafe = () => { try { return depEditTypes(); } catch (e) { return []; } };
+// ตัวเลือกตามประเภทเงินฝาก
+//  · หักหุ้นพูนทวี — เฉพาะประเภทที่ติ๊ก "ร่วมหักหุ้นพูนทวีได้"
+//  · รับ Int./Div. โดย — ประเภทที่ "ไม่ทบต้น" ไม่มีตัวเลือกทบต้น · ประเภทที่ไม่ให้ Int./Div. ปิดทั้งช่อง
+const depEditShareAllowed = (code) => depEditTypeSet(code).sharePlusOn !== false;
+const depEditRecvOpts = (code) => { const s = depEditTypeSet(code); return DEP_EDIT_RECVPAY.filter(o => !(o.v === 'compound' && s.compoundWhen === 'none')); };
+const depEditIntGive = (code) => depEditTypeSet(code).intGiveOn !== false;
+// ปรับค่าให้อยู่ในตัวเลือกที่ประเภทนั้นอนุญาต
+const depEditNormForType = (f, code) => {
+  const out = { ...f };
+  if (!depEditShareAllowed(code)) out.sharePlus = 'none';
+  return out;
+};
 const depEditRecvOf = (m) => ({ savings: 'toaccount', transfer: 'tobank', cash: 'compound' }[m] || m || 'compound');
 const depEditShareOf = (v) => (DEP_EDIT_SHAREPLUS.some(o => o.v === v) ? v : 'none');
-const DEP_EDIT_HOLDER = [
+// ประเภทผู้ถือบัญชี — จากค่าคงที่ "ประเภทผู้ถือบัญชี" (ไม่มีค่าคงที่จึงใช้รายการเดิม)
+const DEP_EDIT_HOLDER_FB = [
   { v: '01', l: '01 บุคคล (เจ้าของคนเดียว)' },
   { v: '02', l: '02 บุคคล (บัญชีร่วม)' },
-  { v: '03', l: '03 นิติบุคคล' },
-  { v: '04', l: '04 ผู้เยาว์ (มีผู้ปกครอง)' },
 ];
+const depEditHolders = () => {
+  const l = (window.depConstList ? window.depConstList('holdertype') : []).filter(h => h.code && h.name).map(h => ({ v: h.code, l: h.code + ' ' + h.name }));
+  return l.length ? l : DEP_EDIT_HOLDER_FB;
+};
+// ธนาคาร / สาขาธนาคาร — จากค่าคงที่ "ธนาคาร" และ "สาขา ธนาคาร"
+const depEditBanks = () => { const l = (window.depConstList ? window.depConstList('bank') : []).filter(b => b.name); return l.length ? l : (window.DEP_BANKS || []).map(n => ({ code: '', name: n })); };
+const depEditBankNorm = (b) => { const s = String(b || '').replace(/\s+/g, '').replace(/^(ธนาคาร|ธ\.)/, ''); if (!s) return ''; const hit = depEditBanks().find(x => { const n = String(x.name).replace(/\s+/g, '').replace(/^(ธนาคาร|ธ\.)/, ''); return n && (s.includes(n) || n.includes(s)); }); return hit ? hit.name : b; };
+const depEditBranches = (bankName) => { const bk = depEditBanks().find(b => b.name === bankName); if (!bk || !bk.code) return []; return (window.depConstList ? window.depConstList('branch') : []).filter(r => r.bankCode === bk.code && r.name); };
+// กฎจากค่าคงที่ประเภทเงินฝาก (อัตรา / ภาษี / ครั้งการถอน / คงเหลือขั้นต่ำ) — ตัวคำนวณเดียวกับหน้าฝาก/ถอน/โอน/ปิด
+const depEditRule = (acc) => {
+  if (!acc || !acc.typeCode || !window.dpcRules) return null;
+  const date = window.dpcToday ? window.dpcToday() : new Date().toISOString().slice(0, 10);
+  const moves = window.dpcMoves ? window.dpcMoves(acc.accNo, window.depTxnLoadLedger ? window.depTxnLoadLedger() : []) : [];
+  try { return window.dpcRules(acc, { type: 'withdraw', date, amt: 1, moves }); } catch (e) { return null; }
+};
 // ประเภทบัญชี — ดึงจากค่าคงที่ "ประเภทเงินฝาก" (ใช้ตัวโหลดเดียวกับหน้าค่าคงที่)
 const depEditTypes = () => {
   if (typeof window.datLoad === 'function') { try { const l = window.datLoad(); if (Array.isArray(l) && l.length) return l; } catch (e) {} }
@@ -36,10 +79,11 @@ const depEditTypes = () => {
   return window.DEP_ACCTYPE_SEED || [];
 };
 const depEditTypeLabel = (code) => { const t = depEditTypes().find(x => x.code === code); return t ? t.code + ' · ' + t.name : (code || ''); };
+// อัตราภาษี — ตามประเภทเงินฝาก (แท็บอัตรา Int./Div.) หรือยกเว้นเฉพาะบัญชี · "อัตราคงที่ 15%" เป็นค่าเดิม แสดงเฉพาะบัญชีที่เคยตั้งไว้
 const DEP_EDIT_TAX = [
-  { v: 'announce', l: 'ตามประกาศ' },
-  { v: 'exempt',   l: 'ยกเว้นภาษี' },
-  { v: 'fixed',    l: 'อัตราคงที่ 15%' },
+  { v: 'announce', l: 'ตามประเภทเงินฝาก' },
+  { v: 'exempt',   l: 'ยกเว้นภาษี (เฉพาะบัญชีนี้)' },
+  { v: 'fixed',    l: 'อัตราคงที่ 15% (ค่าเดิม)' },
 ];
 const DEP_EDIT_WITHDRAW = [
   { v: 'type',    l: 'ตามประเภทบัญชี' },
@@ -85,7 +129,29 @@ function DepEditAccountPage({ onToast }) {
 
   const cur = picked ? accounts.find(a => a.accNo === picked.accNo) || picked : null;
   const ownerKind = depOwnerKind(cur);
-  const accType = cur ? (window.DEP_ACCTYPE_SEED || []).find(t => t.code === cur.typeCode) : null;
+  const rule = React.useMemo(() => depEditRule(cur), [cur && cur.accNo, cur && cur.typeCode, cur && cur.balance]);
+  // ตรวจการเปลี่ยนประเภทบัญชี — เงื่อนไขของประเภทใหม่ (ยอดขั้นต่ำ / จำนวนบัญชีต่อสมาชิก / เงินฝากมีระยะเวลา)
+  const typeChange = React.useMemo(() => {
+    if (!cur || !form || !form.typeCode || form.typeCode === cur.typeCode) return null;
+    const recs = depEditTypes();
+    const nt = recs.find(t => t.code === form.typeCode), ot = recs.find(t => t.code === cur.typeCode);
+    const ns = (nt && nt.settings) || {}, os = (ot && ot.settings) || {};
+    const errs = [];
+    if (!nt) errs.push('ไม่พบประเภทเงินฝาก ' + form.typeCode + ' ในค่าคงที่');
+    else {
+      if (nt.enabled === false) errs.push('ประเภท ' + nt.name + ' ปิดใช้งานอยู่');
+      if (!!ns.hasTerm !== !!os.hasTerm) errs.push('เปลี่ยนระหว่างเงินฝากมีระยะเวลากับไม่มีระยะเวลาไม่ได้ — ให้ปิดบัญชีแล้วเปิดบัญชีใหม่');
+      const minB = Number(ns.minBalance) || 0;
+      if (minB > 0 && Number(cur.balance) < minB) errs.push('ยอดคงเหลือ ' + fmt.money(cur.balance, 2) + ' บาท ต่ำกว่ายอดขั้นต่ำของประเภทใหม่ (' + fmt.money(minB, 2) + ' บาท)');
+      if (ns.limitAccounts && Number(ns.maxAccounts) > 0) {
+        const n = accounts.filter(a => a.accNo !== cur.accNo && a.member === cur.member && a.typeCode === form.typeCode && a.status !== 'closed').length;
+        if (n >= Number(ns.maxAccounts)) errs.push('สมาชิกมีบัญชีประเภท ' + nt.name + ' ครบ ' + ns.maxAccounts + ' บัญชีแล้ว');
+      }
+    }
+    const nr = nt ? depEditRule({ ...cur, typeCode: form.typeCode }) : null;
+    return { errs, newRate: nr ? nr.rate : null, name: nt ? nt.name : form.typeCode };
+  }, [cur, form && form.typeCode, accounts]);
+  const blocked = !!(typeChange && typeChange.errs.length);
 
   // โหลดฟอร์มจากบัญชีที่เลือก
   const loadForm = (a) => {
@@ -109,12 +175,7 @@ function DepEditAccountPage({ onToast }) {
                     || ((a.name || '') ? a.name + ' แต่เพียงผู้เดียว' : ''),
       wdNote: a.withdrawNote || '',
       taxMode: a.taxMode || 'announce',
-      frozen: !!a.frozen,
-      useLoan: !!a.useLoan,
-      useFuneral: !!a.useFuneral,
-      freeQuota: a.freeQuota ?? 0,
-      dormant: !!a.dormant,
-      xferBank: a.bank || '',
+      xferBank: depEditBankNorm(a.bank || ''),
       xferAcc: a.bankAcc || '',
       xferName: a.bankAccName || a.name || '',
       xferBranch: a.bankBranch || '',
@@ -145,13 +206,14 @@ function DepEditAccountPage({ onToast }) {
     push('ชื่อบัญชี (ENG)', cur.nameEng, form.nameEng);
     push('หักหุ้นพูนทวี', labelOf(DEP_EDIT_SHAREPLUS, cur.sharePlus || 'none'), labelOf(DEP_EDIT_SHAREPLUS, form.sharePlus));
     push('รับ Int./Div. โดย', labelOf(DEP_EDIT_RECVPAY, cur.intMethod || 'compound'), labelOf(DEP_EDIT_RECVPAY, form.recvPay));
-    push('ผู้ถือบัญชี', labelOf(DEP_EDIT_HOLDER, cur.holderType || '01'), labelOf(DEP_EDIT_HOLDER, form.holderType));
+    push('ผู้ถือบัญชี', labelOf(depEditHolders(), cur.holderType || '01'), labelOf(depEditHolders(), form.holderType));
     push('เงื่อนไขการถอน', cur.withdrawCondText || labelOf(DEP_EDIT_WITHDRAW, cur.withdrawCond || 'type'), form.withdrawCond);
     push('หมายเหตุเงื่อนไขการถอน', cur.withdrawNote || '', form.wdNote);
     push('อัตราภาษี', labelOf(DEP_EDIT_TAX, cur.taxMode || 'announce'), labelOf(DEP_EDIT_TAX, form.taxMode));
     push('เงื่อนไข Int./Div.', labelOf(DEP_EDIT_INTCOND, cur.intCond || 'announce'), labelOf(DEP_EDIT_INTCOND, form.intCond));
-    push('อายัดบัญชี', cur.frozen ? 'ใช่' : 'ไม่', form.frozen ? 'ใช่' : 'ไม่');
     push('บัญชีรับโอนดอกเบี้ย', cur.bankAcc, form.xferAcc);
+    push('ธนาคารรับโอน', cur.bank || '', form.xferBank === depEditBankNorm(cur.bank || '') ? (cur.bank || '') : form.xferBank);
+    push('สาขาธนาคาร', cur.bankBranch || '', form.xferBranch);
     if ((cur.joints || []).length !== form.joints.length) push('จำนวนผู้ฝากร่วม', (cur.joints || []).length, form.joints.length);
     return d;
   }, [cur, form]);
@@ -159,17 +221,19 @@ function DepEditAccountPage({ onToast }) {
   const dirty = diffs.length > 0;
 
   const submit = () => {
-    if (!cur || !form || !dirty) return;
+    if (!cur || !form || !dirty || blocked) return;
+    const changedType = form.typeCode && form.typeCode !== cur.typeCode;
     const next = accounts.map(a => a.accNo === cur.accNo ? {
       ...a,
       typeCode: form.typeCode || a.typeCode,
       type: (depEditTypes().find(t => t.code === form.typeCode) || {}).name || a.type,
-      certNo: form.certNo, noBook: form.noBook, name: form.nameTh, nameEng: form.nameEng,
+      // เปลี่ยนประเภท → อัตราดอกเบี้ยตามประเภทใหม่ (เลขที่บัญชีคงเดิม)
+      ...(changedType && typeChange && typeChange.newRate != null ? { rate: typeChange.newRate, typeChangedFrom: a.typeCode, typeChangedAt: new Date().toISOString().slice(0, 10) } : {}),
+      ...depEditBookPatch(cur, form), noBook: form.noBook, name: form.nameTh, nameEng: form.nameEng,
       sharePlus: form.sharePlus, intMethod: form.recvPay,
       cif: form.cif, holderType: form.holderType, citizenId: form.citizenId, phone: form.phone, address: form.address,
-      joints: form.joints, withdrawCondText: form.withdrawCond, withdrawNote: form.wdNote, taxMode: form.taxMode, intCond: form.intCond, frozen: form.frozen,
-      useLoan: form.useLoan, useFuneral: form.useFuneral, freeQuota: Number(form.freeQuota) || 0, dormant: form.dormant,
-      bank: form.xferBank, bankAcc: form.xferAcc, bankAccName: form.xferName, intToAcc: form.recvPay === 'toaccount' ? form.intToAcc : '', bankBranch: form.xferBranch,
+      joints: form.joints, withdrawCondText: form.withdrawCond, withdrawNote: form.wdNote, taxMode: form.taxMode, intCond: form.intCond,
+      bank: form.xferBank === depEditBankNorm(a.bank || '') ? a.bank : form.xferBank, bankAcc: form.xferAcc, bankAccName: form.xferName, intToAcc: form.recvPay === 'toaccount' ? form.intToAcc : '', bankBranch: form.xferBranch,
     } : a);
     setAccounts(next); window.depTxnSaveAccounts(next);
 
@@ -214,7 +278,7 @@ function DepEditAccountPage({ onToast }) {
           {dirty && <span className="chip warning"><span className="dot-c" />มีการแก้ไข {diffs.length} รายการ</span>}
           <button className="btn sm" data-keep-top="" style={{ justifyContent: 'center', minWidth: 72 }} onClick={() => loadForm(cur)} disabled={!dirty}>ยกเลิก</button>
           {slip && <button className="btn sm" data-keep-top="" onClick={() => depPrintSlip(onToast)}><Icon name="print" /> พิมพ์หลักฐาน</button>}
-          <button className="btn primary sm" data-keep-top="" disabled={!dirty} onClick={submit}><Icon name="check" /> บันทึกการแก้ไข</button>
+          <button className="btn primary sm" data-keep-top="" disabled={!dirty || blocked} onClick={submit}><Icon name="check" /> บันทึกการแก้ไข</button>
         </div>}
       </div>
 
@@ -230,7 +294,7 @@ function DepEditAccountPage({ onToast }) {
               </DatFieldLite>
               <DatFieldLite label="ประเภทบัญชี">
                 <select className="cfg-input" disabled={!cur} value={form ? form.typeCode : ''}
-                        onChange={(e) => setForm(s => ({ ...s, typeCode: e.target.value }))}>
+                        onChange={(e) => setForm(s => depEditNormForType({ ...s, typeCode: e.target.value }, e.target.value))}>
                   {!cur && <option value="">—</option>}
                   {cur && !depEditTypes().some(t => t.code === cur.typeCode) && (
                     <option value={cur.typeCode}>{cur.typeCode} · {cur.type}</option>
@@ -241,10 +305,32 @@ function DepEditAccountPage({ onToast }) {
                 </select>
               </DatFieldLite>
             </div>
+            {cur && window.dpcFreezeInfo && (() => {
+              const fi = window.dpcFreezeInfo(cur.accNo), f = fi.eff || fi.pending;
+              if (!f) return null;
+              return (
+                <div className="dat-warn" style={{ margin: '0 16px 12px', ...{ background: 'var(--danger-50)', borderColor: 'color-mix(in srgb, var(--danger) 28%, transparent)', color: 'var(--danger)' } }}>
+                  <Icon name="lock" size={14} />
+                  <span>{fi.eff
+                    ? <>บัญชีถูกอายัด — <b>{f.label}</b>{Number(f.amount) ? ` (วงเงิน ${fmt.money(Number(f.amount), 2)} บาท)` : ''}{f.reason ? ' · เหตุผล: ' + f.reason : ''} · {window.dpcFreezeText(f, cur.balance)}{fi.releasePending ? ' · มีคำขอยกเลิกอายัดรออนุมัติ' : ''}</>
+                    : <>มีคำขออายัด <b>{f.label}</b> รออนุมัติ — ยังไม่มีผลจนกว่าจะอนุมัติ</>}</span>
+                </div>
+              );
+            })()}
+            {typeChange && (
+              <div className="dat-warn" style={{ margin: '0 16px 12px', ...(typeChange.errs.length ? { background: 'var(--danger-50)', borderColor: 'color-mix(in srgb, var(--danger) 28%, transparent)', color: 'var(--danger)' } : {}) }}>
+                <Icon name="info" size={14} />
+                <div>{typeChange.errs.length
+                  ? typeChange.errs.map((e, i) => <div key={i}>{e}</div>)
+                  : <>เปลี่ยนเป็นประเภท <b>{typeChange.name}</b>{typeChange.newRate != null ? <> — อัตรา Int./Div. จะเปลี่ยนเป็น <b>{fmt.money(typeChange.newRate, 2)}%</b> ตามประเภทใหม่</> : null} · เลขที่บัญชีคงเดิม</>}</div>
+              </div>
+            )}
             <div className="dat-grid g2 dep-editacc-fields" style={{ paddingTop: 0 }}>
               <DatFieldLite label="เลขที่สมุด / Cert. (PB/Cert.)">
-                <input className="cfg-input mono" value={form.certNo} disabled={form.noBook}
-                       onChange={(e) => set({ certNo: e.target.value })} placeholder={form.noBook ? 'ไม่มีสมุด (No Book)' : 'เช่น 0000032187'} />
+                <input className="cfg-input mono" readOnly disabled={form.noBook || !cur}
+                       value={form.noBook ? '' : (window.depBookLabel ? window.depBookLabel(form.certNo) : form.certNo)}
+                       title="ออกเลขที่สมุดอัตโนมัติ — ออกสมุดเล่มใหม่ที่เมนูสมุดคู่ฝาก / Auto Passbook"
+                       placeholder={form.noBook ? 'ไม่มีสมุด (No Book)' : (cur ? 'ออกเลขอัตโนมัติเมื่อบันทึก' : '—')} />
               </DatFieldLite>
               <DatFieldLite label="เปิดบัญชีแบบไม่มีสมุด">
                 <label className="dep-check" style={{ height: 32 }}>
@@ -259,7 +345,9 @@ function DepEditAccountPage({ onToast }) {
                 <input className="cfg-input" value={form.nameEng} onChange={(e) => set({ nameEng: e.target.value.toUpperCase() })} placeholder="ACCOUNT NAME (ENGLISH)" />
               </DatFieldLite>
               <DatFieldLite label="หักหุ้นพูนทวี">
-                <select className="cfg-input" value={form.sharePlus} onChange={(e) => set({ sharePlus: e.target.value })}>
+                <select className="cfg-input" value={depEditShareAllowed(form.typeCode) ? form.sharePlus : 'none'} disabled={!cur || !depEditShareAllowed(form.typeCode)}
+                        title={cur && !depEditShareAllowed(form.typeCode) ? 'ประเภทเงินฝากนี้ไม่ได้ร่วมหักหุ้นพูนทวี (ตั้งที่ประเภทเงินฝาก › ข้อมูลหลัก)' : undefined}
+                        onChange={(e) => set({ sharePlus: e.target.value })}>
                   {DEP_EDIT_SHAREPLUS.map(o => <option key={o.v} value={o.v}>{o.l}</option>)}
                 </select>
               </DatFieldLite>
@@ -305,7 +393,7 @@ function DepEditAccountPage({ onToast }) {
                   </DatFieldLite>
                   <DatFieldLite label="ผู้ถือบัญชี">
                     <select className="cfg-input" value={form.holderType} onChange={(e) => set({ holderType: e.target.value })}>
-                      {DEP_EDIT_HOLDER.map(o => <option key={o.v} value={o.v}>{o.l}</option>)}
+                      {[...depEditHolders(), ...(form.holderType && !depEditHolders().some(o => o.v === form.holderType) ? [{ v: form.holderType, l: form.holderType + ' (ค่าเดิม)' }] : [])].map(o => <option key={o.v} value={o.v}>{o.l}</option>)}
                     </select>
                   </DatFieldLite>
                   <DatFieldLite label={ownerKind === 'legal' ? 'เลขทะเบียนนิติบุคคล' : 'เลขบัตรประชาชน'}>
@@ -314,7 +402,7 @@ function DepEditAccountPage({ onToast }) {
                   <DatFieldLite label="โทรศัพท์">
                     <input className="cfg-input mono" value={form.phone} onChange={(e) => set({ phone: e.target.value })} placeholder="เบอร์ติดต่อ" />
                   </DatFieldLite>
-                  <DatFieldLite label="ที่อยู่ติดต่อ">
+                  <DatFieldLite label="ที่อยู่ติดต่อ" span={2}>
                     <input className="cfg-input" value={form.address} onChange={(e) => set({ address: e.target.value })} placeholder="ที่อยู่สำหรับติดต่อ/ส่งเอกสาร" />
                   </DatFieldLite>
                 </div>
@@ -358,19 +446,24 @@ function DepEditAccountPage({ onToast }) {
 
             {/* เงื่อนไข */}
             {tab === 'cond' && (() => {
-              const rate = cur ? Number(cur.rate || 0) : 0;
-              const taxRate = form.taxMode === 'exempt' ? 0 : form.taxMode === 'fixed' ? 15 : Number((accType && accType.taxRate) || 0);
+              // อัตรา / ภาษี / จำนวนครั้งการถอน — ตามค่าคงที่ประเภทเงินฝาก (ตรงกับหน้าฝาก/ถอน/โอน/ปิด)
+              const rate = rule ? rule.rate : (cur ? Number(cur.rate || 0) : 0);
+              const ruleTax = rule ? rule.taxRate : 0;
+              const taxRate = form.taxMode === 'exempt' ? 0 : form.taxMode === 'fixed' ? 15 : ruleTax;
               const ledger = window.depTxnLoadLedger ? window.depTxnLoadLedger() : [];
               const mv = cur && window.dpcMoves ? window.dpcMoves(cur.accNo, ledger) : [];
-              const wdN = mv.filter(m => Number(m.amount || m.dr || 0) < 0 || m.side === 'W' || /ถอน/.test(m.label || '')).length;
+              const monthKey = (window.dpcToday ? window.dpcToday() : new Date().toISOString()).slice(0, 7);
+              const wdN = rule && rule.wdUsed != null ? rule.wdUsed : mv.filter(m => m.dc === '−' && String(m.date || '').slice(0, 7) === monthKey).length;
+              const wdLabel = rule && rule.wdUsed != null ? 'ถอนในรอบนี้ / โควตา' : 'จำนวนครั้งการถอน (เดือนนี้)';
+              const wdValue = rule && rule.wdUsed != null ? wdN + ' / ' + rule.wdMax : wdN.toLocaleString();
               const toBank = form.recvPay === 'tobank' || form.recvPay === 'toaccount';
               return (
               <div className="tab-panel ec-cond">
                 <div className="ec-cond-kpis">
                   <div className="ec-cond-kpi"><span>ต้นเงิน</span><b className="mono">{cur ? fmt.money(cur.balance || 0, 2) : '0.00'}</b></div>
-                  <div className="ec-cond-kpi"><span>อัตรา Int./Div.</span><b className="mono">{rate.toFixed(3)}%</b></div>
+                  <div className="ec-cond-kpi" title={rule ? 'ที่มา: ' + rule.rateSrc : undefined}><span>อัตรา Int./Div.</span><b className="mono">{rate.toFixed(3)}%</b></div>
                   <div className="ec-cond-kpi"><span>รายการเคลื่อนไหว</span><b className="mono">{mv.length.toLocaleString()}</b></div>
-                  <div className="ec-cond-kpi"><span>จำนวนครั้งการถอน</span><b className="mono">{wdN.toLocaleString()}</b></div>
+                  <div className="ec-cond-kpi"><span>{wdLabel}</span><b className="mono">{wdValue}</b></div>
                 </div>
 
                 <section className="ec-cond-sec">
@@ -403,7 +496,7 @@ function DepEditAccountPage({ onToast }) {
                     <DatFieldLite label="อัตราภาษี Int./Div.">
                       <div className="ec-cond-pair">
                         <select className="cfg-input" value={form.taxMode} onChange={(e) => set({ taxMode: e.target.value })}>
-                          {DEP_EDIT_TAX.map(o => <option key={o.v} value={o.v}>{o.l}</option>)}
+                          {DEP_EDIT_TAX.filter(o => o.v !== 'fixed' || form.taxMode === 'fixed').map(o => <option key={o.v} value={o.v}>{o.v === 'announce' ? o.l + ' (' + fmt.money(ruleTax, 2).replace(/\.00$/, '') + '%)' : o.l}</option>)}
                         </select>
                         <div className="cfg-display-box mono num">{taxRate.toFixed(3)}%</div>
                       </div>
@@ -443,7 +536,7 @@ function DepEditAccountPage({ onToast }) {
                   <div className="ec-cond-g3">
                     <DatFieldLite label="ประเภทผู้ถือ">
                       <select className="cfg-input" value={form.holderType} onChange={(e) => set({ holderType: e.target.value })}>
-                        {DEP_EDIT_HOLDER.map(o => <option key={o.v} value={o.v}>{o.l}</option>)}
+                        {[...depEditHolders(), ...(form.holderType && !depEditHolders().some(o => o.v === form.holderType) ? [{ v: form.holderType, l: form.holderType + ' (ค่าเดิม)' }] : [])].map(o => <option key={o.v} value={o.v}>{o.l}</option>)}
                       </select>
                     </DatFieldLite>
                   </div>
@@ -485,9 +578,10 @@ function DepEditAccountPage({ onToast }) {
                 </div>
                 <div className="dat-grid g2" style={{ padding: 0 }}>
                   <DatFieldLite label="ธนาคาร">
-                    <select className="cfg-input" value={form.xferBank} onChange={(e) => set({ xferBank: e.target.value })}>
+                    <select className="cfg-input" value={form.xferBank} onChange={(e) => set({ xferBank: e.target.value, xferBranch: '' })}>
                       <option value="">— เลือกธนาคาร —</option>
-                      {window.DEP_BANKS.map(b => <option key={b} value={b}>{b}</option>)}
+                      {depEditBanks().map(b => <option key={b.name} value={b.name}>{b.code ? b.code + ' · ' : ''}{b.name}</option>)}
+                      {form.xferBank && !depEditBanks().some(b => b.name === form.xferBank) && <option value={form.xferBank}>{form.xferBank} (ค่าเดิม)</option>}
                     </select>
                   </DatFieldLite>
                   <DatFieldLite label="เลขที่บัญชีธนาคาร">
@@ -497,7 +591,8 @@ function DepEditAccountPage({ onToast }) {
                     <input className="cfg-input" value={form.xferName} onChange={(e) => set({ xferName: e.target.value })} placeholder="ชื่อบัญชีปลายทาง" />
                   </DatFieldLite>
                   <DatFieldLite label="สาขา">
-                    <input className="cfg-input" value={form.xferBranch} disabled={!form.xferBank} onChange={(e) => set({ xferBranch: e.target.value })} placeholder={form.xferBank ? 'ชื่อสาขา' : 'เลือกธนาคารก่อน'} />
+                    <input className="cfg-input" list="dep-edit-branches" value={form.xferBranch} disabled={!form.xferBank} onChange={(e) => set({ xferBranch: e.target.value })} placeholder={form.xferBank ? 'ชื่อสาขา' : 'เลือกธนาคารก่อน'} />
+                    <datalist id="dep-edit-branches">{depEditBranches(form.xferBank).map(b => <option key={b.code} value={b.name}>{b.code}</option>)}</datalist>
                   </DatFieldLite>
                 </div>
                 </>)}

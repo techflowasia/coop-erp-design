@@ -49,15 +49,15 @@ function DatTabConditions({ record, editing, onSettings }) {
               <DtRow label="ถอนได้ไม่เกิน" indent><DtNum v={s.wdCountMax} editing={editing} suffix="ครั้ง" max={110} onChange={(v) => set('wdCountMax', v)} /></DtRow>
               <DtRow label="ภายใน" indent>
                 <div className="l2-inwrap" style={{ justifyContent: 'flex-end' }}>
-                  <DtNum v={s.wdCountWithin} editing={editing} max={90} onChange={(v) => set('wdCountWithin', v)} />
-                  <DtSel group="timeUnit" v={s.wdCountWithinUnit} editing={editing} width={90} onChange={(v) => set('wdCountWithinUnit', v)} />
+                  <DtNum v={s.wdCountWithin} editing={editing} noSlot onChange={(v) => set('wdCountWithin', v)} />
+                  <DtSel group="timeUnit" v={s.wdCountWithinUnit} editing={editing} width={88} onChange={(v) => set('wdCountWithinUnit', v)} />
                 </div>
               </DtRow>
             </>}
             <DtRow label="ถอน/ปิดบัญชีได้เมื่อเปิดบัญชีแล้ว">
               <div className="l2-inwrap" style={{ justifyContent: 'flex-end' }}>
-                <DtNum v={s.closeAfterN} editing={editing} max={90} onChange={(v) => set('closeAfterN', v)} />
-                <DtSel group="timeUnit" v={s.closeAfterUnit} editing={editing} width={90} onChange={(v) => set('closeAfterUnit', v)} />
+                <DtNum v={s.closeAfterN} editing={editing} noSlot onChange={(v) => set('closeAfterN', v)} />
+                <DtSel group="timeUnit" v={s.closeAfterUnit} editing={editing} width={88} onChange={(v) => set('closeAfterUnit', v)} />
               </div>
             </DtRow>
           </DtGroup>
@@ -74,6 +74,14 @@ function DatTabConditions({ record, editing, onSettings }) {
             {s.lostBookPenaltyOn && <>
               <DtRow label="ค่าปรับกรณีสมุดหาย" indent><DtNum v={s.lostBookFee} editing={editing} decimals={2} suffix="บาท" onChange={(v) => set('lostBookFee', v)} /></DtRow>
               <DtRow label="คู่บัญชี (บันทึกรายได้ค่าปรับ)" indent><DtGl v={s.lostBookGl} editing={editing} onChange={(v) => set('lostBookGl', v)} /></DtRow>
+            </>}
+          </DtGroup>
+
+          <DtGroup title="ค่าธรรมเนียมปิดบัญชี">
+            <DtCheck label="คิดค่าธรรมเนียมปิดบัญชี" checked={s.closeFeeOn} editing={editing} onChange={(v) => set('closeFeeOn', v)} />
+            {s.closeFeeOn && <>
+              <DtRow label="จำนวนเงิน" indent><DtNum v={s.closeFee} editing={editing} decimals={2} suffix="บาท" onChange={(v) => set('closeFee', v)} /></DtRow>
+              <DtRow label="คู่บัญชี (บันทึกรายได้ค่าธรรมเนียม)" indent><DtGl v={s.closeFeeGl} editing={editing} onChange={(v) => set('closeFeeGl', v)} /></DtRow>
             </>}
           </DtGroup>
 
@@ -138,10 +146,10 @@ function DatTabCalc({ record, editing, onSettings }) {
           </DtGroup>
 
           <DtGroup title="ถอนก่อนกำหนด">
-            <DtRow label="การจ่าย Int./Div."><DtSel group="earlyPayMode" v={s.earlyPayMode} editing={editing} onChange={(v) => set('earlyPayMode', v)} /></DtRow>
-            <DtRow label="วันที่ต้นเงิน"><DtSel group="principalDateMode" v={s.principalDateMode} editing={editing} onChange={(v) => set('principalDateMode', v)} /></DtRow>
-            <DtCheck label="ถอน Int./Div. ได้" checked={s.earlyWithdrawIntOn} editing={editing} onChange={(v) => set('earlyWithdrawIntOn', v)} />
             <DtRow label="คิด Int./Div. จาก"><DtSel group="intCalcFrom" v={s.intCalcFrom} editing={editing} onChange={(v) => set('intCalcFrom', v)} /></DtRow>
+            <DtRow label="การจ่าย Int./Div."><DtSel group="earlyPayMode" v={s.earlyPayMode} editing={editing} onChange={(v) => set('earlyPayMode', v)} /></DtRow>
+            <DtRow label="การคิดวันที่ต้นเงิน เมื่อถอน"><DtSel group="principalDateMode" v={s.principalDateMode} editing={editing} onChange={(v) => set('principalDateMode', v)} /></DtRow>
+            <DtCheck label="ถอนเฉพาะ Int./Div." checked={s.earlyWithdrawIntOn} editing={editing} onChange={(v) => set('earlyWithdrawIntOn', v)} />
           </DtGroup>
 
           <DtGroup title="ยอดเงินคิด / ตั้ง Int./Div. ค้าง">
@@ -157,11 +165,10 @@ function DatTabCalc({ record, editing, onSettings }) {
             <DtRow label="อัตราค่าปรับ"><DtNum v={s.earlyPenaltyRate} editing={editing} decimals={2} suffix="%" onChange={(v) => set('earlyPenaltyRate', v)} /></DtRow>
             <DtRow label="จำนวนเงินค่าปรับ"><DtNum v={s.earlyPenaltyAmount} editing={editing} decimals={2} suffix="บาท" onChange={(v) => set('earlyPenaltyAmount', v)} /></DtRow>
             <DtRow label="คู่บัญชี (ค่าปรับ)"><DtGl v={s.earlyPenaltyGl} editing={editing} onChange={(v) => set('earlyPenaltyGl', v)} /></DtRow>
-            <DtRow label="ดอกเบี้ยในใบสั่ง"><DtTxt v={s.intInSlip} editing={editing} onChange={(v) => set('intInSlip', v)} /></DtRow>
           </DtGroup>
 
           <DtGroup title="เมื่อ Int./Div. ทบต้นแล้ว">
-            <DtRow label="คิด Int./Div. (ดำเนินการ)"><DtSel group="exhaustAction" v={s.exhaustAction} editing={editing} onChange={(v) => set('exhaustAction', v)} /></DtRow>
+            <DtRow label="คิด Int./Div. ครบกำหนด"><DtSel group="exhaustAction" v={s.exhaustAction} editing={editing} onChange={(v) => set('exhaustAction', v)} /></DtRow>
             {s.exhaustAction === 'transfer' && <>
               <DtRow label="ประเภทเงินฝากปลายทาง" indent><DtTxt v={s.transferTargetType} editing={editing} placeholder="รหัส/ชื่อประเภทบัญชี" onChange={(v) => set('transferTargetType', v)} /></DtRow>
               <DtRow label="อัตรา Int./Div. ปลายทาง" indent><DtNum v={s.transferRate} editing={editing} decimals={4} suffix="%" onChange={(v) => set('transferRate', v)} /></DtRow>
@@ -260,7 +267,7 @@ function DatTabRate({ record, editing, onTable }) {
   const addRow = () => { if (!freeMt) return; save([...rows, mkRow(freeMt.v, { rateTable: rows[0] && rows[0].rateTable, method: rows[0] && rows[0].method })]); };
   const delRow = (i) => save(rows.filter((_, idx) => idx !== i));
   const missTbl = (t) => !t.rateTable || !tblOf(t.rateTable);
-  const missRate = (t) => { const tb = tblOf(t.rateTable); return !!tb && !allOpts(tb).some(o => o.id === t.rateRow); };
+  const missRate = () => false; // อัตรา (%) ดูอย่างเดียว — กำหนด/แก้ที่เมนูอัตราดอกเบี้ยเงินฝาก
   window.__datRateMiss = rows.some(t => missTbl(t) || missRate(t));
   const tierText = (tb) => {
     const nowIso = today;
@@ -275,16 +282,16 @@ function DatTabRate({ record, editing, onTable }) {
       {editing && rows.some(t => missTbl(t) || missRate(t)) && (
         <div className="dat-warn" style={{ background: 'var(--danger-50)', borderColor: 'color-mix(in srgb, var(--danger) 28%, transparent)', color: 'var(--danger)', marginBottom: 12 }}>
           <Icon name="info" size={14} />
-          <span>มีประเภทสมาชิกที่ยังไม่ได้เลือกตารางอัตราดอกเบี้ยหรืออัตราดอกเบี้ย (กรอบแดง) — เลือกให้ครบก่อนบันทึก</span>
+          <span>มีประเภทสมาชิกที่ยังไม่ได้เลือกตารางอัตราดอกเบี้ย (กรอบแดง) — เลือกให้ครบก่อนบันทึก</span>
         </div>
       )}
-      <DtTableShell title="อัตราดอกเบี้ย / เงินปันผล — ตามประเภทสมาชิก" count={rows.length} editing={editing && !!freeMt} onAdd={addRow} minWidth={1180}
+      <DtTableShell title="อัตราดอกเบี้ย — ตามประเภทสมาชิก" count={rows.length} editing={editing && !!freeMt} onAdd={addRow} minWidth={1180}
         sub="แต่ละประเภทสมาชิกเลือกตารางอัตราจากเมนูอัตราดอกเบี้ยเงินฝาก (ขั้นบันไดตามยอดเงินกำหนดในตารางนั้น) และตั้งภาษี ณ ที่จ่ายของตัวเอง">
         <thead>
           <tr>
             <th rowSpan={2} className="center" style={{ width: 170 }}>ประเภทสมาชิก</th>
             <th rowSpan={2} className="center group-col" style={{ width: 240 }}>ตารางอัตราดอกเบี้ย</th>
-            <th rowSpan={2} className="center group-col" style={{ width: 230 }}>อัตราดอกเบี้ย (%)</th>
+            <th rowSpan={2} className="center group-col" style={{ width: 150 }}>อัตราดอกเบี้ย (%)</th>
             <th rowSpan={2} className="center group-col" style={{ width: 110 }}>วิธีคำนวณ</th>
             <th colSpan={3} className="center group-col">ภาษี ณ ที่จ่าย</th>
             <th rowSpan={2} className="center group-col" style={{ width: 150 }}>ผู้บันทึก</th>
@@ -311,15 +318,10 @@ function DatTabRate({ record, editing, onTable }) {
                       {intTables.filter(x => x.enabled || x.code === t.rateTable).map(x => <option key={x.code} value={x.code}>{tblName(x)}{x.enabled ? '' : ' (ปิดใช้งาน)'}</option>)}
                     </select>
                   : (tb ? <span>{tblName(tb)}</span> : <span style={{ color: 'var(--danger)' }}>ยังไม่ได้เลือก</span>)}</td>
-                <td className="center">{!tb ? <span className="muted">—</span> : (() => {
-                  const opts = rowOpts(tb, t.rateRow), cur = opts.find(o => o.id === t.rateRow);
-                  return editing
-                    ? <select className={'cfg-input sm' + (cur ? '' : ' error')} style={{ width: '100%' }} value={cur ? cur.id : ''} onChange={(e) => setRow(i, 'rateRow', e.target.value)}>
-                        <option value="">— เลือกอัตรา —</option>
-                        {opts.map(o => <option key={o.id} value={o.id}>{fmt.money(Number(o.r.rate || 0), 2)}% ({balShort(o.r)}{isCur(o.r) ? '' : ' · สิ้นสุดแล้ว'})</option>)}
-                      </select>
-                    : (cur ? <span><span className="mono" style={{ fontWeight: 600 }}>{fmt.money(Number(cur.r.rate || 0), 2)}%</span> <span className="muted" style={{ fontSize: 12 }}>({balShort(cur.r)})</span></span> : <span style={{ color: 'var(--danger)' }}>ยังไม่ได้เลือก</span>);
-                })()}</td>
+                <td className="center">{!tb ? <span className="muted">—</span>
+                  : <button type="button" className="btn sm" onClick={() => setOpenTier(tb.code)} title="ดูอัตราดอกเบี้ยที่กำหนดในเมนูอัตราดอกเบี้ยเงินฝาก">
+                      <Icon name="eye" size={13} /> ดูอัตรา
+                    </button>}</td>
                 <td className="center">{editing
                   ? <select className="cfg-input sm" style={{ minWidth: 96 }} value={t.method || 'daily'} onChange={(e) => setRow(i, 'method', e.target.value)}>{Object.entries(IM).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</select>
                   : <span>{IM[t.method || 'daily']?.label}</span>}</td>
@@ -345,6 +347,47 @@ function DatTabRate({ record, editing, onTable }) {
           })}
         </tbody>
       </DtTableShell>
+      {openTier && (() => { const tb = tblOf(openTier); if (!tb) return null; const list = (tb.rows || []).slice().sort((x, y) => String(y.effectiveDate || '').localeCompare(String(x.effectiveDate || '')) || Number(x.balFrom || 0) - Number(y.balFrom || 0));
+        return <>
+          <div className="modal-backdrop" onClick={() => setOpenTier(null)} />
+          <div className="modal-card" role="dialog" aria-modal="true" style={{ width: 720, maxWidth: 'calc(100vw - 32px)' }}>
+            <div className="modal-head">
+              <div className="gc-modal-ico"><Icon name="eye" /></div>
+              <div style={{ minWidth: 0 }}>
+                <div className="modal-title">{tblName(tb)}</div>
+                <div className="muted" style={{ fontSize: 12 }}>อัตราดอกเบี้ยตามที่กำหนดในเมนูอัตราดอกเบี้ยเงินฝาก{tb.enabled ? '' : ' · ตารางนี้ปิดใช้งาน'}</div>
+              </div>
+              <button className="close-btn" onClick={() => setOpenTier(null)} aria-label="ปิด"><Icon name="close" /></button>
+            </div>
+            <div className="modal-body">
+              <div className="table-wrap"><div className="table-scroll">
+                <table className="tbl">
+                  <thead><tr>
+                    <th className="center" style={{ width: 120 }}>วันที่มีผล</th>
+                    <th className="center" style={{ width: 120 }}>วันที่สิ้นสุด</th>
+                    <th className="right">ช่วงยอดเงิน (บาท)</th>
+                    <th className="right" style={{ width: 120 }}>อัตราดอกเบี้ย (%)</th>
+                    <th className="center" style={{ width: 96 }}>สถานะ</th>
+                  </tr></thead>
+                  <tbody>
+                    {list.length === 0 ? <tr><td colSpan={5} className="center muted" style={{ padding: 18 }}>ไม่พบข้อมูล</td></tr>
+                      : list.map((r, n) => { const on = (!r.effectiveDate || r.effectiveDate <= today) && (!r.endDate || r.endDate >= today); return (
+                        <tr key={r.id || n} style={on ? undefined : { color: 'var(--text-3, rgba(0,0,0,.45))' }}>
+                          <td className="center mono">{r.effectiveDate ? fmt.date(r.effectiveDate) : '—'}</td>
+                          <td className="center mono">{r.endDate ? fmt.date(r.endDate) : '—'}</td>
+                          <td className="right mono">{balTxt(r)}</td>
+                          <td className="right mono"><b>{fmt.money(Number(r.rate || 0), 2)}</b></td>
+                          <td className="center">{on ? <span className="pill ok">มีผล</span> : <span className="pill neutral">{r.effectiveDate > today ? 'ยังไม่มีผล' : 'สิ้นสุดแล้ว'}</span>}</td>
+                        </tr>); })}
+                  </tbody>
+                </table>
+              </div></div>
+              <div className="muted" style={{ fontSize: 12, marginTop: 10, display: 'flex', gap: 6, alignItems: 'center' }}>
+                <Icon name="info" size={13} /> ดูอย่างเดียว — ถ้าต้องการแก้ไขอัตรา ให้แก้ที่เมนู ค่าคงที่ › อัตราดอกเบี้ยเงินฝาก
+              </div>
+            </div>
+          </div>
+        </>; })()}
     </>
   );
 }

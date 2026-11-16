@@ -13,225 +13,90 @@ const LK_SEX = [{
   v: 'F',
   l: 'หญิง'
 }];
-function LkTable({
-  title,
-  subtitle,
-  module,
-  cols,
-  seed,
-  storeKey,
-  onToast
-}) {
-  const {
-    useState,
-    useMemo
-  } = React;
-  const audit = lkAudit();
+// ─── รูปแบบเดียวกับเมนูค่าคงที่อื่น (หน่วยงาน/รหัสเขต) ─────────────
+//  ตารางอ่านอย่างเดียว · ค้นหา/รีเซ็ต · สถานะ + สวิตช์ใช้งาน · แก้ไข/เพิ่มผ่าน popup
+const lkFmtNum = (c, v) => v === '' || v === undefined || v === null ? '—' : (Number(v) || 0).toLocaleString('en-US', {
+  minimumFractionDigits: c.decimals ? 2 : 0,
+  maximumFractionDigits: c.decimals ? 2 : 0
+});
+const lkShow = (c, v) => {
+  const h = React.createElement;
+  if (c.type === 'check') return v ? h("span", { style: { color: '#237450', fontWeight: 600 } }, "✓") : h("span", { style: { color: 'rgba(0,0,0,.3)' } }, "—");
+  if (c.type === 'select') {
+    const o = (c.options || []).find(x => String(x.v) === String(v));
+    return o ? o.l : v || '—';
+  }
+  if (c.type === 'num') return lkFmtNum(c, v);
+  return v === '' || v === undefined || v === null ? h("span", { style: { color: 'rgba(0,0,0,.3)' } }, "—") : String(v);
+};
+const lkAlign = c => c.type === 'num' ? 'right' : c.type === 'check' || c.type === 'select' ? 'center' : 'left';
+const lkCfg = props => {
+  const { title, subtitle, module, cols, seed, storeKey } = props;
+  const codeCol = cols.find(c => c.key === 'code') || cols[0];
+  const nameCol = cols.find(c => c.key === 'name') || cols[1];
+  const extras = cols.filter(c => c !== codeCol && c !== nameCol);
+  const entity = title.replace(/\s*\(.*\)\s*$/, '');
+  const desc = String(subtitle || '').split('— ').pop();
   const blank = () => cols.reduce((o, c) => {
     o[c.key] = c.type === 'check' ? false : c.type === 'select' ? c.options[0] && c.options[0].v : '';
     return o;
-  }, {});
-  const load = () => {
-    try {
-      const s = localStorage.getItem(storeKey);
-      if (s) return JSON.parse(s);
-    } catch (e) {}
-    return seed.map(r => ({
-      ...r
-    }));
+  }, { enabled: true });
+  return {
+    key: storeKey + '_v2', idPrefix: storeKey + '-', module: 'ประมวลผลและจัดเก็บ — ' + module,
+    screen: title, title: title, entity: entity, subtitle: desc,
+    codeLabel: codeCol.label, nameLabel: nameCol.label,
+    codePh: 'ระบุ' + codeCol.label, namePh: 'ระบุ' + nameCol.label, codeMax: 20,
+    formHint: desc,
+    searchPh: 'ค้นหา' + codeCol.label + ', ' + nameCol.label + '...',
+    searchKeys: ['code', 'name'],
+    footnote: 'เฉพาะรายการที่ “เปิดใช้งาน” จะแสดงเป็นตัวเลือกในหน้าที่เกี่ยวข้อง · ปิดใช้งานแล้วข้อมูลเดิมยังคงอยู่',
+    usage: props.usage,
+    usageLabel: props.usageLabel,
+    noNote: true,
+    formWidth: extras.length > 1 ? 720 : 560,
+    tableMin: 720 + extras.length * 120,
+    blank: () => blank(),
+    seed: () => {
+      let base = null;
+      try {
+        const s = localStorage.getItem(storeKey);
+        if (s) base = JSON.parse(s);
+      } catch (e) {}
+      return (base || seed).map((r, i) => ({
+        ...r,
+        id: r.id || storeKey + '-' + i,
+        enabled: r.enabled !== false,
+        updatedBy: r.updatedBy || 'มนตรี ศรีสุข',
+        updatedAt: r.updatedAt || '2026-06-01 09:00'
+      }));
+    },
+    cols: extras.map(c => ({
+      label: c.label,
+      th: { width: c.w || 140, textAlign: lkAlign(c) },
+      td: { textAlign: lkAlign(c), ...(c.type === 'num' ? { fontFamily: '"IBM Plex Mono", ui-monospace, monospace', fontSize: 12 } : {}) },
+      render: r => lkShow(c, r[c.key])
+    })),
+    formExtra: extras.length ? (f, set, { lbl, inp }) => {
+      const h = React.createElement;
+      return h("div", { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 } }, extras.map(c => {
+        const id = 'lk-' + c.key;
+        if (c.type === 'check') return h("label", { key: c.key, htmlFor: id, style: { display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer', alignSelf: 'end', height: 32 } },
+          h("input", { id: id, type: "checkbox", checked: !!f[c.key], onChange: e => set(c.key, e.target.checked) }), c.label);
+        return h("div", { key: c.key },
+          h("label", { style: lbl, htmlFor: id }, c.label),
+          c.type === 'select' ? h("select", { id: id, className: "filter-select", style: { width: '100%', height: 32 }, value: f[c.key] ?? '', onChange: e => set(c.key, e.target.value) },
+            (c.options || []).map(o => h("option", { key: o.v, value: o.v }, o.l)))
+          : h("input", { id: id, style: { ...inp, ...(c.type === 'num' ? { textAlign: 'right', fontFamily: '"IBM Plex Mono", ui-monospace, monospace' } : {}) },
+              type: c.type === 'num' ? 'number' : 'text', step: c.type === 'num' ? (c.decimals ? '0.01' : '1') : undefined,
+              value: f[c.key] ?? '', placeholder: 'ระบุ' + c.label,
+              onChange: e => set(c.key, c.type === 'num' ? (e.target.value === '' ? '' : Number(e.target.value)) : e.target.value) }));
+      }));
+    } : undefined
   };
-  const [rows, setRows] = useState(load);
-  const [q, setQ] = useState('');
-  const [dirty, setDirty] = useState(false);
-  const shown = useMemo(() => {
-    const t = q.trim().toLowerCase();
-    if (!t) return rows;
-    return rows.filter(r => cols.some(c => String(r[c.key] ?? '').toLowerCase().includes(t)));
-  }, [rows, q, cols]);
-  const set = (i, k, v) => {
-    setRows(rs => rs.map((r, idx) => idx === i ? {
-      ...r,
-      [k]: v
-    } : r));
-    setDirty(true);
-  };
-  const addRow = () => {
-    setRows(rs => [...rs, blank()]);
-    setDirty(true);
-  };
-  const removeRow = i => {
-    setRows(rs => rs.filter((_, idx) => idx !== i));
-    setDirty(true);
-  };
-  const save = () => {
-    try {
-      localStorage.setItem(storeKey, JSON.stringify(rows));
-    } catch (e) {}
-    setDirty(false);
-    audit && audit.log && audit.log({
-      action: 'update',
-      module: `ประมวลผลและจัดเก็บ — ${module}`,
-      target: title,
-      summary: `บันทึกค่าคงที่ “${title}” จำนวน ${rows.length} รายการ`
-    });
-    onToast && onToast(`บันทึก${title}เรียบร้อยแล้ว (${rows.length} รายการ)`);
-  };
-  const reset = () => {
-    setRows(seed.map(r => ({
-      ...r
-    })));
-    setDirty(true);
-    onToast && onToast('คืนค่าตั้งต้นเรียบร้อยแล้ว');
-  };
-  const cell = (r, i, c) => {
-    if (c.type === 'check') return /*#__PURE__*/React.createElement("input", {
-      type: "checkbox",
-      checked: !!r[c.key],
-      onChange: e => set(i, c.key, e.target.checked)
-    });
-    if (c.type === 'select') return /*#__PURE__*/React.createElement("select", {
-      className: "cfg-input sm",
-      style: c.full ? {
-        width: '100%'
-      } : undefined,
-      value: r[c.key],
-      onChange: e => set(i, c.key, e.target.value)
-    }, c.options.map(o => /*#__PURE__*/React.createElement("option", {
-      key: o.v,
-      value: o.v
-    }, o.l)));
-    return /*#__PURE__*/React.createElement("input", {
-      className: "cfg-input sm",
-      type: c.type === 'num' ? 'number' : 'text',
-      step: c.type === 'num' ? c.decimals ? '0.01' : '1' : undefined,
-      style: c.type === 'num' ? {
-        textAlign: 'right'
-      } : c.full ? {
-        width: '100%'
-      } : undefined,
-      value: r[c.key] ?? '',
-      onChange: e => set(i, c.key, e.target.value)
-    });
-  };
-  return /*#__PURE__*/React.createElement("div", {
-    "data-screen-label": title
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "icr-form-head"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "icr-form-title"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "icr-form-ico"
-  }, /*#__PURE__*/React.createElement(Icon, {
-    name: "database",
-    size: 20
-  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("h1", null, title), /*#__PURE__*/React.createElement("div", {
-    className: "icr-form-sub"
-  }, subtitle))), /*#__PURE__*/React.createElement("div", {
-    className: "icr-form-actions"
-  }, /*#__PURE__*/React.createElement("button", {
-    className: "btn primary sm",
-    onClick: save
-  }, /*#__PURE__*/React.createElement(Icon, {
-    name: "check",
-    size: 13
-  }), " \u0E1A\u0E31\u0E19\u0E17\u0E36\u0E01"), /*#__PURE__*/React.createElement("button", {
-    className: "btn sm",
-    onClick: addRow
-  }, /*#__PURE__*/React.createElement(Icon, {
-    name: "plus",
-    size: 13
-  }), " \u0E40\u0E1E\u0E34\u0E48\u0E21\u0E41\u0E16\u0E27"), /*#__PURE__*/React.createElement("button", {
-    className: "btn sm",
-    onClick: reset
-  }, /*#__PURE__*/React.createElement(Icon, {
-    name: "refresh",
-    size: 13
-  }), " \u0E04\u0E37\u0E19\u0E04\u0E48\u0E32\u0E15\u0E31\u0E49\u0E07\u0E15\u0E49\u0E19"))), /*#__PURE__*/React.createElement("div", {
-    className: "search-card icr-sec"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "icr-strip"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "icr-fld",
-    style: {
-      flex: '1 1 0',
-      minWidth: 220
-    }
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "icr-fld-l"
-  }, "\u0E04\u0E49\u0E19\u0E2B\u0E32"), /*#__PURE__*/React.createElement("input", {
-    className: "cfg-input",
-    value: q,
-    onChange: e => setQ(e.target.value),
-    placeholder: "\u0E04\u0E49\u0E19\u0E2B\u0E32\u0E14\u0E49\u0E27\u0E22\u0E23\u0E2B\u0E31\u0E2A\u0E2B\u0E23\u0E37\u0E2D\u0E0A\u0E37\u0E48\u0E2D\u0E23\u0E32\u0E22\u0E01\u0E32\u0E23\u2026"
-  })), /*#__PURE__*/React.createElement("div", {
-    className: "icr-fld",
-    style: {
-      width: 160
-    }
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "icr-fld-l"
-  }, "\u0E08\u0E33\u0E19\u0E27\u0E19\u0E23\u0E32\u0E22\u0E01\u0E32\u0E23"), /*#__PURE__*/React.createElement("div", {
-    className: "icr-ro num mono"
-  }, window.fmt.money(rows.length, 0))), /*#__PURE__*/React.createElement("div", {
-    className: "icr-fld",
-    style: {
-      width: 160
-    }
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "icr-fld-l"
-  }, "\u0E2A\u0E16\u0E32\u0E19\u0E30"), /*#__PURE__*/React.createElement("div", {
-    className: "icr-ro"
-  }, dirty ? 'ยังไม่บันทึก' : 'บันทึกแล้ว'))), /*#__PURE__*/React.createElement("div", {
-    className: "table-wrap",
-    style: {
-      marginTop: 12,
-      overflowX: 'auto'
-    }
-  }, /*#__PURE__*/React.createElement("table", {
-    className: "tbl",
-    style: {
-      fontSize: 12.5
-    }
-  }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, cols.map(c => /*#__PURE__*/React.createElement("th", {
-    key: c.key,
-    style: {
-      width: c.w,
-      textAlign: c.type === 'num' ? 'right' : c.type === 'check' ? 'center' : undefined
-    }
-  }, c.label)), /*#__PURE__*/React.createElement("th", {
-    style: {
-      width: 66
-    }
-  }, "\u0E25\u0E1A"))), /*#__PURE__*/React.createElement("tbody", null, shown.map(r => {
-    const i = rows.indexOf(r);
-    return /*#__PURE__*/React.createElement("tr", {
-      key: i
-    }, cols.map(c => /*#__PURE__*/React.createElement("td", {
-      key: c.key,
-      style: {
-        textAlign: c.type === 'check' ? 'center' : undefined
-      }
-    }, cell(r, i, c))), /*#__PURE__*/React.createElement("td", null, /*#__PURE__*/React.createElement("button", {
-      className: "btn sm danger",
-      onClick: () => removeRow(i)
-    }, /*#__PURE__*/React.createElement(Icon, {
-      name: "close",
-      size: 12
-    }))));
-  }), !shown.length && /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("td", {
-    colSpan: cols.length + 1,
-    className: "muted",
-    style: {
-      textAlign: 'center',
-      padding: '26px 0'
-    }
-  }, "\u0E44\u0E21\u0E48\u0E1E\u0E1A\u0E02\u0E49\u0E2D\u0E21\u0E39\u0E25"))))), /*#__PURE__*/React.createElement("div", {
-    className: "muted",
-    style: {
-      fontSize: 12,
-      marginTop: 8
-    }
-  }, "\u0E2B\u0E21\u0E32\u0E22\u0E40\u0E2B\u0E15\u0E38 \u2014 \u0E2B\u0E25\u0E31\u0E07\u0E08\u0E32\u0E01\u0E40\u0E1E\u0E34\u0E48\u0E21\u0E41\u0E16\u0E27/\u0E25\u0E1A\u0E41\u0E16\u0E27 \u0E41\u0E25\u0E49\u0E27\u0E01\u0E14\u0E1B\u0E38\u0E48\u0E21\u0E1A\u0E31\u0E19\u0E17\u0E36\u0E01\u0E2D\u0E35\u0E01\u0E04\u0E23\u0E31\u0E49\u0E07")));
+};
+function LkTable(props) {
+  const cfg = React.useMemo(() => lkCfg(props), [props.storeKey]);
+  return React.createElement(window.PcCodeNameConstPage, { cfg: cfg, onToast: props.onToast });
 }
 
 // ─── ค่าคงที่ประเภทรายการ ────────────────────────────────────────────
@@ -264,9 +129,9 @@ function ConstKeepPage({
   onToast
 }) {
   return /*#__PURE__*/React.createElement(LkTable, {
-    title: "\u0E1B\u0E23\u0E30\u0E40\u0E20\u0E17\u0E04\u0E39\u0E48\u0E1A\u0E31\u0E0D\u0E0A\u0E35 (Keep)",
-    module: "\u0E04\u0E48\u0E32\u0E04\u0E07\u0E17\u0E35\u0E48\u0E1B\u0E23\u0E30\u0E40\u0E20\u0E17\u0E23\u0E32\u0E22\u0E01\u0E32\u0E23",
-    subtitle: "\u0E1B\u0E23\u0E30\u0E21\u0E27\u0E25\u0E1C\u0E25\u0E41\u0E25\u0E30\u0E08\u0E31\u0E14\u0E40\u0E01\u0E47\u0E1A \xB7 \u0E04\u0E48\u0E32\u0E04\u0E07\u0E17\u0E35\u0E48\u0E1B\u0E23\u0E30\u0E40\u0E20\u0E17\u0E23\u0E32\u0E22\u0E01\u0E32\u0E23 \u2014 \u0E04\u0E39\u0E48\u0E1A\u0E31\u0E0D\u0E0A\u0E35\u0E17\u0E35\u0E48\u0E43\u0E0A\u0E49\u0E17\u0E33\u0E23\u0E32\u0E22\u0E01\u0E32\u0E23\u0E04\u0E37\u0E19\u0E43\u0E1A\u0E40\u0E2A\u0E23\u0E47\u0E08",
+    title: "ประเภทคู่บัญชี (Keep)",
+    module: "ค่าคงที่ประเภทรายการ",
+    subtitle: "ประมวลผลและจัดเก็บ \xB7 ค่าคงที่ประเภทรายการ \u2014 คู่บัญชีที่ใช้ทำรายการคืนใบเสร็จ",
     cols: LK_KEEP_COLS,
     seed: LK_KEEP_SEED,
     storeKey: "const_keep",
@@ -477,9 +342,9 @@ function ConstKeepItemPage({
   onToast
 }) {
   return /*#__PURE__*/React.createElement(LkTable, {
-    title: "\u0E23\u0E2B\u0E31\u0E2A\u0E23\u0E32\u0E22\u0E01\u0E32\u0E23 (KeepItem)",
-    module: "\u0E04\u0E48\u0E32\u0E04\u0E07\u0E17\u0E35\u0E48\u0E1B\u0E23\u0E30\u0E40\u0E20\u0E17\u0E23\u0E32\u0E22\u0E01\u0E32\u0E23",
-    subtitle: "\u0E1B\u0E23\u0E30\u0E21\u0E27\u0E25\u0E1C\u0E25\u0E41\u0E25\u0E30\u0E08\u0E31\u0E14\u0E40\u0E01\u0E47\u0E1A \xB7 \u0E04\u0E48\u0E32\u0E04\u0E07\u0E17\u0E35\u0E48\u0E1B\u0E23\u0E30\u0E40\u0E20\u0E17\u0E23\u0E32\u0E22\u0E01\u0E32\u0E23 \u2014 \u0E1B\u0E23\u0E30\u0E40\u0E20\u0E17\u0E01\u0E32\u0E23\u0E17\u0E33\u0E23\u0E32\u0E22\u0E01\u0E32\u0E23\u0E08\u0E31\u0E14\u0E40\u0E01\u0E47\u0E1A\u0E41\u0E25\u0E30\u0E25\u0E33\u0E14\u0E31\u0E1A\u0E43\u0E19\u0E43\u0E1A\u0E40\u0E2A\u0E23\u0E47\u0E08",
+    title: "รหัสรายการ (KeepItem)",
+    module: "ค่าคงที่ประเภทรายการ",
+    subtitle: "ประมวลผลและจัดเก็บ \xB7 ค่าคงที่ประเภทรายการ \u2014 ประเภทการทำรายการจัดเก็บและลำดับในใบเสร็จ",
     cols: LK_KEEPITEM_COLS,
     seed: LK_KEEPITEM_SEED,
     storeKey: "const_keepitem",
@@ -498,9 +363,9 @@ function ConstPrefixPage({
   onToast
 }) {
   return /*#__PURE__*/React.createElement(LkTable, {
-    title: "\u0E04\u0E33\u0E19\u0E33\u0E2B\u0E19\u0E49\u0E32\u0E19\u0E32\u0E21",
-    module: "\u0E04\u0E48\u0E32\u0E04\u0E07\u0E17\u0E35\u0E48\u0E23\u0E30\u0E1A\u0E1A\u0E2A\u0E21\u0E32\u0E0A\u0E34\u0E01",
-    subtitle: "\u0E1B\u0E23\u0E30\u0E21\u0E27\u0E25\u0E1C\u0E25\u0E41\u0E25\u0E30\u0E08\u0E31\u0E14\u0E40\u0E01\u0E47\u0E1A \xB7 \u0E04\u0E48\u0E32\u0E04\u0E07\u0E17\u0E35\u0E48\u0E23\u0E30\u0E1A\u0E1A\u0E2A\u0E21\u0E32\u0E0A\u0E34\u0E01 \u2014 \u0E04\u0E33\u0E19\u0E33\u0E2B\u0E19\u0E49\u0E32\u0E19\u0E32\u0E21 \u0E04\u0E33\u0E22\u0E48\u0E2D \u0E41\u0E25\u0E30\u0E40\u0E1E\u0E28",
+    title: "คำนำหน้านาม",
+    module: "ค่าคงที่ระบบสมาชิก",
+    subtitle: "ประมวลผลและจัดเก็บ \xB7 ค่าคงที่ระบบสมาชิก \u2014 คำนำหน้านาม คำย่อ และเพศ",
     cols: [{
       key: 'code',
       label: 'รหัสคำนำหน้า',
@@ -524,39 +389,67 @@ function ConstPrefixPage({
     onToast: onToast
   });
 }
+// สังกัดสมาชิก — ข้อมูลหลัก (ระดับบน) · ข้อกำหนดรายละเอียดสังกัดอ้างอิงรหัส/ชื่อจากเมนูนี้
+const LK_MEMBER_AFFIL_PROPS = {
+  title: "สังกัดสมาชิก",
+  module: "ค่าคงที่ระบบสมาชิก",
+  subtitle: "ประมวลผลและจัดเก็บ \xB7 ค่าคงที่ระบบสมาชิก \u2014 รหัสและชื่อสังกัดของสมาชิก ใช้อ้างอิงในข้อกำหนดรายละเอียดสังกัด",
+  cols: [{
+    key: 'code',
+    label: 'รหัสสังกัด',
+    w: 140
+  }, {
+    key: 'name',
+    label: 'ชื่อสังกัด'
+  }],
+  seed: [{
+    code: '001',
+    name: 'บริษัท ไปรษณีย์ไทย จำกัด'
+  }, {
+    code: '002',
+    name: 'บริษัท โทรคมนาคมแห่งชาติ จำกัด (มหาชน)'
+  }, {
+    code: '003',
+    name: 'สหกรณ์ออมทรัพย์การสื่อสารแห่งประเทศไทย จำกัด'
+  }, {
+    code: '004',
+    name: 'สำนักงาน กสทช.'
+  }, {
+    code: '005',
+    name: 'กระทรวงดิจิทัลเพื่อเศรษฐกิจและสังคม'
+  }, {
+    code: '999',
+    name: '(ไม่ระบุ)'
+  }],
+  storeKey: "const_member_affil_v3",
+  usageLabel: 'รายการในข้อกำหนดรายละเอียดสังกัด',
+  usage: rec => window.pcAffilRefs ? window.pcAffilRefs(r => r.affilCode === rec.code).map(r => r.code + ' — ' + r.name) : []
+};
 function ConstMemberAffilPage({
   onToast
 }) {
   return /*#__PURE__*/React.createElement(LkTable, {
-    title: "\u0E2A\u0E31\u0E07\u0E01\u0E31\u0E14\u0E2A\u0E21\u0E32\u0E0A\u0E34\u0E01",
-    module: "\u0E04\u0E48\u0E32\u0E04\u0E07\u0E17\u0E35\u0E48\u0E23\u0E30\u0E1A\u0E1A\u0E2A\u0E21\u0E32\u0E0A\u0E34\u0E01",
-    subtitle: "\u0E1B\u0E23\u0E30\u0E21\u0E27\u0E25\u0E1C\u0E25\u0E41\u0E25\u0E30\u0E08\u0E31\u0E14\u0E40\u0E01\u0E47\u0E1A \xB7 \u0E04\u0E48\u0E32\u0E04\u0E07\u0E17\u0E35\u0E48\u0E23\u0E30\u0E1A\u0E1A\u0E2A\u0E21\u0E32\u0E0A\u0E34\u0E01 \u2014 \u0E23\u0E2B\u0E31\u0E2A\u0E41\u0E25\u0E30\u0E0A\u0E37\u0E48\u0E2D\u0E2A\u0E31\u0E07\u0E01\u0E31\u0E14\u0E02\u0E2D\u0E07\u0E2A\u0E21\u0E32\u0E0A\u0E34\u0E01",
-    cols: [{
-      key: 'code',
-      label: 'รหัสสังกัด',
-      w: 140
-    }, {
-      key: 'name',
-      label: 'ชื่อสังกัด'
-    }],
-    seed: [{
-      code: '001',
-      name: 'ddddd'
-    }, {
-      code: 'ยยย',
-      name: '(ไม่ระบุ)'
-    }],
-    storeKey: "const_member_affil",
+    ...LK_MEMBER_AFFIL_PROPS,
     onToast: onToast
   });
 }
+// ตัวเลือกสังกัดสมาชิก (เรียงตามรหัส) — ใช้ในข้อกำหนดรายละเอียดสังกัด
+window.pcMemberAffilOptions = () => {
+  const cfg = lkCfg(LK_MEMBER_AFFIL_PROPS);
+  let list = null;
+  try {
+    const s = localStorage.getItem(cfg.key);
+    if (s) list = JSON.parse(s);
+  } catch (e) {}
+  return (list || cfg.seed()).slice().sort((x, y) => String(x.code).localeCompare(String(y.code)));
+};
 function ConstPositionPage({
   onToast
 }) {
   return /*#__PURE__*/React.createElement(LkTable, {
-    title: "\u0E15\u0E33\u0E41\u0E2B\u0E19\u0E48\u0E07",
-    module: "\u0E04\u0E48\u0E32\u0E04\u0E07\u0E17\u0E35\u0E48\u0E23\u0E30\u0E1A\u0E1A\u0E2A\u0E21\u0E32\u0E0A\u0E34\u0E01",
-    subtitle: "\u0E1B\u0E23\u0E30\u0E21\u0E27\u0E25\u0E1C\u0E25\u0E41\u0E25\u0E30\u0E08\u0E31\u0E14\u0E40\u0E01\u0E47\u0E1A \xB7 \u0E04\u0E48\u0E32\u0E04\u0E07\u0E17\u0E35\u0E48\u0E23\u0E30\u0E1A\u0E1A\u0E2A\u0E21\u0E32\u0E0A\u0E34\u0E01 \u2014 \u0E23\u0E2B\u0E31\u0E2A\u0E41\u0E25\u0E30\u0E0A\u0E37\u0E48\u0E2D\u0E15\u0E33\u0E41\u0E2B\u0E19\u0E48\u0E07\u0E02\u0E2D\u0E07\u0E2A\u0E21\u0E32\u0E0A\u0E34\u0E01",
+    title: "ตำแหน่ง",
+    module: "ค่าคงที่ระบบสมาชิก",
+    subtitle: "ประมวลผลและจัดเก็บ \xB7 ค่าคงที่ระบบสมาชิก \u2014 รหัสและชื่อตำแหน่งของสมาชิก",
     cols: [{
       key: 'code',
       label: 'รหัสตำแหน่ง',
@@ -577,9 +470,9 @@ function ConstApplyTypePage({
   onToast
 }) {
   return /*#__PURE__*/React.createElement(LkTable, {
-    title: "\u0E1B\u0E23\u0E30\u0E40\u0E20\u0E17\u0E01\u0E32\u0E23\u0E2A\u0E21\u0E31\u0E04\u0E23",
-    module: "\u0E04\u0E48\u0E32\u0E04\u0E07\u0E17\u0E35\u0E48\u0E23\u0E30\u0E1A\u0E1A\u0E2A\u0E21\u0E32\u0E0A\u0E34\u0E01",
-    subtitle: "\u0E1B\u0E23\u0E30\u0E21\u0E27\u0E25\u0E1C\u0E25\u0E41\u0E25\u0E30\u0E08\u0E31\u0E14\u0E40\u0E01\u0E47\u0E1A \xB7 \u0E04\u0E48\u0E32\u0E04\u0E07\u0E17\u0E35\u0E48\u0E23\u0E30\u0E1A\u0E1A\u0E2A\u0E21\u0E32\u0E0A\u0E34\u0E01 \u2014 \u0E1B\u0E23\u0E30\u0E40\u0E20\u0E17\u0E01\u0E32\u0E23\u0E2A\u0E21\u0E31\u0E04\u0E23\u0E41\u0E25\u0E30\u0E04\u0E48\u0E32\u0E18\u0E23\u0E23\u0E21\u0E40\u0E19\u0E35\u0E22\u0E21\u0E41\u0E23\u0E01\u0E40\u0E02\u0E49\u0E32",
+    title: "ประเภทการสมัคร",
+    module: "ค่าคงที่ระบบสมาชิก",
+    subtitle: "ประมวลผลและจัดเก็บ \xB7 ค่าคงที่ระบบสมาชิก \u2014 ประเภทการสมัครและค่าธรรมเนียมแรกเข้า",
     cols: [{
       key: 'code',
       label: 'รหัสประเภท',
@@ -623,9 +516,9 @@ function ConstRelationPage({
   onToast
 }) {
   return /*#__PURE__*/React.createElement(LkTable, {
-    title: "\u0E04\u0E27\u0E32\u0E21\u0E2A\u0E31\u0E21\u0E1E\u0E31\u0E19\u0E18\u0E4C\u0E1C\u0E39\u0E49\u0E23\u0E31\u0E1A\u0E42\u0E2D\u0E19\u0E1C\u0E25\u0E1B\u0E23\u0E30\u0E42\u0E22\u0E0A\u0E19\u0E4C",
-    module: "\u0E04\u0E48\u0E32\u0E04\u0E07\u0E17\u0E35\u0E48\u0E23\u0E30\u0E1A\u0E1A\u0E2A\u0E21\u0E32\u0E0A\u0E34\u0E01",
-    subtitle: "\u0E1B\u0E23\u0E30\u0E21\u0E27\u0E25\u0E1C\u0E25\u0E41\u0E25\u0E30\u0E08\u0E31\u0E14\u0E40\u0E01\u0E47\u0E1A \xB7 \u0E04\u0E48\u0E32\u0E04\u0E07\u0E17\u0E35\u0E48\u0E23\u0E30\u0E1A\u0E1A\u0E2A\u0E21\u0E32\u0E0A\u0E34\u0E01 \u2014 \u0E04\u0E27\u0E32\u0E21\u0E2A\u0E31\u0E21\u0E1E\u0E31\u0E19\u0E18\u0E4C\u0E02\u0E2D\u0E07\u0E1C\u0E39\u0E49\u0E23\u0E31\u0E1A\u0E42\u0E2D\u0E19\u0E1C\u0E25\u0E1B\u0E23\u0E30\u0E42\u0E22\u0E0A\u0E19\u0E4C",
+    title: "ความสัมพันธ์ผู้รับโอนผลประโยชน์",
+    module: "ค่าคงที่ระบบสมาชิก",
+    subtitle: "ประมวลผลและจัดเก็บ \xB7 ค่าคงที่ระบบสมาชิก \u2014 ความสัมพันธ์ของผู้รับโอนผลประโยชน์",
     cols: [{
       key: 'code',
       label: 'รหัส',
@@ -643,9 +536,9 @@ function ConstResignReasonPage({
   onToast
 }) {
   return /*#__PURE__*/React.createElement(LkTable, {
-    title: "\u0E2A\u0E32\u0E40\u0E2B\u0E15\u0E38\u0E01\u0E32\u0E23\u0E25\u0E32\u0E2D\u0E2D\u0E01",
-    module: "\u0E04\u0E48\u0E32\u0E04\u0E07\u0E17\u0E35\u0E48\u0E23\u0E30\u0E1A\u0E1A\u0E2A\u0E21\u0E32\u0E0A\u0E34\u0E01",
-    subtitle: "\u0E1B\u0E23\u0E30\u0E21\u0E27\u0E25\u0E1C\u0E25\u0E41\u0E25\u0E30\u0E08\u0E31\u0E14\u0E40\u0E01\u0E47\u0E1A \xB7 \u0E04\u0E48\u0E32\u0E04\u0E07\u0E17\u0E35\u0E48\u0E23\u0E30\u0E1A\u0E1A\u0E2A\u0E21\u0E32\u0E0A\u0E34\u0E01 \u2014 \u0E2A\u0E32\u0E40\u0E2B\u0E15\u0E38\u0E01\u0E32\u0E23\u0E25\u0E32\u0E2D\u0E2D\u0E01\u0E08\u0E32\u0E01\u0E01\u0E32\u0E23\u0E40\u0E1B\u0E47\u0E19\u0E2A\u0E21\u0E32\u0E0A\u0E34\u0E01",
+    title: "สาเหตุการลาออก",
+    module: "ค่าคงที่ระบบสมาชิก",
+    subtitle: "ประมวลผลและจัดเก็บ \xB7 ค่าคงที่ระบบสมาชิก \u2014 สาเหตุการลาออกจากการเป็นสมาชิก",
     cols: [{
       key: 'code',
       label: 'รหัส',
@@ -693,9 +586,9 @@ function ConstMemberTypePage({
   onToast
 }) {
   return /*#__PURE__*/React.createElement(LkTable, {
-    title: "\u0E1B\u0E23\u0E30\u0E40\u0E20\u0E17\u0E2A\u0E21\u0E32\u0E0A\u0E34\u0E01",
-    module: "\u0E04\u0E48\u0E32\u0E04\u0E07\u0E17\u0E35\u0E48\u0E23\u0E30\u0E1A\u0E1A\u0E2A\u0E21\u0E32\u0E0A\u0E34\u0E01",
-    subtitle: "\u0E1B\u0E23\u0E30\u0E21\u0E27\u0E25\u0E1C\u0E25\u0E41\u0E25\u0E30\u0E08\u0E31\u0E14\u0E40\u0E01\u0E47\u0E1A \xB7 \u0E04\u0E48\u0E32\u0E04\u0E07\u0E17\u0E35\u0E48\u0E23\u0E30\u0E1A\u0E1A\u0E2A\u0E21\u0E32\u0E0A\u0E34\u0E01 \u2014 \u0E1B\u0E23\u0E30\u0E40\u0E20\u0E17\u0E01\u0E32\u0E23\u0E40\u0E1B\u0E47\u0E19\u0E2A\u0E21\u0E32\u0E0A\u0E34\u0E01\u0E15\u0E32\u0E21\u0E2B\u0E19\u0E48\u0E27\u0E22\u0E07\u0E32\u0E19\u0E15\u0E49\u0E19\u0E2A\u0E31\u0E07\u0E01\u0E31\u0E14",
+    title: "ประเภทสมาชิก",
+    module: "ค่าคงที่ระบบสมาชิก",
+    subtitle: "ประมวลผลและจัดเก็บ \xB7 ค่าคงที่ระบบสมาชิก \u2014 ประเภทการเป็นสมาชิกตามหน่วยงานต้นสังกัด",
     cols: [{
       key: 'code',
       label: 'รหัส',
@@ -707,50 +600,39 @@ function ConstMemberTypePage({
     }],
     seed: [{
       code: '000',
-      name: 'ไม่ระบุ',
-      eligGroup: 'regular'
+      name: 'ไม่ระบุ'
     }, {
       code: '001',
-      name: 'ปณท.',
-      eligGroup: 'regular'
+      name: 'ปณท.'
     }, {
       code: '002',
-      name: 'กสท.',
-      eligGroup: 'regular'
+      name: 'กสท.'
     }, {
       code: '003',
-      name: 'กสทช.',
-      eligGroup: 'regular'
+      name: 'กสทช.'
     }, {
       code: '004',
-      name: 'เกษียณส่วนกลาง',
-      eligGroup: 'regular'
+      name: 'เกษียณส่วนกลาง'
     }, {
       code: '005',
-      name: 'เกษียณส่วนภูมิภาค',
-      eligGroup: 'regular'
+      name: 'เกษียณส่วนภูมิภาค'
     }, {
       code: '006',
-      name: 'ฌปท.',
-      eligGroup: 'regular'
+      name: 'ฌปท.'
     }, {
       code: '007',
-      name: 'สอ.กสท',
-      eligGroup: 'regular'
+      name: 'สอ.กสท'
     }, {
       code: '008',
-      name: 'สหกรณ์ร้านค้า',
-      eligGroup: 'regular'
+      name: 'สหกรณ์ร้านค้า'
     }, {
       code: '009',
-      name: 'สมาชิกสมทบ',
-      eligGroup: 'associate-staff'
+      name: 'สมาชิกสมทบ'
     }, {
       code: '010',
-      name: 'ปณทดบ',
-      eligGroup: 'regular'
+      name: 'ปณทดบ'
     }],
-    storeKey: "const_member_type_v3",
+    storeKey: "const_member_type_v4",
     onToast: onToast
   });
 }
@@ -837,9 +719,9 @@ function ConstShrItemPage({
   onToast
 }) {
   return /*#__PURE__*/React.createElement(LkTable, {
-    title: "\u0E23\u0E2B\u0E31\u0E2A\u0E23\u0E32\u0E22\u0E01\u0E32\u0E23 (ShrItem)",
-    module: "\u0E04\u0E48\u0E32\u0E04\u0E07\u0E17\u0E35\u0E48\u0E23\u0E30\u0E1A\u0E1A\u0E2A\u0E21\u0E32\u0E0A\u0E34\u0E01",
-    subtitle: "\u0E1B\u0E23\u0E30\u0E21\u0E27\u0E25\u0E1C\u0E25\u0E41\u0E25\u0E30\u0E08\u0E31\u0E14\u0E40\u0E01\u0E47\u0E1A \xB7 \u0E04\u0E48\u0E32\u0E04\u0E07\u0E17\u0E35\u0E48\u0E23\u0E30\u0E1A\u0E1A\u0E2A\u0E21\u0E32\u0E0A\u0E34\u0E01 \u2014 \u0E1B\u0E23\u0E30\u0E40\u0E20\u0E17\u0E01\u0E32\u0E23\u0E17\u0E33\u0E23\u0E32\u0E22\u0E01\u0E32\u0E23\u0E2B\u0E38\u0E49\u0E19\u0E41\u0E25\u0E30\u0E23\u0E2B\u0E31\u0E2A\u0E01\u0E23\u0E30\u0E17\u0E1A",
+    title: "รหัสรายการ (ShrItem)",
+    module: "ค่าคงที่ระบบสมาชิก",
+    subtitle: "ประมวลผลและจัดเก็บ \xB7 ค่าคงที่ระบบสมาชิก \u2014 ประเภทการทำรายการหุ้นและรหัสกระทบ",
     cols: [{
       key: 'code',
       label: 'รหัสสายการ',
@@ -871,9 +753,9 @@ function ConstMemberStatusPage({
   onToast
 }) {
   return /*#__PURE__*/React.createElement(LkTable, {
-    title: "\u0E2A\u0E16\u0E32\u0E19\u0E30\u0E01\u0E32\u0E23\u0E40\u0E1B\u0E47\u0E19\u0E2A\u0E21\u0E32\u0E0A\u0E34\u0E01",
-    module: "\u0E04\u0E48\u0E32\u0E04\u0E07\u0E17\u0E35\u0E48\u0E23\u0E30\u0E1A\u0E1A\u0E2A\u0E21\u0E32\u0E0A\u0E34\u0E01",
-    subtitle: "\u0E1B\u0E23\u0E30\u0E21\u0E27\u0E25\u0E1C\u0E25\u0E41\u0E25\u0E30\u0E08\u0E31\u0E14\u0E40\u0E01\u0E47\u0E1A \xB7 \u0E04\u0E48\u0E32\u0E04\u0E07\u0E17\u0E35\u0E48\u0E23\u0E30\u0E1A\u0E1A\u0E2A\u0E21\u0E32\u0E0A\u0E34\u0E01 \u2014 \u0E23\u0E2B\u0E31\u0E2A\u0E2A\u0E16\u0E32\u0E19\u0E30\u0E2A\u0E21\u0E32\u0E0A\u0E34\u0E01\u0E41\u0E25\u0E30\u0E01\u0E25\u0E38\u0E48\u0E21\u0E2A\u0E16\u0E32\u0E19\u0E30",
+    title: "สถานะการเป็นสมาชิก",
+    module: "ค่าคงที่ระบบสมาชิก",
+    subtitle: "ประมวลผลและจัดเก็บ \xB7 ค่าคงที่ระบบสมาชิก \u2014 รหัสสถานะสมาชิกและกลุ่มสถานะ",
     cols: [{
       key: 'code',
       label: 'รหัส',
@@ -936,9 +818,9 @@ function ConstStatusNotePage({
   onToast
 }) {
   return /*#__PURE__*/React.createElement(LkTable, {
-    title: "\u0E2B\u0E21\u0E32\u0E22\u0E40\u0E2B\u0E15\u0E38\u0E2A\u0E16\u0E32\u0E19\u0E30",
-    module: "\u0E04\u0E48\u0E32\u0E04\u0E07\u0E17\u0E35\u0E48\u0E23\u0E30\u0E1A\u0E1A\u0E2A\u0E21\u0E32\u0E0A\u0E34\u0E01",
-    subtitle: "\u0E1B\u0E23\u0E30\u0E21\u0E27\u0E25\u0E1C\u0E25\u0E41\u0E25\u0E30\u0E08\u0E31\u0E14\u0E40\u0E01\u0E47\u0E1A \xB7 \u0E04\u0E48\u0E32\u0E04\u0E07\u0E17\u0E35\u0E48\u0E23\u0E30\u0E1A\u0E1A\u0E2A\u0E21\u0E32\u0E0A\u0E34\u0E01 \u2014 \u0E2B\u0E21\u0E32\u0E22\u0E40\u0E2B\u0E15\u0E38\u0E1B\u0E23\u0E30\u0E01\u0E2D\u0E1A\u0E2A\u0E16\u0E32\u0E19\u0E30\u0E2A\u0E21\u0E32\u0E0A\u0E34\u0E01",
+    title: "หมายเหตุสถานะ",
+    module: "ค่าคงที่ระบบสมาชิก",
+    subtitle: "ประมวลผลและจัดเก็บ \xB7 ค่าคงที่ระบบสมาชิก \u2014 หมายเหตุประกอบสถานะสมาชิก",
     cols: [{
       key: 'code',
       label: 'รหัส',

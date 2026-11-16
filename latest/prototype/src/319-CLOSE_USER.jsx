@@ -28,7 +28,7 @@ function DepCloseAccountPage({ onToast }) {
     const days = Math.max(0, Math.round((cd - yStart) / 86400000));
     return Math.round(cur.balance * (cur.rate / 100) * days / 365 * 100) / 100;
   }, [cur, closeDate]);
-  const isFixed = cur && cur.typeCode.startsWith('F');
+  const isFixed = cur && window.depIsFixedType(cur.typeCode);
   const wht = isFixed ? Math.round(accrued * 0.15 * 100) / 100 : 0;
   const isFixedEarly = cur && isFixed && cur.maturityDate && cur.maturityDate > closeDate;
   const closeFee = isFixedEarly ? Math.round(cur.balance * 0.005 * 100) / 100 : 0;

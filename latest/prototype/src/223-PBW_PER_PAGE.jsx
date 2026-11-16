@@ -50,7 +50,7 @@ function PbwPrintModal({ q, rows, cfg, onClose, onPrint }) {
         <div className="modal-body">
           <div className="dpc-rows" style={{ padding: 0 }}>
             <div className="dpc-srow"><span className="dpc-lbl">ชื่อบัญชี</span><span className="dpc-ro">{q.name}</span></div>
-            <div className="dpc-srow"><span className="dpc-lbl">เลขที่สมุด</span><span className="dpc-ro yl mono">{q.bookNo}</span></div>
+            <div className="dpc-srow"><span className="dpc-lbl">เลขที่สมุด</span><span className="dpc-ro yl mono">{pbwBookLabel(q.bookNo)}</span></div>
             <div className="dpc-srow"><span className="dpc-lbl">ตั้งแต่รายการ</span>
               <div className="pbw-range">
                 <input className="cfg-input mono num" value={from} onChange={(e) => setFrom(e.target.value)} />
@@ -77,15 +77,70 @@ function PbwPrintModal({ q, rows, cfg, onClose, onPrint }) {
   );
 }
 
+const PBW_NEWBOOK_REASONS = ['สมุดเต็มเล่ม', 'สมุดสูญหาย', 'สมุดชำรุด', 'อื่นๆ'];
+const PBW_BOOK_ST = { active: { l: 'ใช้งาน', p: 'ok' }, closed: { l: 'ปิดเล่ม', p: '' }, lost: { l: 'สูญหาย', p: 'bad' }, damaged: { l: 'ชำรุด', p: 'warn' }, full: { l: 'เต็มเล่ม', p: '' } };
+const pbwBookLabel = (no) => (window.depBookLabel ? window.depBookLabel(no) : no) || '—';
+
+function PbwNewBookModal({ acc, bookNo, onClose, onOk }) {
+  const [reason, setReason] = useState(PBW_NEWBOOK_REASONS[0]);
+  const [other, setOther] = useState('');
+  const today = window.dpcToday ? window.dpcToday() : new Date().toISOString().slice(0, 10);
+  const nextNo = window.depBookPeek ? window.depBookPeek(acc, today) : '';
+  let st = null;
+  try { st = ((window.datLoad ? window.datLoad() : []).find(t => t.code === acc.typeCode) || {}).settings || null; } catch (e) {}
+  const lostFee = reason === 'สมุดสูญหาย' && st && st.lostBookPenaltyOn ? Number(st.lostBookFee) || 0 : 0;
+  const ok = nextNo && (reason !== 'อื่นๆ' || other.trim());
+  return (
+    <>
+      <div className="modal-backdrop" onClick={onClose} />
+      <div className="modal-card" role="dialog" aria-modal="true" style={{ width: 520, maxWidth: '94vw', padding: 0 }}>
+        <div className="modal-head">
+          <span className="gc-modal-ico"><Icon name="plus" size={16} /></span>
+          <h2>ออกสมุดคู่ฝากเล่มใหม่</h2>
+          <button className="close-btn" onClick={onClose} aria-label="ปิด"><Icon name="close" size={14} /></button>
+        </div>
+        <div className="modal-body">
+          <div className="dpc-rows" style={{ padding: 0 }}>
+            <div className="dpc-srow"><span className="dpc-lbl">ชื่อบัญชี</span><span className="dpc-ro">{acc.name}</span></div>
+            <div className="dpc-srow"><span className="dpc-lbl">เล่มเดิม</span><span className="dpc-ro mono">{pbwBookLabel(bookNo)}</span></div>
+            <div className="dpc-srow"><span className="dpc-lbl">เหตุผล</span>
+              <select className="cfg-input" value={reason} onChange={(e) => setReason(e.target.value)}>
+                {PBW_NEWBOOK_REASONS.map(r => <option key={r} value={r}>{r}</option>)}
+              </select></div>
+            {reason === 'อื่นๆ' && <div className="dpc-srow"><span className="dpc-lbl">ระบุเหตุผล</span><input className="cfg-input" value={other} onChange={(e) => setOther(e.target.value)} placeholder="ระบุเหตุผล" /></div>}
+            <div className="dpc-srow"><span className="dpc-lbl">เลขที่สมุดใหม่</span><span className="dpc-ro yl mono">{nextNo ? pbwBookLabel(nextNo) : 'ประเภทเงินฝากนี้กำหนดไม่มีสมุด'}</span></div>
+          </div>
+          {lostFee > 0 && <div className="dat-warn" style={{ marginTop: 10 }}><Icon name="info" size={14} /><span>สมุดสูญหาย — ค่าธรรมเนียมตามประเภทเงินฝาก <b>{fmt.money(lostFee, 2)} บาท</b></span></div>}
+          {!nextNo && <div className="muted" style={{ fontSize: 11.5, marginTop: 8 }}><Icon name="info" size={11} /> กำหนดได้ที่ ค่าคงที่ › ประเภทเงินฝาก (การถือสมุด)</div>}
+        </div>
+        <div className="modal-foot">
+          <button className="btn" onClick={onClose}>ปิด</button>
+          <button className="btn primary" disabled={!ok} onClick={() => onOk({ reason: reason === 'อื่นๆ' ? other.trim() : reason, kind: reason, lostFee })}>
+            <Icon name="check" /> ออกสมุดเล่มใหม่
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
+
 function DepPassbookWorkPage({ onToast }) {
   const audit = React.useContext(window.AuditContext || React.createContext({ log: () => {} }));
   const cfg = window.DEP_PASSBOOK_SEED;
-  const accounts = window.depTxnLoadAccounts();
+  const [accTick, setAccTick] = useState(0);
+  const accounts = React.useMemo(() => window.depTxnLoadAccounts(), [accTick]);
   const ledger = window.depTxnLoadLedger ? window.depTxnLoadLedger() : [];
-  const [queue, setQueue] = useState(() => window.DEP_PASSBOOK_QUEUE_SEED.map((q, i) => ({
-    ...q, bookNo: String(20317 + i * 118).padStart(10, '0'), bookSeq: 1,
+  // เลขที่สมุดดึงจากบัญชี (ไม่มี → เลขเดิมของระบบเก่า)
+  const [queue0, setQueue] = useState(() => window.DEP_PASSBOOK_QUEUE_SEED.map((q, i) => ({
+    ...q, legacyBookNo: String(20317 + i * 118).padStart(10, '0'),
     pending: q.pending.map(p => ({ ...p })),
   })));
+  const queue = queue0.map(q => {
+    const a = accounts.find(x => x.accNo === q.accNo);
+    const hist = (a && a.bookHistory) || [];
+    return { ...q, bookNo: (a && a.certNo) || q.legacyBookNo, bookSeq: Math.max(1, hist.length), bookHistory: hist };
+  });
+  const [newBookOpen, setNewBookOpen] = useState(false);
   const [sel, setSel] = useState(null);
   const [page, setPage] = useState(1);
   const [modal, setModal] = useState(false);
@@ -111,7 +166,7 @@ function DepPassbookWorkPage({ onToast }) {
   const doPrintBook = (opt) => {
     setModal(false);
     fireBrowserPrint();
-    setQueue(queue.map(x => x.accNo === cur.accNo ? { ...x, lastLine: (x.lastLine || 0) + x.pending.length, pending: [] } : x));
+    setQueue(queue0.map(x => x.accNo === cur.accNo ? { ...x, lastLine: (x.lastLine || 0) + x.pending.length, pending: [] } : x));
     audit.log({ action: 'print', module: 'เงินฝาก — พิมพ์สมุด–สลิป', target: `${cur.accNo} · ${cur.name}`,
       summary: `พิมพ์สมุดคู่ฝาก ${opt.count} รายการ (รายการที่ ${opt.from}–${opt.to}) หน้า ${opt.page} บรรทัดที่ ${opt.line}` });
     onToast && onToast(`พิมพ์สมุดคู่ฝากบัญชี ${cur.accNo} จำนวน ${opt.count} รายการ`);
@@ -124,12 +179,24 @@ function DepPassbookWorkPage({ onToast }) {
     onToast && onToast(`พิมพ์สลิปรายการ ${r.txnId} — ${r.desc}`);
   };
 
-  const newBook = () => {
-    setQueue(queue.map(x => x.accNo === cur.accNo
-      ? { ...x, bookSeq: (x.bookSeq || 1) + 1, bookNo: String(Number(x.bookNo) + 1).padStart(10, '0'), lastLine: 0 } : x));
+  const newBook = ({ reason, kind }) => {
+    if (!accRec) return;
+    const today = window.dpcToday ? window.dpcToday() : new Date().toISOString().slice(0, 10);
+    const no = window.depBookIssue ? window.depBookIssue(accRec, today) : '';
+    if (!no) return;
+    const stOld = kind === 'สมุดสูญหาย' ? 'lost' : kind === 'สมุดชำรุด' ? 'damaged' : kind === 'สมุดเต็มเล่ม' ? 'full' : 'closed';
+    const hist0 = accRec.bookHistory && accRec.bookHistory.length ? accRec.bookHistory
+      : (cur.bookNo ? [{ no: cur.bookNo, status: 'active', issuedAt: accRec.openDate || '', reason: window.depBookValid && window.depBookValid(cur.bookNo) ? 'เปิดบัญชี' : 'สมุดเดิม (ระบบเก่า)' }] : []);
+    const hist = [{ no, issuedAt: today, reason, status: 'active', by: window.DEP_OPS_USER },
+      ...hist0.map(h => h.status === 'active' ? { ...h, status: stOld, closedAt: today, closeReason: reason } : h)];
+    const all = window.depTxnLoadAccounts().map(a => a.accNo === accRec.accNo ? { ...a, certNo: no, noBook: false, bookHistory: hist } : a);
+    window.depTxnSaveAccounts(all); setAccTick(t => t + 1);
+    setQueue(queue0.map(x => x.accNo === cur.accNo ? { ...x, lastLine: 0 } : x));
+    setNewBookOpen(false);
     audit.log({ action: 'create', module: 'เงินฝาก — พิมพ์สมุด–สลิป', target: `${cur.accNo} · ${cur.name}`,
-      summary: `ออกสมุดคู่ฝากเล่มใหม่ (เล่มที่ ${(cur.bookSeq || 1) + 1})` });
-    onToast && onToast(`ออกสมุดเล่มใหม่ให้บัญชี ${cur.accNo} แล้ว — เริ่มพิมพ์บรรทัดที่ 1`);
+      summary: `ออกสมุดคู่ฝากเล่มใหม่ ${pbwBookLabel(no)} (เล่มที่ ${hist.length}) — ${reason}`,
+      changes: [{ field: 'เลขที่สมุด', before: pbwBookLabel(cur.bookNo), after: pbwBookLabel(no) }] });
+    onToast && onToast(`ออกสมุดเล่มใหม่ ${window.depBookFmt ? window.depBookFmt(no) : no} ให้บัญชี ${cur.accNo} แล้ว — เริ่มพิมพ์บรรทัดที่ 1`);
   };
 
   const reprintCover = () => {
@@ -159,7 +226,7 @@ function DepPassbookWorkPage({ onToast }) {
         <span className="spacer" />
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           <button className="btn primary sm" disabled={!cur || !pendingCount} onClick={() => setModal(true)}><Icon name="print" /> พิมพ์สมุด{pendingCount ? ` (${pendingCount})` : ''}</button>
-          <button className="btn sm" disabled={!cur} onClick={newBook}><Icon name="plus" /> ออกสมุดใหม่</button>
+          <button className="btn sm" disabled={!cur || !accRec} onClick={() => setNewBookOpen(true)}><Icon name="plus" /> ออกสมุดใหม่</button>
           <button className="btn sm danger" disabled={!cur} onClick={reprintCover}><Icon name="print" /> Reprint ปกสมุด</button>
         </div>
       </div>
@@ -185,7 +252,7 @@ function DepPassbookWorkPage({ onToast }) {
           <div className="dpc-srow"><span className="dpc-lbl">ยอดคงเหลือ</span><span className="dpc-ro num mono">{accRec ? fmt.money(accRec.balance, 2) : '0.00'}</span></div>
           <div className="dpc-srow"><span className="dpc-lbl">ประเภทบัญชี</span><span className="dpc-ro">{accRec ? `${accRec.typeCode}  ${accRec.type}` : (cur ? cur.type : '—')}</span></div>
           <div className="dpc-srow"><span className="dpc-lbl">ยอดถอนได้</span><span className="dpc-ro num mono neg">{accRec ? fmt.money(withdrawable, 2) : '0.00'}</span></div>
-          <div className="dpc-srow"><span className="dpc-lbl">เลขที่สมุด</span><span className="dpc-ro mono">{cur ? cur.bookNo : '—'}</span></div>
+          <div className="dpc-srow"><span className="dpc-lbl">เลขที่สมุด</span><span className="dpc-ro mono" title={cur ? pbwBookLabel(cur.bookNo) : ''}>{cur ? pbwBookLabel(cur.bookNo) : '—'}</span></div>
           <div className="dpc-srow"><span className="dpc-lbl">พิมพ์ล่าสุดบรรทัด</span><span className="dpc-ro mono center">{cur ? cur.lastLine : '—'}</span></div>
         </div>
       </div>
@@ -203,7 +270,7 @@ function DepPassbookWorkPage({ onToast }) {
                     <td className="mono">{q.accNo}</td>
                     <td><div className="lt-row-name">{q.name}</div><div className="lt-row-note muted mono">{q.member}</div></td>
                     <td style={{ fontSize: 12 }}>{q.type}</td>
-                    <td className="center mono">{q.bookNo}</td>
+                    <td className="center mono">{window.depBookFmt ? window.depBookFmt(q.bookNo) : q.bookNo}</td>
                     <td className="center">{q.pending.length ? <span className="pill warn">{q.pending.length}</span> : <span className="pill ok">ครบ</span>}</td>
                     <td className="center"><button className="btn ghost sm">เปิด <Icon name="chevRight" size={12} /></button></td>
                   </tr>
@@ -269,9 +336,40 @@ function DepPassbookWorkPage({ onToast }) {
           </div>
 
           <div className="lt-list-foot muted"><Icon name="info" size={12} /> ช่องพิมพ์ Book ที่ติ๊กแล้วคือรายการที่ปรับลงสมุดเรียบร้อย · แถวไฮไลต์คือบรรทัดที่ยังรอปรับสมุด</div>
+
+          {/* ทะเบียนสมุดของบัญชี */}
+          <div className="search-card" style={{ padding: 0, overflow: 'hidden', marginTop: 12 }}>
+            <div className="dat-section-head"><span className="dat-section-ico"><Icon name="report" size={15} /></span>
+              <div className="dat-section-title">ทะเบียนสมุดคู่ฝาก<span className="muted" style={{ fontWeight: 400 }}> · {Math.max(1, cur.bookHistory.length)} เล่ม</span></div></div>
+            <div className="table-wrap" style={{ margin: 16 }}><div className="table-scroll">
+              <table className="tbl" style={{ minWidth: 760 }}>
+                <thead><tr>
+                  <th className="center" style={{ width: 62 }}>เล่มที่</th><th>เลขที่สมุด</th>
+                  <th className="center" style={{ width: 120 }}>วันที่ออก</th><th>เหตุผลที่ออก</th>
+                  <th className="center" style={{ width: 110 }}>สถานะ</th><th>หมายเหตุ</th>
+                </tr></thead>
+                <tbody>
+                  {(cur.bookHistory.length ? cur.bookHistory : [{ no: cur.bookNo, status: 'active', issuedAt: accRec ? accRec.openDate : '', reason: 'เปิดบัญชี' }]).map((h, i, arr) => {
+                    const st = PBW_BOOK_ST[h.status] || { l: h.status || '—', p: '' };
+                    return (
+                      <tr key={h.no + '-' + i}>
+                        <td className="center mono">{arr.length - i}</td>
+                        <td className="mono">{pbwBookLabel(h.no)}</td>
+                        <td className="center mono">{h.issuedAt ? fmt.date(h.issuedAt) : '—'}</td>
+                        <td>{h.reason || '—'}</td>
+                        <td className="center"><span className={'pill ' + st.p}>{st.l}</span></td>
+                        <td className="muted">{h.closedAt ? 'ปิดเล่ม ' + fmt.date(h.closedAt) + (h.closeReason ? ' · ' + h.closeReason : '') : (window.depBookValid && !window.depBookValid(h.no) ? 'เลขระบบเดิม' : '—')}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div></div>
+          </div>
         </>
       )}
 
+      {newBookOpen && cur && accRec && <PbwNewBookModal acc={accRec} bookNo={cur.bookNo} onClose={() => setNewBookOpen(false)} onOk={newBook} />}
       {modal && cur && <PbwPrintModal q={cur} rows={rows} cfg={cfg} onClose={() => setModal(false)} onPrint={doPrintBook} />}
     </div>
   );

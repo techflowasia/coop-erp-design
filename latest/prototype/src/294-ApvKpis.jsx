@@ -333,10 +333,11 @@ function SubsystemLinkPage({ onToast }) {
                   <td className="mono" style={{ fontSize: 11.5 }}>{window.fmt.date(r.last)}</td>
                   <td className="center">
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                      <button className={"ac-switch" + (r.enabled ? ' on' : '')} onClick={() => toggle(i)} aria-pressed={r.enabled}>
-                        <span className="ac-switch-track"><span className="ac-switch-knob" /></span>
-                      </button>
-                      <span style={{ fontSize: 12 }}>{r.enabled ? 'ใช้งาน' : 'ไม่ใช้งาน'}</span>
+                      <window.ConstSwitch on={r.enabled}
+                        onClick={() => window.depConfirmOff(r.enabled, r.sys + ' · ' + r.event, () => toggle(i),
+                          'เหตุการณ์นี้จะไม่ส่งรายการเข้าระบบบัญชี', 'ปิดการใช้งานการเชื่อมโยง',
+                          { effectOn: 'เหตุการณ์นี้จะส่งรายการเข้าระบบบัญชีอีกครั้ง' })} />
+                      <window.ConstStatusPill on={r.enabled} />
                     </span>
                   </td>
                 </tr>

@@ -6,10 +6,57 @@
 
 const DPC_USER = 'จันทร์เพ็ญ มาลี';
 
+// ─── รหัสประเภทเงินฝาก: ระบบเดิมเริ่มที่ 10 (ตรงกับรหัสคุมเลขที่บัญชี DPACCDOCNO10…16) ───
+//     รหัสเก่า (S01/S02/F12/…) → รหัสใหม่ — ย้ายข้อมูลที่บันทึกไว้ในเครื่องให้อัตโนมัติ (ครั้งเดียว)
+window.DEP_TYPE_CODE_MAP = { S01: '10', S02: '11', F12: '12', L90: '13', W10: '14', T01: '15', T02: '16' };
+window.depTypeCodeNorm = (c) => { const k = String(c == null ? '' : c).trim(); return window.DEP_TYPE_CODE_MAP[k.toUpperCase()] || k; };
+(function depTypeCodeMigrate() {
+  try {
+    if (localStorage.getItem('dep_typecode_mig_v1') === '1') return;
+    const MAP = window.DEP_TYPE_CODE_MAP;
+    const rx = /^(S01|S02|F12|L90|W10|T01|T02)(?=\s|$)/;
+    const fix = (v) => (typeof v === 'string' && rx.test(v)) ? v.replace(rx, (m) => MAP[m]) : v;
+    const FIELDS = { typeCode: 1, depType: 1, accTypeCode: 1, depTypeCode: 1, typeChangedFrom: 1, abbr: 1 };
+    const walk = (o, top) => {
+      if (Array.isArray(o)) return o.map((x) => walk(x, top));
+      if (!o || typeof o !== 'object') return o;
+      const out = {};
+      Object.keys(o).forEach((k) => {
+        let v = o[k];
+        if (FIELDS[k] || (top && k === 'code')) v = fix(v);
+        else if ((k === 'accTypes' || k === 'typeCodes') && Array.isArray(v)) v = v.map(fix);
+        else if (v && typeof v === 'object') v = walk(v, false);
+        out[k] = v;
+      });
+      return out;
+    };
+    const CODE_KEYS = { dep_acctypes_v2: 1, dep_rates: 1 };
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!/^dep_/.test(key || '')) continue;
+      const raw = localStorage.getItem(key);
+      if (!raw || !/(S01|S02|F12|L90|W10|T01|T02)/.test(raw)) continue;
+      let val; try { val = JSON.parse(raw); } catch (e) { continue; }
+      const nv = JSON.stringify(walk(val, !!CODE_KEYS[key]));
+      if (nv !== raw) localStorage.setItem(key, nv);
+    }
+    localStorage.setItem('dep_typecode_mig_v1', '1');
+  } catch (e) {}
+})();
+// ฝากประจำ (มีระยะเวลา) — ดูจากค่าคงที่ประเภทเงินฝาก (กลุ่ม fixed / มีกำหนดระยะเวลา)
+window.depIsFixedType = (code) => {
+  const c = window.depTypeCodeNorm(code);
+  try {
+    const r = (window.datLoad ? window.datLoad() : []).find((t) => t.code === c);
+    if (r && r.settings) return r.settings.depGroup === 'fixed' || !!r.settings.hasTerm || !!r.settings.fixedTerm;
+  } catch (e) {}
+  return c === '12' || /^F/i.test(c);
+};
+
 // ─── 1. ประเภทบัญชีเงินฝาก ───────────────────────────────────────────
 window.DEP_ACCTYPE_SEED = [
   {
-    id: 'DAT-01', code: 'S01', name: 'ออมทรัพย์', enabled: true,
+    id: 'DAT-01', code: '10', name: 'ออมทรัพย์', enabled: true,
     createdDate: '2008-01-05', createdBy: 'ประภาส ทองสุข',
     note: 'บัญชีออมทรัพย์ทั่วไป ถอนได้ตลอด',
     cond:   { minOpen: 100, minBalance: 100, limitPerMember: false, maxPerMember: 0 },
@@ -20,7 +67,7 @@ window.DEP_ACCTYPE_SEED = [
     control: { needApprove: false, loanDisburse: false },
   },
   {
-    id: 'DAT-02', code: 'S02', name: 'ออมทรัพย์พิเศษ', enabled: true,
+    id: 'DAT-02', code: '11', name: 'ออมทรัพย์พิเศษ', enabled: true,
     createdDate: '2010-04-01', createdBy: 'ประภาส ทองสุข',
     note: 'ดอกเบี้ยสูงกว่า ถอนฟรี 1 ครั้ง/เดือน',
     cond:   { minOpen: 10000, minBalance: 1000, limitPerMember: true, maxPerMember: 3 },
@@ -31,7 +78,7 @@ window.DEP_ACCTYPE_SEED = [
     control: { needApprove: false, loanDisburse: false },
   },
   {
-    id: 'DAT-03', code: 'F12', name: 'ฝากประจำ 12 เดือน', enabled: true,
+    id: 'DAT-03', code: '12', name: 'ฝากประจำ 12 เดือน', enabled: true,
     createdDate: '2012-06-01', createdBy: 'ประภาส ทองสุข',
     note: 'ฝากประจำ ครบกำหนด 12 เดือน หักภาษี ณ ที่จ่าย',
     cond:   { minOpen: 50000, minBalance: 50000, limitPerMember: false, maxPerMember: 0 },
@@ -42,7 +89,7 @@ window.DEP_ACCTYPE_SEED = [
     control: { needApprove: false, loanDisburse: false },
   },
   {
-    id: 'DAT-04', code: 'L90', name: 'เงินฝากเพื่อรับเงินกู้พิเศษ', enabled: true,
+    id: 'DAT-04', code: '13', name: 'เงินฝากเพื่อรับเงินกู้พิเศษ', enabled: true,
     createdDate: '2018-09-10', createdBy: 'ประภาส ทองสุข',
     note: 'บัญชีรับเงินกู้พิเศษเป็นงวด ๆ — ต้องได้รับอนุมัติจากแผนกประมวลผลก่อนเปิด',
     cond:   { minOpen: 0, minBalance: 0, limitPerMember: true, maxPerMember: 1 },
@@ -53,7 +100,7 @@ window.DEP_ACCTYPE_SEED = [
     control: { needApprove: true, loanDisburse: true },
   },
   {
-    id: 'DAT-05', code: 'W10', name: 'เงินฝากสำหรับหัก ฌปท / ฌาปนกิจ', enabled: true,
+    id: 'DAT-05', code: '14', name: 'เงินฝากสำหรับหัก ฌปท / ฌาปนกิจ', enabled: true,
     createdDate: '2016-01-15', createdBy: 'ประภาส ทองสุข',
     note: 'พักเงินเพื่อหักเข้ากองทุนสวัสดิการอัตโนมัติ',
     cond:   { minOpen: 0, minBalance: 0, limitPerMember: true, maxPerMember: 1 },
@@ -64,7 +111,7 @@ window.DEP_ACCTYPE_SEED = [
     control: { needApprove: false, loanDisburse: false },
   },
   {
-    id: 'DAT-06', code: 'T01', name: 'บัญชีรับโอนจากระบบเงินกู้', enabled: true,
+    id: 'DAT-06', code: '15', name: 'บัญชีรับโอนจากระบบเงินกู้', enabled: true,
     createdDate: '2019-03-01', createdBy: 'ประภาส ทองสุข',
     note: 'บัญชีพักรับโอนจากระบบเงินกู้',
     cond:   { minOpen: 0, minBalance: 0, limitPerMember: false, maxPerMember: 0 },
@@ -75,7 +122,7 @@ window.DEP_ACCTYPE_SEED = [
     control: { needApprove: false, loanDisburse: false },
   },
   {
-    id: 'DAT-07', code: 'T02', name: 'บัญชีรับโอนจากตัวแทน', enabled: false,
+    id: 'DAT-07', code: '16', name: 'บัญชีรับโอนจากตัวแทน', enabled: false,
     createdDate: '2020-07-01', createdBy: 'ประภาส ทองสุข',
     note: 'บัญชีพักรับโอนจากตัวแทน — ปิดใช้งานชั่วคราว',
     cond:   { minOpen: 0, minBalance: 0, limitPerMember: false, maxPerMember: 0 },
@@ -95,7 +142,7 @@ window.DEP_INT_METHODS = {
 // ─── 2. อัตราดอกเบี้ยเงินฝาก (ตามช่วงยอดเงิน + ประวัติ) ───────────────
 window.DEP_RATE_SEED = [
   {
-    id: 'DR-01', code: 'S01', name: 'ออมทรัพย์', enabled: true,
+    id: 'DR-01', code: '10', name: 'ออมทรัพย์', enabled: true,
     createdDate: '2008-01-05', createdBy: 'ประภาส ทองสุข',
     note: 'อัตราเดียวทุกช่วงยอด',
     rates: [
@@ -104,7 +151,7 @@ window.DEP_RATE_SEED = [
     ],
   },
   {
-    id: 'DR-02', code: 'S02', name: 'ออมทรัพย์พิเศษ', enabled: true,
+    id: 'DR-02', code: '11', name: 'ออมทรัพย์พิเศษ', enabled: true,
     createdDate: '2010-04-01', createdBy: 'ประภาส ทองสุข',
     note: 'คิดดอกเบี้ยขั้นบันไดตามยอดเงิน',
     rates: [
@@ -114,7 +161,7 @@ window.DEP_RATE_SEED = [
     ],
   },
   {
-    id: 'DR-03', code: 'F12', name: 'ฝากประจำ 12 เดือน', enabled: true,
+    id: 'DR-03', code: '12', name: 'ฝากประจำ 12 เดือน', enabled: true,
     createdDate: '2012-06-01', createdBy: 'ประภาส ทองสุข',
     note: 'หักภาษี ณ ที่จ่าย 15%',
     rates: [

@@ -84,10 +84,9 @@ window.LP_OPTS = {
   ],
   limitMethod: [
     { v: '1', l: '1 : ตามหลักประกัน' },
-    { v: '2', l: '2 : ตามสิทธิการกู้ (เท่าเงินเดือน/ค่าหุ้น)' },
-    { v: '4', l: '3 : คิดจากเงินเดือนคงเหลือ' },
-    { v: '5', l: '4 : รวมหนี้เก่าที่หักกลบ' },
-    { v: '6', l: '5 : ปันผลเฉลี่ยคืน' },
+    { v: '2', l: '2 : แบบกำหนดเอง' },
+    { v: '5', l: '3 : รวมหนี้เก่าที่หักกลบ' },
+    { v: '6', l: '4 : ปันผลเฉลี่ยคืน' },
   ],
   periodRef: [
     { v: '1', l: '1 : งวดหุ้น' },
@@ -653,7 +652,7 @@ window.LP_SEED = [
     settings: {
       ...window.LP_SETTINGS_DEFAULTS,
       group: 'emergency', loanGroup: 'emergency',
-      maxLoanAmount: 50000.00, limitGroup: 'g-emer', limitMethod: '4',
+      maxLoanAmount: 50000.00, limitGroup: 'g-emer', limitMethod: '2',
       instantApprove: 'yes', maxContracts: 1, rateTable: 'INT10',
       needCollateral: false, allowPersonGuar: false, loanInsurance: '0',
       repayMode: '1', roundLoanFactor: '100',
@@ -771,7 +770,7 @@ window.LP_SEED = [
     settings: {
       ...window.LP_SETTINGS_DEFAULTS,
       group: 'normal', loanGroup: 'normal',
-      maxLoanAmount: 200000.00, limitGroup: 'g-normal-ctl', limitMethod: '4',
+      maxLoanAmount: 200000.00, limitGroup: 'g-normal-ctl', limitMethod: '2',
       rateTable: 'INT40', maxContracts: 1, instantApprove: 'no',
       checkSalaryRemain: false, projectClosed: true,
     },
@@ -799,6 +798,8 @@ window.LP_SEED = [
       ...window.LP_SETTINGS_DEFAULTS,
       group: 'normal', loanGroup: 'normal',
       maxLoanAmount: 500000.00, limitGroup: 'g-normal', limitMethod: '6',
+      // สิทธิกู้ปันผล-เฉลี่ยคืน (วิธีกำหนดสิทธิ = ปันผลเฉลี่ยคืน)
+      divNextPayDate: '2027-03-31', divCalcYear: '2569', divRightPct: 80, divCremationPct: 10, divMinNet: 1000,
       rateTable: 'INT50', maxContracts: 1,
       eligibleMemberTypes: ['regular', 'associate-staff', 'associate-kin'],
       maxTimesPerYear: 1, maxTimesTotal: 0,

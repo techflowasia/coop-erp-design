@@ -238,22 +238,62 @@ function LcRefCard({ rec, pool, onPick, error }) {
   );
 }
 
+// ── ตรวจหลักทรัพย์ 1 รายการก่อนบันทึก (คืนรายการข้อความแจ้ง — ว่าง = ผ่าน) ──
+window.lcValidate = function (rec) {
+  const errs = [];
+  if (!rec) return errs;
+  const blank = (v) => v === '' || v == null;
+  const isNum = (v) => blank(v) || /^-?\d+(\.\d+)?$/.test(String(v).replace(/,/g, '').trim());
+  const numCheck = (v, label) => { if (!isNum(v)) errs.push(label + 'ต้องเป็นตัวเลข'); };
+  const TT = window.LC_TITLE_TYPES || [];
+  // ราคาประเมิน — กรอกชื่อผู้ประเมิน/เลขใบอนุญาตแล้ว ต้องมีราคา
+  [['company', 'บริษัท', 'licensedPrice'], ['gov', 'หน่วยงานราชการ', 'govPrice'], ['coop', 'สหกรณ์', 'coopPrice']].forEach(([k, label, price]) => {
+    const named = String(rec[k + 'Appraiser'] || '').trim() || String(rec[k + 'AppraiserLicense'] || '').trim();
+    if (named && blank(rec[price])) errs.push('กรุณากรอกราคาประเมินของแถวที่ระบุผู้ประเมิน (' + label + ')');
+  });
+  [['licensedPrice', 'ราคาประเมิน (บริษัท)'], ['govPrice', 'ราคาประเมิน (หน่วยงานราชการ)'], ['coopPrice', 'ราคาประเมิน (สหกรณ์)'],
+   ['govPerWa', 'ราคาประเมินราชการ (บาท/ตารางวา)'], ['coopPerSqm', 'ราคาประเมินสหกรณ์ (บาท/ตารางเมตร)'],
+   ['maxGuarPct', 'ค้ำประกันสูงสุด'], ['summaryPrice', 'สรุปราคาประเมิน']].forEach(([k, l]) => numCheck(rec[k], l));
+  // เนื้อที่ (ประเภทที่ดิน)
+  if (TT.includes(rec.type)) {
+    numCheck(rec.rai, 'ไร่'); numCheck(rec.ngan, 'งาน'); numCheck(rec.wa, 'ตารางวา');
+    if (isNum(rec.wa) && !blank(rec.wa) && Number(String(rec.wa).replace(/,/g, '')) >= 100) errs.push('ตารางวาต้องน้อยกว่า 100');
+  }
+  if (rec.type === 'ห้องชุด') { const c = rec.condo || {}; numCheck(c.areaSqm, 'เนื้อที่ห้องชุด (ตารางเมตร)'); }
+  if (rec.type === 'สิ่งปลูกสร้าง') {
+    const b = rec.building || {};
+    [['floors', 'จำนวนชั้น'], ['usableArea', 'พื้นที่ใช้สอย'], ['width', 'ความกว้าง'], ['length', 'ความยาว'],
+     ['buildAppraisal', 'ราคาประเมินอาคาร'], ['depreciation', 'ค่าเสื่อมราคา (%)'], ['residualValue', 'มูลค่าคงเหลือ'], ['totalValue', 'มูลค่ารวม']]
+      .forEach(([k, l]) => numCheck(b[k], l));
+  }
+  // รายชื่อเจ้าของ
+  (rec.owners || []).forEach((o, i) => {
+    const row = ' (เจ้าของแถวที่ ' + (i + 1) + ')';
+    if (!String(o.name || '').trim()) errs.push('กรุณาระบุชื่อ-นามสกุลเจ้าของ' + row);
+    const cid = String(o.citizenId || '').replace(/[\s-]/g, '');
+    if (cid && !/^\d{13}$/.test(cid)) errs.push('เลขที่บัตรประชาชนของเจ้าของต้องเป็นตัวเลข 13 หลัก' + row);
+    if (!isNum(o.age)) errs.push('อายุต้องเป็นตัวเลข' + row);
+  });
+  return errs;
+};
+
 // ── ตารางรายชื่อเจ้าของหลักทรัพย์ ───────────────────────────────────
 function LcOwnerTable({ owners, set }) {
   const upd = (i, k, v) => set(owners.map((o, j) => j === i ? { ...o, [k]: v } : o));
   const add = () => set([...owners, { name: '', citizenId: '', age: '', marital: '', spouse: '', father: '', mother: '' }]);
   const del = (i) => set(owners.filter((_, j) => j !== i));
   return (
-    <div className="table-wrap"><table className="tbl cs-owner-tbl">
+    // เลื่อนแนวนอนได้ — คอลัมน์ไม่ถูกบีบ เห็นข้อมูลครบทุกช่อง
+    <div className="table-wrap" style={{ overflowX: 'auto' }}><table className="tbl cs-owner-tbl" style={{ minWidth: 1180, tableLayout: 'fixed' }}>
       <thead><tr>
-        <th style={{ minWidth: 150 }}>ชื่อ-นามสกุล</th>
-        <th style={{ width: 150 }}>เลขที่บัตรประชาชน</th>
-        <th style={{ width: 60 }}>อายุ</th>
+        <th style={{ width: 200 }}>ชื่อ-นามสกุล</th>
+        <th style={{ width: 160 }}>เลขที่บัตรประชาชน</th>
+        <th style={{ width: 80 }}>อายุ</th>
         <th style={{ width: 150 }}>สถานภาพ</th>
-        <th style={{ minWidth: 130 }}>ชื่อ-นามสกุลคู่สมรส</th>
-        <th style={{ minWidth: 120 }}>ชื่อ-นามสกุลบิดา</th>
-        <th style={{ minWidth: 120 }}>ชื่อ-นามสกุลมารดา</th>
-        <th style={{ width: 40 }} />
+        <th style={{ width: 190 }}>ชื่อ-นามสกุลคู่สมรส</th>
+        <th style={{ width: 180 }}>ชื่อ-นามสกุลบิดา</th>
+        <th style={{ width: 180 }}>ชื่อ-นามสกุลมารดา</th>
+        <th style={{ width: 44 }} />
       </tr></thead>
       <tbody>
         {owners.map((o, i) => (

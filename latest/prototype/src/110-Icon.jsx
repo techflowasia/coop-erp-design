@@ -198,26 +198,22 @@ const NAV_SYSTEMS = [
         { id: 'dp-proc-open',      label: 'ประมวลผลเปิดบัญชีเงินฝาก', route: { view: 'deposit', page: 'proc-open' } },
       ] },
       { id: 'dp-other', label: 'งานอื่นๆ', children: [
-        { id: 'dp-int-accrued-calc', label: 'คำนวณดอกเบี้ยค้าง', route: { view: 'deposit', page: 'interest-accrued-calc' } },
         { id: 'dp-poontawee', label: 'ประมวลผลตัดหุ้นพูนทวี', route: { view: 'deposit', page: 'poontawee' } },
-        { id: 'dp-int-proj', label: 'ประมาณการดอกเบี้ย', route: { view: 'deposit', page: 'interest-projection' } },
-        { id: 'dp-int-advance', label: 'ประมาณการจ่ายดอกเบี้ยล่วงหน้า', route: { view: 'deposit', page: 'interest-advance' } },
         { id: 'dp-tax-pnd2', label: 'ข้อมูลภาษีส่งสรรพากร (ภ.ง.ด.2)', route: { view: 'deposit', page: 'pnd2' } },
+        { id: 'dp-default', label: 'ประมวลผิดนัดการฝาก', route: { view: 'deposit', page: 'default-process' } },
+        { id: 'dp-cutoff',  label: 'ประมวลผลตัดยอดเงินฝาก', route: { view: 'deposit', page: 'cutoff' } },
       ] },
-    ] },
-    { kind: 'work', label: '', items: [
-      { id: 'dp-default', label: 'ประมวลผิดนัดการฝาก', route: { view: 'deposit', page: 'default-process' } },
-      { id: 'dp-cutoff',  label: 'ประมวลผลตัดยอดเงินฝาก', route: { view: 'deposit', page: 'cutoff' } },
     ] },
     { kind: 'work', label: 'ฝากหลายประเภท', items: [
       { id: 'dp-md-loan',        label: 'ฝากเงินกู้', route: { view: 'deposit', page: 'md-loan' } },
     ] },
     { kind: 'work', label: '', items: [
       { id: 'dp-int-group', label: 'ดอกเบี้ย', children: [
-        { id: 'dp-int-calc',    label: 'คำนวณดอกเบี้ย', route: { view: 'deposit', page: 'interest-calc' } },
+        { id: 'dp-int-accrued-calc', label: 'คำนวณดอกเบี้ยค้าง', route: { view: 'deposit', page: 'interest-accrued-calc' } },
         { id: 'dp-int-pay',     label: 'จ่ายดอกเบี้ย', route: { view: 'deposit', page: 'interest-pay' } },
-        { id: 'dp-int-accrued', label: 'ดอกเบี้ยค้างจ่าย', route: { view: 'deposit', page: 'interest-accrued' } },
         { id: 'dp-rate-change', label: 'เปลี่ยนแปลงอัตราดอกเบี้ย', route: { view: 'deposit', page: 'rate-change' } },
+        { id: 'dp-int-proj', label: 'ประมาณการดอกเบี้ย', route: { view: 'deposit', page: 'interest-projection' } },
+        { id: 'dp-int-advance', label: 'ประมาณการจ่ายดอกเบี้ยล่วงหน้า', route: { view: 'deposit', page: 'interest-advance' } },
       ] },
       { id: 'dp-doc-group', label: 'เอกสารและนำเข้า–ส่งออก', children: [
         { id: 'dp-funeral', label: 'หักเงิน ฌปท / ฌาปนกิจ', route: { view: 'deposit', page: 'funeral' } },
@@ -234,6 +230,7 @@ const NAV_SYSTEMS = [
         { id: 'dp-rpt-bal-ind',        label: 'รายงานยอดคงเหลือรายตัว' },
         { id: 'dp-rpt-bal-ind-detail', label: 'รายงานยอดคงเหลือรายตัวแสดงรายละเอียด' },
         { id: 'dp-rpt-interest',       label: 'รายงานดอกเบี้ยจ่าย' },
+        { id: 'dp-rpt-int-accrued',    label: 'รายงานดอกเบี้ยค้างจ่าย', route: { view: 'deposit', page: 'rpt-interest-accrued' } },
         { id: 'dp-rpt-passbook-mem',   label: 'รายงานสมาชิกที่มีสมุดเงินฝาก' },
         { id: 'dp-rpt-gift',           label: 'รายงานการจ่ายของขวัญเงินฝาก' },
       ] },
@@ -254,22 +251,22 @@ const NAV_SYSTEMS = [
       { id: 'dp-cs-freezereason', label: 'เหตุผลการอายัดบัญชี', route: { view: 'deposit', page: 'const-freezereason' } },
       { id: 'dp-cs-holdertype', label: 'ประเภทผู้ถือบัญชี', route: { view: 'deposit', page: 'const-holdertype' } },
       { id: 'dp-cs-signer', label: 'ผู้ลงนามหนังสือรับรองเงินฝาก', route: { view: 'deposit', page: 'const-signer' } },
+      { id: 'dp-cs-coopbranch', label: 'สาขาสหกรณ์', route: { view: 'deposit', page: 'const-coopbranch' } },
       { id: 'dp-cfg-passbook', label: 'ตั้งค่าพิมพ์สมุดคู่ฝาก', route: { view: 'deposit', page: 'passbook-cfg' } },
     ] },
   ] },
   { id: 'process', icon: 'receipt', label: 'ประมวลผลและจัดเก็บ', groups: [
     { kind: 'work', items: [
       { id: 'pc-credit-group', label: 'สินเชื่อ', children: [
-        { id: 'pc-cd-inst-approve', label: 'อนุมัติเปลี่ยนแปลงงวดชำระ', route: { view: 'process', page: 'inst-approve' } },
         { id: 'pc-cd-ban', label: 'ห้ามกู้', route: { view: 'loan', page: 'ban' } },
         { id: 'pc-cd-legal-status', label: 'เปลี่ยนแปลงสถานะทางกฎหมาย', route: { view: 'process', page: 'legal-status' } },
-        { id: 'pc-cd-contract-change', label: 'เปลี่ยนแปลงรายละเอียดสัญญา', route: { view: 'debt', page: 'contract-change' } },
+        { id: 'pc-cd-contract-change', label: 'ปรับปรุงรายละเอียดสัญญา', route: { view: 'process', page: 'collateral-change' } },
         { id: 'pc-cd-accrued-int', label: 'ปรับยอดดอกเบี้ยสะสม', route: { view: 'process', page: 'accrued-interest-adjust' } },
         { id: 'pc-cd-share-adjust', label: 'ปรับเพิ่ม-ลด หุ้น', route: { view: 'process', page: 'share-adjust' } },
         { id: 'pc-cd-debt-adjust', label: 'ปรับเพิ่ม-ลดหนี้', route: { view: 'process', page: 'debt-adjust' } },
         { id: 'pc-cd-collect-stop', label: 'ใบคำขอหยุดเก็บหนี้', route: { view: 'process', page: 'collect-stop' } },
         { id: 'pc-cd-inst-change-req', label: 'ใบคำขอเปลี่ยนแปลงงวดชำระ', route: { view: 'process', page: 'inst-change-req' } },
-        { id: 'pc-cd-agent-affil', label: 'กำหนดสังกัดลูกหนี้ตัวแทน', route: { view: 'process', page: 'agent-affil' } },
+        { id: 'pc-cd-inst-approve', label: 'อนุมัติเปลี่ยนแปลงงวดชำระ', route: { view: 'process', page: 'inst-approve' } },
       ] },
       { id: 'pc-close-group', label: 'ประมวลผล', children: [
         { id: 'pc-cl-day', label: 'ปิดงานประจำวัน', route: { view: 'process', page: 'day-close-run' } },
@@ -290,14 +287,13 @@ const NAV_SYSTEMS = [
         { id: 'pc-dv-key', label: 'ประมวลตั้งค่าคีย์ปันผลเฉลี่ยคืน', route: { view: 'process', page: 'dividend-key-setup' } },
       ] },
       { id: 'pc-cancel-group', label: 'ยกเลิก', children: [
-        { id: 'pc-cx-monthly-receipt', label: 'ยกเลิกใบเสร็จรับเงินรายเดือน', route: { view: 'process', page: 'cancel-monthly-receipt' } },
         { id: 'pc-cx-share-withdraw', label: 'ยกเลิกถอนหุ้น', route: { view: 'process', page: 'cancel-share-withdraw' } },
-        { id: 'pc-cx-resign', label: 'ยกเลิกการลาออก', route: { view: 'process', page: 'cancel-resign' } },
-        { id: 'pc-cx-loan-contract', label: 'ยกเลิกสัญญาเงินกู้', route: { view: 'process', page: 'cancel-loan-contract' } },
+        { id: 'pc-cx-loan-contract', label: 'ยกเลิกสัญญาเงินกู้', route: { view: 'loan', page: 'cancel-contract' } },
+        { id: 'pc-cx-monthly-receipt', label: 'ยกเลิกใบเสร็จรับเงินรายเดือน', route: { view: 'process', page: 'cancel-monthly-receipt' } },
         { id: 'pc-cx-receipt-return', label: 'ยกเลิกคืนใบเสร็จ', route: { view: 'process', page: 'cancel-receipt-return' } },
         { id: 'pc-cx-loan-payout', label: 'ยกเลิกการจ่ายเงินกู้', route: { view: 'process', page: 'cancel-loan-payout' } },
-        { id: 'pc-cx-special-order', label: 'ยกเลิกใบสั่งชำระพิเศษ', route: { view: 'process', page: 'cancel-special-order' } },
-        { id: 'pc-cx-special-pay', label: 'ยกเลิกชำระพิเศษ', route: { view: 'process', page: 'cancel-special-pay' } },
+        { id: 'pc-cx-special-order', label: 'ยกเลิกใบสั่งชำระพิเศษ', route: { view: 'loan', page: 'cancel-special-order' } },
+        { id: 'pc-cx-special-pay', label: 'ยกเลิกชำระพิเศษ', route: { view: 'loan', page: 'cancel-special-pay' } },
       ] },
       { id: 'pc-member-group', label: 'สมาชิก', children: [
         { id: 'pc-mb-resign-approve', label: 'อนุมัติลาออก', route: { view: 'process', page: 'resign-approve' } },
@@ -320,14 +316,13 @@ const NAV_SYSTEMS = [
       ] },
       { id: 'pc-tax-cert', label: 'ส่งข้อมูลหนังสือรับรองดอกเบี้ยให้สรรพากร', route: { view: 'process', page: 'tax-cert' } },
     ] },
-    { kind: 'report', items: [
-      { id: 'pc-rpt-collect', label: 'รายงานการเรียกเก็บ' },
-      { id: 'pc-rpt-arrear',  label: 'รายงานค้างชำระ' },
-    ] },
-    { kind: 'config', items: [
+    { kind: 'config', label: '', items: [
       { id: 'pc-const-group', label: 'ค่าคงที่', children: [
-        { id: 'pc-cfg-sysstatus', label: 'กำหนดรายละเอียดระบบ (สถานะระบบ)', route: { view: 'process', page: 'system-status' } },
+        // 'กำหนดรายละเอียดระบบ (สถานะระบบ)' ซ่อนไว้ — จะย้ายไปใช้ในระบบผู้ดูแลระบบ (ตามต้นทาง)
         { id: 'pc-cfg-affil', label: 'ข้อกำหนดรายละเอียดสังกัด', route: { view: 'process', page: 'affil-detail' } },
+        { id: 'pc-cfg-unit', label: 'หน่วยงาน', route: { view: 'process', page: 'const-unit' } },
+        { id: 'pc-cfg-zone', label: 'รหัสเขต', route: { view: 'process', page: 'const-zone' } },
+        { id: 'pc-cd-agent-affil', label: 'กำหนดสังกัดลูกหนี้ตัวแทน', route: { view: 'process', page: 'agent-affil' } },
         { id: 'pc-cfg-share', label: 'ข้อกำหนดประเภทหุ้น', route: { view: 'process', page: 'share-terms' } },
         { id: 'pc-cfg-approval', label: 'กำหนดระดับการอนุมัติ', route: { view: 'process', page: 'approval-level' } },
       ] },
@@ -347,7 +342,6 @@ const NAV_SYSTEMS = [
         { id: 'pc-cm-mstatus', label: 'สถานะการเป็นสมาชิก', route: { view: 'process', page: 'const-member-status' } },
         { id: 'pc-cm-statusnote', label: 'หมายเหตุสถานะ', route: { view: 'process', page: 'const-status-note' } },
       ] },
-      { id: 'pc-cfg-period', label: 'งวดเรียกเก็บ' },
     ] },
   ] },
   { id: 'finance', icon: 'money', label: 'การเงิน', groups: [
@@ -732,6 +726,46 @@ function routeToActiveId(r) {
   if (r.view === 'process' && r.page === 'tax-cert') return 'pc-tax-cert';
   if (r.view === 'process' && r.page === 'share-terms') return 'pc-cfg-share';
   if (r.view === 'process' && r.page === 'affil-detail') return 'pc-cfg-affil';
+  if (r.view === 'process' && r.page === 'collateral-change') return 'pc-cd-contract-change';
+  if (r.view === 'process' && r.page === 'member-payout') return 'pc-mo-member-payout';
+  if (r.view === 'process' && r.page === 'monthly-collect') return 'pc-mo-collect';
+  if (r.view === 'process' && r.page === 'monthly-cutoff') return 'pc-mo-cutoff';
+  if (r.view === 'process' && r.page === 'collect-disk') return 'pc-mo-disk';
+  if (r.view === 'process' && r.page === 'collect-other') return 'pc-mo-other';
+  if (r.view === 'process' && r.page === 'collect-cutoff-disk') return 'pc-mo-cutoff-disk';
+  if (r.view === 'process' && r.page === 'day-close-run') return 'pc-cl-day';
+  if (r.view === 'process' && r.page === 'month-close-run') return 'pc-cl-month';
+  if (r.view === 'process' && r.page === 'year-close-run') return 'pc-cl-year';
+  if (r.view === 'process' && r.page === 'balance-confirm') return 'pc-cl-confirm';
+  if (r.view === 'process' && r.page === 'debt-term') return 'pc-cl-debt-term';
+  if (r.view === 'process' && r.page === 'rate-adjust') return 'pc-cl-rate';
+  if (r.view === 'process' && r.page === 'gift-share') return 'pc-cl-gift';
+  if (r.view === 'process' && r.page === 'gift-share-cut') return 'pc-cl-gift-cut';
+  if (r.view === 'process' && r.page === 'year-close-debt') return 'pc-cl-year-debt';
+  if (r.view === 'process' && r.page === 'year-close-share') return 'pc-cl-year-share';
+  if (r.view === 'process' && r.page === 'meeting-fee') return 'pc-cl-meeting-fee';
+  if (r.view === 'process' && r.page === 'dividend-estimate') return 'pc-dv-estimate';
+  if (r.view === 'process' && r.page === 'dividend-process') return 'pc-dv-process';
+  if (r.view === 'process' && r.page === 'dividend-key-setup') return 'pc-dv-key';
+  if (r.view === 'process' && r.page === 'cancel-share-withdraw') return 'pc-cx-share-withdraw';
+  if (r.view === 'process' && r.page === 'cancel-monthly-receipt') return 'pc-cx-monthly-receipt';
+  if (r.view === 'process' && r.page === 'cancel-receipt-return') return 'pc-cx-receipt-return';
+  if (r.view === 'process' && r.page === 'cancel-loan-payout') return 'pc-cx-loan-payout';
+  if (r.view === 'process' && r.page === 'approval-level') return 'pc-cfg-approval';
+  if (r.view === 'process' && r.page === 'const-unit') return 'pc-cfg-unit';
+  if (r.view === 'process' && r.page === 'const-zone') return 'pc-cfg-zone';
+  if (r.view === 'process' && r.page === 'const-keep') return 'pc-ci-keep';
+  if (r.view === 'process' && r.page === 'const-keepitem') return 'pc-ci-keepitem';
+  if (r.view === 'process' && r.page === 'const-prefix') return 'pc-cm-prefix';
+  if (r.view === 'process' && r.page === 'const-member-affil') return 'pc-cm-affil';
+  if (r.view === 'process' && r.page === 'const-position') return 'pc-cm-position';
+  if (r.view === 'process' && r.page === 'const-apply-type') return 'pc-cm-apply';
+  if (r.view === 'process' && r.page === 'const-relation') return 'pc-cm-relation';
+  if (r.view === 'process' && r.page === 'const-resign-reason') return 'pc-cm-resign';
+  if (r.view === 'process' && r.page === 'const-member-type') return 'pc-cm-mtype';
+  if (r.view === 'process' && r.page === 'const-shritem') return 'pc-cm-shritem';
+  if (r.view === 'process' && r.page === 'const-member-status') return 'pc-cm-mstatus';
+  if (r.view === 'process' && r.page === 'const-status-note') return 'pc-cm-statusnote';
   if (r.view === 'invest' && r.page === 'portfolio') return 'iv-portfolio';
   if (r.view === 'invest' && r.page === 'market-price') return 'iv-market';
   if (r.view === 'invest' && r.page === 'new') return 'iv-new';
@@ -824,9 +858,10 @@ function routeToActiveId(r) {
   if (r.view === 'deposit' && r.page === 'default-process') return 'dp-default';
   if (r.view === 'deposit' && r.page === 'cutoff') return 'dp-cutoff';
   if (r.view === 'deposit' && r.page === 'poontawee') return 'dp-poontawee';
-  if (r.view === 'deposit' && r.page === 'interest-calc') return 'dp-int-calc';
+  if (r.view === 'deposit' && r.page === 'interest-calc') return 'dp-int-accrued-calc';      // เมนูเดิม → คำนวณดอกเบี้ยค้าง
   if (r.view === 'deposit' && r.page === 'interest-pay') return 'dp-int-pay';
-  if (r.view === 'deposit' && r.page === 'interest-accrued') return 'dp-int-accrued';
+  if (r.view === 'deposit' && r.page === 'interest-accrued') return 'dp-rpt-int-accrued';   // เมนูเดิม → รายงานดอกเบี้ยค้างจ่าย
+  if (r.view === 'deposit' && r.page === 'rpt-interest-accrued') return 'dp-rpt-int-accrued';
   if (r.view === 'deposit' && r.page === 'interest-accrued-calc') return 'dp-int-accrued-calc';
   if (r.view === 'deposit' && r.page === 'interest-projection') return 'dp-int-proj';
   if (r.view === 'deposit' && r.page === 'passbook') return 'dp-passbook';

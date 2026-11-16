@@ -126,6 +126,8 @@ function LoanCollateralPage({ onToast }) {
   const [histOpen, setHistOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  // ข้อความแจ้งเมื่อบันทึกไม่ได้ — [{ id, label, errs: [] }]
+  const [saveErrors, setSaveErrors] = useState([]);
   const baseCount = React.useRef(0);
   const baseValue = React.useRef(0);
   const snapshot = React.useRef([]);
@@ -182,6 +184,20 @@ function LoanCollateralPage({ onToast }) {
     setItems(prev);
     if (!prev.some(r => r.id === activeId)) setActiveId(prev.length ? prev[0].id : null);
     setEditing(false);
+    setSaveErrors([]);
+  };
+  // ตรวจทุกรายการก่อนบันทึก — ไม่ผ่าน: ไม่บันทึกทั้งครั้ง · แสดงข้อความแจ้ง · ข้อมูลที่กรอกยังอยู่
+  const trySave = () => {
+    const bad = items.find(r => window.lcBuildingRefError(r, items));
+    if (bad) { setActiveId(bad.id); onToast && onToast(window.lcBuildingRefError(bad, items)); return; }
+    const found = items.map((r, i) => ({
+      id: r.id,
+      label: 'รายการที่ ' + (i + 1) + ' · ' + r.type + (r.code ? ' ' + r.code : (r.titleNo ? ' เลขที่ ' + r.titleNo : '')),
+      errs: window.lcValidate ? window.lcValidate(r) : [],
+    })).filter(x => x.errs.length);
+    setSaveErrors(found);
+    if (found.length) { if (!found.some(x => x.id === activeId)) setActiveId(found[0].id); return; }
+    setConfirmOpen(true);
   };
 
   const confirm = () => {
@@ -229,11 +245,7 @@ function LoanCollateralPage({ onToast }) {
             {editing ? (
               <>
                 <button className="btn sm" onClick={cancelEdit}>ยกเลิก</button>
-                <button className="btn primary sm" onClick={() => {
-                  const bad = items.find(r => window.lcBuildingRefError(r, items));
-                  if (bad) { setActiveId(bad.id); onToast && onToast(window.lcBuildingRefError(bad, items)); return; }
-                  setConfirmOpen(true);
-                }}><Icon name="check" /> บันทึกข้อมูล</button>
+                <button className="btn primary sm" onClick={trySave}><Icon name="check" /> บันทึกข้อมูล</button>
               </>
             ) : isEmpty ? null : (
               <>
@@ -272,6 +284,24 @@ function LoanCollateralPage({ onToast }) {
 
         {/* ── ขวา: ฟอร์มหลักทรัพย์ (view mode = ล็อกช่องกรอก) ── */}
         <div className="cs-right">
+          {editing && saveErrors.length > 0 && (
+            <div className="search-card" style={{ marginBottom: 12, padding: '12px 16px', border: '1px solid #ffccc7', background: '#fff2f0' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, color: 'var(--danger, #cf1322)', fontSize: 13 }}>
+                <Icon name="info" size={14} /> บันทึกไม่ได้ — กรุณาแก้ไขข้อมูลต่อไปนี้
+                <span style={{ flex: 1 }} />
+                <button className="btn text sm" onClick={() => setSaveErrors([])} aria-label="ปิดข้อความแจ้ง"><Icon name="close" size={12} /></button>
+              </div>
+              {saveErrors.map(x => (
+                <div key={x.id} style={{ marginTop: 8 }}>
+                  <button type="button" className="btn text sm" style={{ padding: 0, height: 'auto', fontWeight: 600, color: x.id === activeId ? 'var(--primary)' : 'rgba(0,0,0,.85)' }}
+                          onClick={() => setActiveId(x.id)} title="เปิดรายการนี้">{x.label}</button>
+                  <ul style={{ margin: '2px 0 0', paddingLeft: 22, fontSize: 12.5, color: 'rgba(0,0,0,.75)', lineHeight: 1.7 }}>
+                    {x.errs.map((m, i) => <li key={i}>{m}</li>)}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          )}
           {member && !editing && !isEmpty ? (
             <div className="lc-form-view">{formPane}</div>
           ) : formPane}

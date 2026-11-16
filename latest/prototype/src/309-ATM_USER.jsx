@@ -12,7 +12,7 @@ const atmLastMove = (a) => (window.dpcLastMove ? window.dpcLastMove(a.accNo, win
 const atmDormant = (a) => (window.dpcLastMove ? window.dpcIdleDays(atmLastMove(a)) > window.DPC_DORMANT_DAYS : false);
 
 // ─── Popup ค้นหาบัญชีเงินฝาก ─────────────────────────────────────────
-function DepAccountSearchModal({ accounts, onPick, onClose, onlyActive = true }) {
+function DepAccountSearchModal({ accounts, onPick, onClose, onlyActive = true, allAccounts, whyNot }) {
   const base = onlyActive ? accounts.filter(a => a.status === 'active') : accounts;
   const memById = (code) => (window.DEP_TXN_MEMBERS || []).find(m => m.code === code);
   // เลขบัตร / เลขผู้เสียภาษี — สมาชิก → ทะเบียนสมาชิก · E/L → ทะเบียนบุคคล/นิติบุคคลภายนอก
@@ -28,18 +28,22 @@ function DepAccountSearchModal({ accounts, onPick, onClose, onlyActive = true })
   const [c, setC] = useState({ accNo: '', code: '', name: '', cid: '' });
   const [rows, setRows] = useState(base);
   const [dirty, setDirty] = useState(false);
+  const [miss, setMiss] = useState([]);   // บัญชีที่ตรงเงื่อนไขแต่ใช้ในเมนูนี้ไม่ได้ (allAccounts + whyNot)
   const set = (k, v) => setC(p => ({ ...p, [k]: v }));
   const norm = (s) => String(s ?? '').toLowerCase().replace(/[\s-]/g, '');
   const run = () => {
     const an = norm(c.accNo), cd = norm(c.code), nm = norm(c.name), ci = norm(c.cid);
-    setRows(base.filter(a =>
-      (!an || norm(a.accNo).includes(an)) &&
+    const hit = (a) => (!an || norm(a.accNo).includes(an)) &&
       (!cd || norm(a.member).includes(cd)) &&
       (!nm || norm(a.name).includes(nm)) &&
-      (!ci || norm(idOf(a)).includes(ci))));
+      (!ci || norm(idOf(a)).includes(ci));
+    const found = base.filter(hit);
+    setRows(found);
+    const inBase = new Set(found.map(a => a.accNo));
+    setMiss(allAccounts && whyNot && (an || cd || nm || ci) ? allAccounts.filter(a => !inBase.has(a.accNo) && hit(a)).slice(0, 5) : []);
     setDirty(true);
   };
-  const reset = () => { setC({ accNo: '', code: '', name: '', cid: '' }); setRows(base); setDirty(false); };
+  const reset = () => { setC({ accNo: '', code: '', name: '', cid: '' }); setRows(base); setDirty(false); setMiss([]); };
 
   return (
     <>
@@ -98,7 +102,7 @@ function DepAccountSearchModal({ accounts, onPick, onClose, onlyActive = true })
               <tbody>
                 {rows.length === 0 ? (
                   <tr><td colSpan="8" className="empty-state">
-                    {dirty ? 'ไม่พบบัญชีที่ตรงกับเงื่อนไข' : 'ระบุเลขที่บัญชี หรือเลขทะเบียนสมาชิก แล้วกดค้นหา'}
+                    {dirty ? (miss.length ? miss.map(a => <div key={a.accNo}>พบบัญชี <span className="mono">{a.accNo}</span> · {a.name} — ทำรายการในเมนูนี้ไม่ได้: {whyNot(a)}</div>) : 'ไม่พบบัญชีที่ตรงกับเงื่อนไข') : 'ระบุเลขที่บัญชี หรือเลขทะเบียนสมาชิก แล้วกดค้นหา'}
                   </td></tr>
                 ) : rows.map(a => (
                   <tr key={a.accNo} className="clickable cs-crow" onClick={() => onPick(a)}>
@@ -127,7 +131,7 @@ function DepAccountSearchModal({ accounts, onPick, onClose, onlyActive = true })
 }
 
 // ─── Trigger field — ปุ่มเรียก popup ค้นหาบัญชี ──────────────────────
-function DepAccountSearchField({ accounts, value, onPick, placeholder = 'คลิกเพื่อค้นหาเลขที่บัญชี…' }) {
+function DepAccountSearchField({ accounts, value, onPick, placeholder = 'คลิกเพื่อค้นหาเลขที่บัญชี…', allAccounts, whyNot }) {
   const [open, setOpen] = useState(false);
   const pick = (a) => { onPick(a); setOpen(false); };
   return (
@@ -148,7 +152,7 @@ function DepAccountSearchField({ accounts, value, onPick, placeholder = 'คล�
           </>
         )}
       </button>
-      {open && <DepAccountSearchModal accounts={accounts} onPick={pick} onClose={() => setOpen(false)} />}
+      {open && <DepAccountSearchModal accounts={accounts} onPick={pick} onClose={() => setOpen(false)} allAccounts={allAccounts} whyNot={whyNot} />}
     </>
   );
 }

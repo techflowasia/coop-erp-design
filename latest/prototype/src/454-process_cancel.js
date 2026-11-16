@@ -1599,7 +1599,6 @@ function CancelPage({
   } = React;
   const cfg = CX_TYPES[typeKey];
   const audit = clAudit();
-  const [staffCode, setStaffCode] = useState('');
   const [staff, setStaff] = useState(null);
   const [staffErr, setStaffErr] = useState('');
   const [query, setQuery] = useState({});
@@ -1610,20 +1609,13 @@ function CancelPage({
   const [result, setResult] = useState(null);
   const [history, setHistory] = useState(() => cxHistLoad().filter(h => h.type === typeKey));
   const sel = (rows || []).find(r => r.id === selId) || null;
-  const callStaff = () => {
-    const s = window.CX_STAFF.find(x => x.code === staffCode.trim() || x.name === staffCode.trim());
-    if (!s) {
-      setStaff(null);
-      setStaffErr('ไม่พบรหัสพนักงานนี้ในระบบ — กรุณาตรวจสอบรหัสอีกครั้ง');
-      return;
-    }
+  const pickStaff = s => {
     setStaff(s);
     setStaffErr('');
     onToast && onToast(`เรียกข้อมูลพนักงาน ${s.code} · ${s.name} เรียบร้อยแล้ว`);
   };
   const clearStaff = () => {
     setStaff(null);
-    setStaffCode('');
     setRows(null);
     setSelId('');
     setResult(null);
@@ -1718,31 +1710,17 @@ function CancelPage({
     className: "icr-strip"
   }, /*#__PURE__*/React.createElement(ClFld, {
     label: "\u0E23\u0E2B\u0E31\u0E2A\u0E1E\u0E19\u0E31\u0E01\u0E07\u0E32\u0E19",
-    w: 190,
+    w: 280,
     required: true
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      gap: 6
-    }
-  }, /*#__PURE__*/React.createElement("input", {
-    className: "l2-input",
-    value: staffCode,
-    placeholder: "\u0E40\u0E0A\u0E48\u0E19 00512",
-    onChange: e => {
-      setStaffCode(e.target.value);
-      setStaffErr('');
-    },
-    onKeyDown: e => {
-      if (e.key === 'Enter') callStaff();
-    }
-  }), /*#__PURE__*/React.createElement("button", {
-    className: "btn sm",
-    onClick: callStaff
-  }, /*#__PURE__*/React.createElement(Icon, {
-    name: "search",
-    size: 13
-  }), " \u0E40\u0E23\u0E35\u0E22\u0E01"))), /*#__PURE__*/React.createElement(ClFld, {
+  }, /*#__PURE__*/React.createElement(MemberSearchField, {
+    member: staff,
+    onPick: pickStaff,
+    source: window.CX_STAFF,
+    showUnit: true,
+    showName: false,
+    title: "\u0E04\u0E49\u0E19\u0E2B\u0E32\u0E1C\u0E39\u0E49\u0E17\u0E33\u0E23\u0E32\u0E22\u0E01\u0E32\u0E23",
+    placeholder: "\u0E04\u0E49\u0E19\u0E2B\u0E32\u0E23\u0E2B\u0E31\u0E2A / \u0E0A\u0E37\u0E48\u0E2D\u0E1E\u0E19\u0E31\u0E01\u0E07\u0E32\u0E19\u2026"
+  })), /*#__PURE__*/React.createElement(ClFld, {
     label: "\u0E0A\u0E37\u0E48\u0E2D\u0E1E\u0E19\u0E31\u0E01\u0E07\u0E32\u0E19",
     grow: true,
     w: 200
@@ -2073,14 +2051,6 @@ function CancelPage({
     className: "pill ok"
   }, h.state)))))))));
 }
-function CancelMonthlyReceiptPage({
-  onToast
-}) {
-  return /*#__PURE__*/React.createElement(CancelPage, {
-    typeKey: "monthly-receipt",
-    onToast: onToast
-  });
-}
 function CancelShareWithdrawPage({
   onToast
 }) {
@@ -2089,19 +2059,11 @@ function CancelShareWithdrawPage({
     onToast: onToast
   });
 }
-function CancelResignPage({
+function PcxCancelMonthlyReceiptPage({
   onToast
 }) {
   return /*#__PURE__*/React.createElement(CancelPage, {
-    typeKey: "resign",
-    onToast: onToast
-  });
-}
-function CancelLoanContractPage({
-  onToast
-}) {
-  return /*#__PURE__*/React.createElement(CancelPage, {
-    typeKey: "loan-contract",
+    typeKey: "monthly-receipt",
     onToast: onToast
   });
 }
@@ -2121,19 +2083,21 @@ function CancelLoanPayoutPage({
     onToast: onToast
   });
 }
-function CancelSpecialOrderPage({
-  onToast
-}) {
-  return /*#__PURE__*/React.createElement(CancelPage, {
-    typeKey: "special-order",
-    onToast: onToast
-  });
+// ─── ระบบรวม: คงชื่อหน้าจอเดิมไว้ให้ route ของระบบรวมเรียกใช้ ─────────────
+//  (src/431 ใช้ CancelLoanContractPage / CancelSpecialOrderPage / CancelSpecialPayPage /
+//   CancelResignPage ที่ #loan/cancel-* และ src/456 ใช้ CancelMonthlyReceiptPage)
+function CancelMonthlyReceiptPage({ onToast }) {
+  return React.createElement(CancelPage, { typeKey: "monthly-receipt", onToast: onToast });
 }
-function CancelSpecialPayPage({
-  onToast
-}) {
-  return /*#__PURE__*/React.createElement(CancelPage, {
-    typeKey: "special-pay",
-    onToast: onToast
-  });
+function CancelResignPage({ onToast }) {
+  return React.createElement(CancelPage, { typeKey: "resign", onToast: onToast });
+}
+function CancelLoanContractPage({ onToast }) {
+  return React.createElement(CancelPage, { typeKey: "loan-contract", onToast: onToast });
+}
+function CancelSpecialOrderPage({ onToast }) {
+  return React.createElement(CancelPage, { typeKey: "special-order", onToast: onToast });
+}
+function CancelSpecialPayPage({ onToast }) {
+  return React.createElement(CancelPage, { typeKey: "special-pay", onToast: onToast });
 }

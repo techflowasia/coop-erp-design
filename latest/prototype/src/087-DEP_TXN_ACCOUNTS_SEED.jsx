@@ -8,58 +8,58 @@
 window.DEP_TXN_ACCOUNTS_SEED = [
   // ── ตัวอย่างบัญชียอดสูง — ทดสอบถอนเกิน 2,000,000 บาท (ต้องให้หัวหน้าอนุมัติ) ──
   { accNo: '001-2-70020-5', member: '70020', name: 'วรเชษฐ์ ธนพัฒน์', sample: true, dept: 'สำนักงานผู้จัดการ', memberStatus: 'ปฏิบัติงาน',
-    typeCode: 'S01', type: 'ออมทรัพย์', openDate: '2015-03-02', rate: 1.25, balance: 3500000.00, status: 'active',
+    typeCode: '10', type: 'ออมทรัพย์', openDate: '2015-03-02', rate: 1.25, balance: 3500000.00, status: 'active',
     payrollLinked: true, intMethod: 'compound', bank: 'ธ.กรุงไทย', bankAcc: '982-1-77020-4', bankLinkStatus: 'linked',
     useLoan: false, useFuneral: false, freeQuota: 0, freeUsed: 0, ytdInterest: 31250.00, withdrawCond: 'ถอนได้คนเดียว' },
   // ── ตัวอย่างวิธีรับ Int./Div. 3 แบบ (ดูที่เมนูแก้ไขรายละเอียดบัญชี › แท็บเงื่อนไข) ──
   { accNo: '001-2-70011-3', member: '70011', name: 'ประภาพร ศรีสวัสดิ์', sample: true, dept: 'กองบริหารทั่วไป', memberStatus: 'ปฏิบัติงาน',
-    typeCode: 'S01', type: 'ออมทรัพย์', openDate: '2023-04-03', rate: 1.25, balance: 85400.00, status: 'active',
+    typeCode: '10', type: 'ออมทรัพย์', openDate: '2023-04-03', rate: 1.25, balance: 85400.00, status: 'active',
     payrollLinked: false, intMethod: 'compound', bank: '', bankAcc: '', bankLinkStatus: 'none',
     useLoan: false, useFuneral: false, freeQuota: 0, freeUsed: 0, ytdInterest: 812.40, withdrawCond: 'ถอนได้คนเดียว' },
   { accNo: '001-2-70012-1', member: '70012', name: 'ธนากร วงศ์ไพบูลย์', sample: true, dept: 'กองการเงิน', memberStatus: 'ปฏิบัติงาน',
-    typeCode: 'S02', type: 'ออมทรัพย์พิเศษ', openDate: '2022-11-15', rate: 2.00, balance: 412000.00, status: 'active',
+    typeCode: '11', type: 'ออมทรัพย์พิเศษ', openDate: '2022-11-15', rate: 2.00, balance: 412000.00, status: 'active',
     payrollLinked: false, intMethod: 'toaccount',
     bank: '', bankAcc: '', intToAcc: '001-1-70012-4', bankLinkStatus: 'none',
     useLoan: false, useFuneral: false, freeQuota: 0, freeUsed: 0, ytdInterest: 6180.00, withdrawCond: 'ถอนได้คนเดียว' },
   { accNo: '001-1-70012-4', member: '70012', name: 'ธนากร วงศ์ไพบูลย์', sample: true, dept: 'กองการเงิน', memberStatus: 'ปฏิบัติงาน',
-    typeCode: 'S01', type: 'ออมทรัพย์', openDate: '2022-11-15', rate: 1.25, balance: 24350.00, status: 'active',
+    typeCode: '10', type: 'ออมทรัพย์', openDate: '2022-11-15', rate: 1.25, balance: 24350.00, status: 'active',
     payrollLinked: false, intMethod: 'compound', bank: '', bankAcc: '', bankLinkStatus: 'none',
     useLoan: false, useFuneral: false, freeQuota: 0, freeUsed: 0, ytdInterest: 180.25, withdrawCond: 'ถอนได้คนเดียว' },
   { accNo: '001-2-70013-8', member: '70013', name: 'อรวรรณ แก้วมณี', sample: true, dept: 'กองแผนงาน', memberStatus: 'ปฏิบัติงาน',
-    typeCode: 'S02', type: 'ออมทรัพย์พิเศษ', openDate: '2021-06-01', rate: 2.00, balance: 1080500.00, status: 'active',
+    typeCode: '11', type: 'ออมทรัพย์พิเศษ', openDate: '2021-06-01', rate: 2.00, balance: 1080500.00, status: 'active',
     payrollLinked: false, intMethod: 'tobank',
     bank: 'ธ.กรุงไทย', bankAcc: '987-0-12345-6', bankAccName: 'อรวรรณ แก้วมณี', bankBranch: 'สาขาแจ้งวัฒนะ', bankLinkStatus: 'linked',
     useLoan: false, useFuneral: false, freeQuota: 0, freeUsed: 0, ytdInterest: 16207.50, withdrawCond: 'ถอนได้คนเดียว' },
   { accNo: '005-2-90001-6', member: 'L00001', ownerKind: 'juristic', name: 'บริษัท ทรัพย์เจริญพัฒนา จำกัด', dept: 'นิติบุคคลภายนอก', memberStatus: 'ปกติ',
-    typeCode: 'S01', type: 'ออมทรัพย์', openDate: '2024-03-01', rate: 1.25, balance: 1250000.00, status: 'active',
+    typeCode: '10', type: 'ออมทรัพย์', openDate: '2024-03-01', rate: 1.25, balance: 1250000.00, status: 'active',
     payrollLinked: false, bank: 'ธ.กรุงไทย', bankAcc: '120-6-33041-9', bankLinkStatus: 'none',
     useLoan: false, useFuneral: false, freeQuota: 0, freeUsed: 0, ytdInterest: 9850.00,
     withdrawCond: 'ถอนได้ต้องลงนาม 2 ใน 3 คน\nนายสมชาย ใจดี · กรรมการผู้จัดการ\nนางวิภา จันทร์เพ็ญ · กรรมการ\nนายอนุชา สุขสวัสดิ์ · กรรมการ' },
   { accNo: '001-2-58241-0', member: '58241', name: 'สมชาย ใจดี', dept: 'กองคลัง สำนักงานปลัด', memberStatus: 'ปฏิบัติงาน',
-    typeCode: 'S01', type: 'ออมทรัพย์', openDate: '2008-06-01', rate: 1.25, balance: 342850.50, status: 'active',
+    typeCode: '10', type: 'ออมทรัพย์', openDate: '2008-06-01', rate: 1.25, balance: 342850.50, status: 'active',
     payrollLinked: true, bank: 'ธ.กรุงไทย', bankAcc: '982-1-44021-7', bankLinkStatus: 'linked',
     useLoan: false, useFuneral: true, freeQuota: 0, freeUsed: 0, ytdInterest: 3120.40,
     monthlyDeposit: 2000, collectUntil: '999999' },
   { accNo: '002-5-58241-7', member: '58241', name: 'สมชาย ใจดี', dept: 'กองคลัง สำนักงานปลัด', memberStatus: 'ปฏิบัติงาน',
-    typeCode: 'S02', type: 'ออมทรัพย์พิเศษ', openDate: '2015-03-10', rate: 2.75, balance: 680000.00, status: 'active',
+    typeCode: '11', type: 'ออมทรัพย์พิเศษ', openDate: '2015-03-10', rate: 2.75, balance: 680000.00, status: 'active',
     payrollLinked: true, bank: 'ธ.กรุงไทย', bankAcc: '982-1-44021-7', bankLinkStatus: 'linked',
     useLoan: false, useFuneral: false, freeQuota: 1, freeUsed: 0, ytdInterest: 9120.00,
     monthlyDeposit: 5000, collectUntil: '999999' },
   { accNo: '003-1-58241-4', member: '58241', name: 'สมชาย ใจดี', dept: 'กองคลัง สำนักงานปลัด', memberStatus: 'ปฏิบัติงาน',
-    typeCode: 'F12', type: 'ฝากประจำ 12 เดือน', openDate: '2024-01-15', rate: 3.10, balance: 500000.00, status: 'active',
+    typeCode: '12', type: 'ฝากประจำ 12 เดือน', openDate: '2024-01-15', rate: 3.10, balance: 500000.00, status: 'active',
     payrollLinked: false, bank: '', bankAcc: '', bankLinkStatus: 'none',
     useLoan: false, useFuneral: false, freeQuota: 0, freeUsed: 0, ytdInterest: 7750.00, maturityDate: '2025-01-15' },
   { accNo: '002-5-60112-3', member: '60112', name: 'วิภาวดี รังสิต', dept: 'กองการศึกษา', memberStatus: 'ปฏิบัติงาน',
-    typeCode: 'S02', type: 'ออมทรัพย์พิเศษ', openDate: '2018-07-20', rate: 2.75, balance: 158200.00, status: 'active',
+    typeCode: '11', type: 'ออมทรัพย์พิเศษ', openDate: '2018-07-20', rate: 2.75, balance: 158200.00, status: 'active',
     payrollLinked: true, bank: 'ธ.ออมสิน', bankAcc: '020-6-71188-2', bankLinkStatus: 'linked',
     useLoan: false, useFuneral: true, freeQuota: 1, freeUsed: 1, ytdInterest: 2410.00,
     monthlyDeposit: 3000, collectUntil: '256912' },
   { accNo: '001-2-57003-9', member: '57003', name: 'ธีรพงษ์ มากมี', dept: 'กองช่าง', memberStatus: 'ปฏิบัติงาน',
-    typeCode: 'S01', type: 'ออมทรัพย์', openDate: '2009-02-11', rate: 1.25, balance: 89400.25, status: 'active',
+    typeCode: '10', type: 'ออมทรัพย์', openDate: '2009-02-11', rate: 1.25, balance: 89400.25, status: 'active',
     payrollLinked: false, bank: 'ธ.กสิกรไทย', bankAcc: '044-2-90017-5', bankLinkStatus: 'pending',
     useLoan: false, useFuneral: false, freeQuota: 0, freeUsed: 0, ytdInterest: 740.10 },
   { accNo: '004-9-61580-1', member: '61580', name: 'ปาริชาติ สุขสวัสดิ์', dept: 'สำนักปลัด', memberStatus: 'ลาออก',
-    typeCode: 'S01', type: 'ออมทรัพย์', openDate: '2016-05-05', rate: 1.25, balance: 12050.00, status: 'active',
+    typeCode: '10', type: 'ออมทรัพย์', openDate: '2016-05-05', rate: 1.25, balance: 12050.00, status: 'active',
     payrollLinked: false, bank: '', bankAcc: '', bankLinkStatus: 'none',
     useLoan: false, useFuneral: false, freeQuota: 0, freeUsed: 0, ytdInterest: 95.20 },
 ];
@@ -98,6 +98,35 @@ window.DEP_WITHDRAW_METHODS = [
 ];
 window.DEP_BANKS = ['ธ.กรุงไทย', 'ธ.ออมสิน', 'ธ.กสิกรไทย', 'ธ.ไทยพาณิชย์', 'ธ.กรุงเทพ', 'ธ.ทหารไทยธนชาต'];
 
+// ─── เลขที่สมุดคู่ฝากของบัญชีตัวอย่าง
+//  บัญชีเดิมใช้เลขระบบเก่า (10 หลัก ขึ้นต้นด้วย 0) · บางบัญชีออกสมุดเล่มใหม่แล้ว จึงได้เลขระบบใหม่ TTYYNNNNNN
+const DEP_BOOK_SEED = {
+  '001-2-58241-0': [{ no: '0000020317', issuedAt: '2008-06-01', reason: 'สมุดเดิม (ระบบเก่า)', status: 'active' }],
+  '002-5-60112-3': [{ no: '0000020435', issuedAt: '2018-07-20', reason: 'สมุดเดิม (ระบบเก่า)', status: 'active' }],
+  '001-2-57003-9': [{ no: '0000020553', issuedAt: '2009-02-11', reason: 'สมุดเดิม (ระบบเก่า)', status: 'active' }],
+  '001-2-70011-3': [{ no: '0000031842', issuedAt: '2023-04-03', reason: 'สมุดเดิม (ระบบเก่า)', status: 'active' }],
+  '001-1-70012-4': [{ no: '0000028716', issuedAt: '2022-11-15', reason: 'สมุดเดิม (ระบบเก่า)', status: 'active' }],
+  '001-2-70013-8': [{ no: '0000026509', issuedAt: '2021-06-01', reason: 'สมุดเดิม (ระบบเก่า)', status: 'active' }],
+  '002-5-58241-7': [{ no: '0000024188', issuedAt: '2015-03-10', reason: 'สมุดเดิม (ระบบเก่า)', status: 'active' }],
+  '004-9-61580-1': [{ no: '0000025930', issuedAt: '2016-05-05', reason: 'สมุดเดิม (ระบบเก่า)', status: 'active' }],
+  '005-2-90001-6': [{ no: '0000032011', issuedAt: '2024-03-01', reason: 'สมุดเดิม (ระบบเก่า)', status: 'active' }],
+  '001-2-70020-5': [{ no: '1068000001', issuedAt: '2025-08-12', reason: 'สมุดเต็มเล่ม', status: 'active', by: 'จันทร์เพ็ญ มาลี' }, { no: '0000019774', issuedAt: '2015-03-02', reason: 'สมุดเดิม (ระบบเก่า)', status: 'full', closedAt: '2025-08-12', closeReason: 'สมุดเต็มเล่ม' }],
+  '001-2-70012-1': [{ no: '1168000001', issuedAt: '2025-11-03', reason: 'สมุดชำรุด', status: 'active', by: 'จันทร์เพ็ญ มาลี' }, { no: '0000027650', issuedAt: '2022-11-15', reason: 'สมุดเดิม (ระบบเก่า)', status: 'damaged', closedAt: '2025-11-03', closeReason: 'สมุดชำรุด' }],
+  '003-1-58241-4': [{ no: '1269000001', issuedAt: '2026-01-15', reason: 'สมุดเต็มเล่ม', status: 'active', by: 'จันทร์เพ็ญ มาลี' }, { no: '0000029904', issuedAt: '2024-01-15', reason: 'สมุดเดิม (ระบบเก่า)', status: 'full', closedAt: '2026-01-15', closeReason: 'สมุดเต็มเล่ม' }],
+};
+// เติมเลขที่สมุดให้บัญชีตัวอย่างที่ยังไม่มีเลข (ไม่ทับเลขที่ออกแล้ว / บัญชีที่ไม่มีสมุด)
+// เลขตัวอย่างรูปแบบก่อนหน้า (T-YY-NNNNNN-C) → รูปแบบ TTYYNNNNNN
+const DEP_BOOK_RENUM = { '1680000013': '1068000001', '2680000011': '1168000001', '3690000017': '1269000001' };
+const depBookSeedApply = (a0) => {
+  let a = a0;
+  if (a && (DEP_BOOK_RENUM[a.certNo] || (a.bookHistory || []).some(h => DEP_BOOK_RENUM[h.no]))) {
+    a = { ...a, certNo: DEP_BOOK_RENUM[a.certNo] || a.certNo, bookHistory: (a.bookHistory || []).map(h => DEP_BOOK_RENUM[h.no] ? { ...h, no: DEP_BOOK_RENUM[h.no] } : h) };
+  }
+  const b = a && DEP_BOOK_SEED[a.accNo];
+  if (!b || a.noBook || a.certNo || (a.bookHistory || []).length) return a;
+  return { ...a, certNo: b[0].no, bookHistory: b.map(h => ({ ...h })) };
+};
+
 // ─── localStorage: บัญชี + ledger ────────────────────────────────────
 window.depTxnLoadAccounts = function () {
   try {
@@ -110,10 +139,12 @@ window.depTxnLoadAccounts = function () {
         if (o) { o.name = x.name; if (x.bankAccName) o.bankAccName = x.bankAccName; }
       });
       window.DEP_TXN_ACCOUNTS_SEED.forEach(x => { if (!have.has(x.accNo)) list.push({ ...x }); });
-      return list;
+      depMonthlyDemoPatch(list);
+      return depMonthlyAutoApply(list.map(depBookSeedApply));
     }
   } catch (e) {}
-  return window.DEP_TXN_ACCOUNTS_SEED.map(a => ({ ...a }));
+  depMonthlyDemoFreeze();
+  return depMonthlyAutoApply(window.DEP_TXN_ACCOUNTS_SEED.map(a => depBookSeedApply({ ...a })));
 };
 window.depTxnSaveAccounts = function (list) { try { localStorage.setItem('dep_txn_accounts', JSON.stringify(list)); } catch (e) {} };
 window.depTxnLoadLedger = function () {
@@ -135,7 +166,21 @@ window.depTxnNextId = function () {
 // ════════════════════════════════════════════════════════════════════
 //  เปลี่ยนแปลงฝากรายเดือน — ประวัติคำขอ + เลขที่คำร้อง (running)
 // ════════════════════════════════════════════════════════════════════
+//  source: open = ตั้งยอดตอนเปิดบัญชี · legacy = ยอดยกมาจากระบบเดิม · kind: first = ตั้งยอดครั้งแรก
+//  status: applied (มีผลแล้ว) · pending (รอมีผล) · replaced (ยกเลิก — มีคำร้องใหม่)
 window.DEP_MONTHLY_HISTORY_SEED = [
+  { id: 'DMC-2569-0031', accNo: '002-5-58241-7', member: '58241', reqDate: '2026-06-10', date: '2026-07-01',
+    oldAmount: 5000, newAmount: 6000, collectUntil: '9999999', by: 'จันทร์เพ็ญ มาลี', note: 'ขอเพิ่มยอดตั้งแต่งวด ก.ค. 2569', status: 'pending' },
+  { id: 'DMC-2568-0150', accNo: '001-1-70012-4', member: '70012', reqDate: '2025-09-25', date: '2025-10-01',
+    oldAmount: 0, newAmount: 500, collectUntil: '256903', by: 'ประไพ ศรีทอง', note: 'ขอหักถึง มี.ค. 2569', kind: 'first', status: 'applied' },
+  { id: 'MIG-001-2-57003-9', accNo: '001-2-57003-9', member: '57003', reqDate: '2024-07-01', date: '2024-07-01',
+    oldAmount: 0, newAmount: 1500, collectUntil: '9999999', by: 'ระบบ (ย้ายข้อมูล)', note: '', source: 'legacy', status: 'applied' },
+  { id: 'MIG-004-9-61580-1', accNo: '004-9-61580-1', member: '61580', reqDate: '2024-07-01', date: '2024-07-01',
+    oldAmount: 0, newAmount: 500, collectUntil: '9999999', by: 'ระบบ (ย้ายข้อมูล)', note: '', source: 'legacy', status: 'applied' },
+  { id: 'OPEN-001-2-70020-5', accNo: '001-2-70020-5', member: '70020', reqDate: '2015-03-02', date: '2015-03-02',
+    oldAmount: 0, newAmount: 1000, collectUntil: '9999999', by: 'ประภาส ทองสุข', note: '', source: 'open', status: 'applied' },
+  { id: 'OPEN-001-2-70013-8', accNo: '001-2-70013-8', member: '70013', reqDate: '2021-06-01', date: '2021-06-01',
+    oldAmount: 0, newAmount: 2000, collectUntil: '9999999', by: 'ประภาส ทองสุข', note: '', source: 'open', status: 'applied' },
   { id: 'DMC-2569-0007', accNo: '001-2-58241-0', member: '58241', date: '2026-01-05',
     oldAmount: 1500, newAmount: 2000, collectUntil: '999999', by: 'จันทร์เพ็ญ มาลี', note: 'สมาชิกขอเพิ่มยอดฝากรายเดือน' },
   { id: 'DMC-2568-0142', accNo: '001-2-58241-0', member: '58241', date: '2025-04-01',
@@ -146,10 +191,118 @@ window.DEP_MONTHLY_HISTORY_SEED = [
     oldAmount: 2000, newAmount: 3000, collectUntil: '256912', by: 'ประไพ ศรีทอง', note: 'กำหนดหักถึง ธ.ค. 2569' },
 ];
 window.depMonthlyLoadHistory = function () {
-  try { const s = localStorage.getItem('dep_monthly_history'); if (s) return JSON.parse(s); } catch (e) {}
+  try {
+    const s = localStorage.getItem('dep_monthly_history');
+    if (s) {
+      let list = JSON.parse(s);
+      // ตัวอย่างชุดใหม่ (ครั้งเดียว) — เติมเฉพาะรายการที่ยังไม่มี
+      if (localStorage.getItem('dep_monthly_demo_hist_v1') !== '1') {
+        const have = new Set(list.map(h => h.id));
+        list = [...list, ...window.DEP_MONTHLY_HISTORY_SEED.filter(h => !have.has(h.id)).map(h => ({ ...h }))];
+        localStorage.setItem('dep_monthly_history', JSON.stringify(list));
+        localStorage.setItem('dep_monthly_demo_hist_v1', '1');
+      }
+      return list;
+    }
+  } catch (e) {}
   return window.DEP_MONTHLY_HISTORY_SEED.map(h => ({ ...h }));
 };
 window.depMonthlySaveHistory = function (list) { try { localStorage.setItem('dep_monthly_history', JSON.stringify(list)); } catch (e) {} };
+
+// ════════════════════════════════════════════════════════════════════
+//  ฝากรายเดือน — ตัวช่วยกลาง (ใช้ร่วม: เปลี่ยนแปลงฝากรายเดือน · เปิดบัญชี · ประมวลผลตัดยอดเงินฝาก)
+// ════════════════════════════════════════════════════════════════════
+// ผู้ใช้ที่ล็อกอิน (ตามแถบด้านบน / เปิดเคาน์เตอร์)
+window.depOpsUser = () => {
+  try { if (window.depCtMe) { const u = window.depCtMe(); if (u && u.name) return u.name; } } catch (e) {}
+  return window.LC_USER || window.DN_USER || window.DEP_OPS_USER || '—';
+};
+// ข้อมูลสมาชิกล่าสุดจากทะเบียนสมาชิก (ชื่อ · สังกัด · สถานะ) — บุคคล/นิติบุคคลภายนอกจากทะเบียนบุคคลภายนอก
+window.depMemberLive = (code) => {
+  const c = String(code || '');
+  if (!c) return null;
+  const m = (window.DEP_TXN_MEMBERS || []).find(x => x.code === c)
+    || (window.MEMBERS_LIST || []).find(x => x.code === c || String(x.code).replace(/^M-0*/, '') === c.replace(/^0+/, ''));
+  if (m) return { name: m.name, dept: m.dept || '', status: m.status || m.workStatus || '' };
+  const ext = (window.depExtPersonsLoad ? window.depExtPersonsLoad() : (window.DEP_EXT_PERSON_SEED || [])).find(p => p.code === c);
+  if (ext) return { name: ext.name || ext.nameTh || '', dept: ext.kind === 'juristic' ? 'นิติบุคคลภายนอก' : 'บุคคลภายนอก', status: 'ปกติ' };
+  return null;
+};
+window.depMemberGone = (status) => /ลาออก|เสียชีวิต|พ้นสภาพ|ให้ออก/.test(String(status || ''));
+// งวด YYYYMM (พ.ศ.) ของวันที่ — ไม่ส่งวันที่ = งวดตามวันทำการ
+window.depPeriodOf = (iso) => {
+  const t = String(iso || (window.dpcToday ? window.dpcToday() : new Date().toISOString().slice(0, 10)));
+  return String(Number(t.slice(0, 4)) + 543) + t.slice(5, 7);
+};
+window.depCollectAll = (cu) => { const s = String(cu == null ? '' : cu).trim(); return !s || /^9{6,7}$/.test(s); };
+// สถานะฝากรายเดือนของบัญชี ณ งวด — active = ต้องเรียกเก็บ · expired = เลยงวดเรียกเก็บถึงแล้ว · stopped = ตั้งยอด 0 (หยุดหัก)
+//  notStarted = ยังไม่ถึงงวดเริ่มเรียกเก็บ (collectFrom — กำหนดตอนเปิดบัญชี)
+window.depMonthlyState = (a, period) => {
+  const amt = Number(a && a.monthlyDeposit) || 0;
+  if (amt <= 0) return { amt: 0, active: false, expired: false, stopped: !!a && a.monthlyDeposit != null && Number(a.monthlyDeposit) === 0 };
+  const p = period || window.depPeriodOf();
+  const expired = !window.depCollectAll(a.collectUntil) && String(a.collectUntil) < p;
+  const notStarted = !expired && /^\d{6}$/.test(String(a.collectFrom || '')) && String(a.collectFrom) > p;
+  return { amt, active: !expired && !notStarted, expired, notStarted, stopped: false };
+};
+// ยอดรอมีผลที่ถึงวันที่มีผลแล้ว → ใช้กับบัญชี + ปรับสถานะผูกหักเงินเดือน + ประวัติเป็น "มีผลแล้ว"
+window.depMonthlyApplyDue = (accounts, history) => {
+  const t = window.dpcToday ? window.dpcToday() : new Date().toISOString().slice(0, 10);
+  let changed = false; const applied = [];
+  const accs = accounts.map(a => {
+    const p = a.monthlyPending;
+    if (!p || !p.effDate || p.effDate > t) return a;
+    changed = true; applied.push(p.reqNo);
+    const { monthlyPending, ...rest } = a;
+    return { ...rest, monthlyDeposit: p.amount, collectUntil: p.collectUntil, payrollLinked: Number(p.amount) > 0 };
+  });
+  const hist = applied.length ? history.map(h => applied.includes(h.id) && h.status === 'pending' ? { ...h, status: 'applied' } : h) : history;
+  return { changed, accs, hist };
+};
+// เรียกตอนโหลดบัญชีทุกครั้ง — ไม่ต้องรอเปิดหน้าเปลี่ยนแปลงฝากรายเดือน
+function depMonthlyAutoApply(list) {
+  try {
+    const t = window.dpcToday ? window.dpcToday() : new Date().toISOString().slice(0, 10);
+    if (!list.some(a => a.monthlyPending && a.monthlyPending.effDate && a.monthlyPending.effDate <= t)) return list;
+    const r = window.depMonthlyApplyDue(list, window.depMonthlyLoadHistory());
+    window.depTxnSaveAccounts(r.accs); window.depMonthlySaveHistory(r.hist);
+    return r.accs;
+  } catch (e) { return list; }
+}
+// ── บัญชีตัวอย่างฝากรายเดือน (ครบทุกกรณี) — ใช้ทั้งข้อมูลตั้งต้นและเติมให้ข้อมูลที่บันทึกไว้แล้ว (ครั้งเดียว)
+const DEP_MONTHLY_DEMO = {
+  '001-2-70020-5': { monthlyDeposit: 1000, collectUntil: '9999999', payrollLinked: true },      // ตั้งยอดตอนเปิดบัญชี
+  '001-2-70013-8': { monthlyDeposit: 2000, collectUntil: '9999999', payrollLinked: true },      // อายัดห้ามฝาก
+  '001-2-57003-9': { monthlyDeposit: 1500, collectUntil: '9999999', payrollLinked: true },      // ยกมาจากระบบเดิม
+  '004-9-61580-1': { monthlyDeposit: 500,  collectUntil: '9999999', payrollLinked: true },      // สมาชิกลาออก
+  '001-1-70012-4': { monthlyDeposit: 500,  collectUntil: '256903',  payrollLinked: true },      // หมดงวดเรียกเก็บ
+  '002-5-58241-7': { monthlyPending: { reqNo: 'DMC-2569-0031', amount: 6000, collectUntil: '9999999', effDate: '2026-07-01' } }, // รอมีผล
+};
+window.DEP_TXN_ACCOUNTS_SEED.forEach(a => { if (DEP_MONTHLY_DEMO[a.accNo]) Object.assign(a, DEP_MONTHLY_DEMO[a.accNo]); });
+function depMonthlyDemoFreeze() {
+  try {
+    if (localStorage.getItem('dep_monthly_demo_frz_v1') === '1') return;
+    const m = JSON.parse(localStorage.getItem('dep_freezes') || '{}');
+    if (!m['001-2-70013-8']) {
+      m['001-2-70013-8'] = { type: '5', label: 'อายัดห้ามฝากเงิน', reason: 'ตัวอย่าง — รอตรวจสอบแหล่งที่มาของเงิน', mode: 'full', amount: 0,
+        date: '2026-06-01', by: 'จันทร์เพ็ญ มาลี', approveStatus: 'approved', apvNo: 'APV-2569-S0009', reqNo: 'FRZ-2569-S009', prev: null };
+      localStorage.setItem('dep_freezes', JSON.stringify(m));
+    }
+    localStorage.setItem('dep_monthly_demo_frz_v1', '1');
+  } catch (e) {}
+}
+function depMonthlyDemoPatch(list) {
+  try {
+    depMonthlyDemoFreeze();
+    if (localStorage.getItem('dep_monthly_demo_acc_v1') === '1') return;
+    list.forEach(a => {
+      const d = DEP_MONTHLY_DEMO[a.accNo];
+      if (d && !(Number(a.monthlyDeposit) > 0 && !d.monthlyPending) && !a.monthlyPending) Object.assign(a, d);
+    });
+    localStorage.setItem('dep_txn_accounts', JSON.stringify(list));
+    localStorage.setItem('dep_monthly_demo_acc_v1', '1');
+  } catch (e) {}
+}
 // เลขที่คำร้อง DMC-yyyy-#### (running ต่อปี พ.ศ.)
 window.depMonthlyNextReqNo = function () {
   const be = new Date().getFullYear() + 543;
@@ -160,7 +313,7 @@ window.depMonthlyNextReqNo = function () {
 
 // สร้างเลขที่บัญชีตามรูปแบบสหกรณ์: {type3}-{cd}-{member5}-{seq}
 window.depGenAccNo = function (typeCode, member, existing) {
-  const map = { S01: '001', S02: '002', F12: '003', F24: '003', L90: '005', W10: '006' };
+  const map = { '10': '001', '11': '002', '12': '003', '13': '005', '14': '006', S01: '001', S02: '002', F12: '003', F24: '003', L90: '005', W10: '006' };
   const pre = map[typeCode] || '009';
   const cd = (typeCode.charCodeAt(0) % 9) + 1;
   const m5 = String(member).slice(-5).padStart(5, '0');

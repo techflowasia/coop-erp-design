@@ -402,6 +402,76 @@ function SvCancelModal({ appt, onConfirm, onClose }) {
   );
 }
 
+// ── Popup ประวัติ — ไทม์ไลน์ (layout เดียวกับประวัติบันทึกหลักทรัพย์ / สำรวจหลักทรัพย์) ──
+function SvHistoryModal({ onClose }) {
+  const MOD = 'สินเชื่อ — นัดหมายออกสำรวจ';
+  const ctx = React.useContext(window.AuditContext || React.createContext({ entries: [] }));
+  const all = (ctx && ctx.entries) || window.AUDIT_SEED || [];
+  const hist = all.filter(e => e.module === MOD).slice().sort((a, b) => String(b.ts).localeCompare(String(a.ts)));
+  const actionMeta = (a) => a === 'create'
+    ? { label: 'สร้างข้อมูล', color: 'var(--success)', icon: 'plus' }
+    : a === 'delete' ? { label: 'ยกเลิกนัดหมาย', color: 'var(--danger)', icon: 'trash' }
+    : { label: 'แก้ไขข้อมูล', color: 'var(--primary)', icon: 'edit' };
+  return (
+    <>
+      <div className="modal-backdrop" onClick={onClose} />
+      <div className="modal-card" role="dialog" aria-modal="true" style={{ width: 620, maxHeight: '82vh', display: 'flex', flexDirection: 'column' }}>
+        <div className="modal-head">
+          <div className="gc-modal-ico"><Icon name="history" /></div>
+          <div style={{ minWidth: 0 }}>
+            <h2>ประวัติการทำรายการ — นัดหมายออกสำรวจ</h2>
+            <div className="muted" style={{ fontSize: 11 }}>นัดหมายออกสำรวจหลักทรัพย์ทั้งหมด — บันทึกทุกการเปลี่ยนแปลงเพื่อการตรวจสอบ</div>
+          </div>
+          <button className="close-btn" onClick={onClose} aria-label="ปิด"><Icon name="close" /></button>
+        </div>
+        <div className="modal-body" style={{ overflow: 'auto' }}>
+          {hist.length === 0 && <div className="muted" style={{ padding: 20, textAlign: 'center' }}>ยังไม่มีประวัติ</div>}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {hist.map((h, i) => {
+              const m = actionMeta(h.action);
+              const ts = String(h.ts).replace('T', ' ');
+              return (
+                <div key={h.id || i} style={{ display: 'flex', gap: 12, padding: '10px 2px', borderBottom: i < hist.length - 1 ? '1px solid var(--divider)' : 'none' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
+                    <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'color-mix(in srgb, ' + m.color + ' 14%, transparent)', color: m.color, display: 'grid', placeItems: 'center' }}>
+                      <Icon name={m.icon} size={14} />
+                    </div>
+                    {i < hist.length - 1 && <div style={{ flex: 1, width: 2, background: 'var(--divider)', marginTop: 2 }} />}
+                  </div>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <span style={{ fontWeight: 600, fontSize: 13 }}>{m.label}</span>
+                      <span className="muted" style={{ fontSize: 11, marginLeft: 'auto' }}>{fmt.date(ts.slice(0, 10))} · {ts.slice(11, 16)} น.</span>
+                    </div>
+                    <div style={{ fontSize: 12.5, color: 'var(--text)', marginTop: 3 }}>{h.summary}</div>
+                    {h.target && <div className="muted" style={{ fontSize: 11, marginTop: 2 }}>สมาชิก {h.target}</div>}
+                    <div className="muted" style={{ fontSize: 11, marginTop: 2 }}>โดย {h.user}{h.role ? ' · ' + h.role : ''}</div>
+                    {h.changes && h.changes.length > 0 && (
+                      <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                        {h.changes.map((c, ci) => (
+                          <div key={ci} style={{ fontSize: 11.5, display: 'flex', gap: 6, alignItems: 'baseline', flexWrap: 'wrap' }}>
+                            <span className="muted" style={{ minWidth: 110 }}>{c.field}</span>
+                            <span style={{ textDecoration: 'line-through', color: 'var(--text-faint)' }}>{c.before}</span>
+                            <Icon name="chevRight" size={11} />
+                            <span style={{ fontFamily: 'var(--mono)', fontWeight: 600 }}>{c.after}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+        <div style={{ padding: '12px 18px', borderTop: '1px solid var(--divider)', display: 'flex', justifyContent: 'flex-end' }}>
+          <button className="btn" onClick={onClose}>ปิด</button>
+        </div>
+      </div>
+    </>
+  );
+}
+
 function SurveyAppointmentPage({ onToast }) {
   const audit = React.useContext(window.AuditContext || React.createContext({ log: () => {} }));
   const today = window.SV_TODAY;
@@ -417,6 +487,7 @@ function SurveyAppointmentPage({ onToast }) {
   const [editAppt, setEditAppt] = useState(null);
   const [cancelAppt, setCancelAppt] = useState(null);
   const [permitOpen, setPermitOpen] = useState(false);
+  const [histOpen, setHistOpen] = useState(false);
 
   window.useBreadcrumb([{ label: 'นัดหมายออกสำรวจหลักทรัพย์', current: true }], []);
 
@@ -473,6 +544,7 @@ function SurveyAppointmentPage({ onToast }) {
           <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>ลงนัดออกสำรวจหลักทรัพย์ที่บันทึกในระบบ และติดตามบนปฏิทิน</div>
         </div>
         <span className="spacer" />
+        <button className="btn sm" onClick={() => setHistOpen(true)}><Icon name="history" /> ประวัติ</button>
         <button className="btn sm" onClick={() => setPermitOpen(true)}><Icon name="print" /> พรีวิว/พิมพ์</button>
         <button className="btn primary sm" onClick={() => openAdd('')}><Icon name="plus" /> เพิ่มการนัดหมาย</button>
       </div>
@@ -514,6 +586,8 @@ function SurveyAppointmentPage({ onToast }) {
                                         onEdit={(a) => { setDetailAppt(null); setEditAppt(a); }} onDelete={deleteAppt} />}
       {editAppt && <SvEditModal appt={editAppt} onClose={() => setEditAppt(null)} onSave={updateAppt} />}
       {permitOpen && <window.SurveyPermitPrintModal appts={appts} onClose={() => setPermitOpen(false)} />}
+      {/* ประวัติ — รูปแบบเดียวกับปุ่มประวัติในระบบสินเชื่อ (ไทม์ไลน์ · กรองเฉพาะโมดูลนี้) */}
+      {histOpen && <SvHistoryModal onClose={() => setHistOpen(false)} />}
       {cancelAppt && <SvCancelModal appt={cancelAppt} onClose={() => setCancelAppt(null)}
                                     onConfirm={(note) => doCancelAppt(cancelAppt, note)} />}
     </div>
@@ -521,3 +595,27 @@ function SurveyAppointmentPage({ onToast }) {
 }
 
 Object.assign(window, { SurveyAppointmentPage });
+
+// ── ประวัติการทำรายการตั้งต้นของเมนู "นัดหมายออกสำรวจ" (ให้ป๊อปอัปประวัติมีตัวอย่าง) ──
+(function () {
+  const MOD = 'สินเชื่อ — นัดหมายออกสำรวจ';
+  const seed = window.AUDIT_SEED = window.AUDIT_SEED || [];
+  if (seed.some(e => e.module === MOD)) return;
+  [
+    { id: 'A-100410', ts: '2026-04-03T14:20:11', user: 'วินัย ตรงเวลา', role: 'เจ้าหน้าที่สินเชื่อ', action: 'create',
+      target: 'M-058241 · นายสมชาย ใจดี รักษ์ออม', summary: 'ลงนัดออกสำรวจหลักทรัพย์ 3 รายการ (10 เม.ย. 2569 09:00 น.)' },
+    { id: 'A-100411', ts: '2026-04-03T15:02:47', user: 'มาลี สุขใจ', role: 'เจ้าหน้าที่สินเชื่อ', action: 'create',
+      target: 'M-058241 · นายสมชาย ใจดี รักษ์ออม', summary: 'ลงนัดออกสำรวจหลักทรัพย์ 1 รายการ (ห้องชุด 18/305)' },
+    { id: 'A-100412', ts: '2026-04-04T09:18:05', user: 'วินัย ตรงเวลา', role: 'เจ้าหน้าที่สินเชื่อ', action: 'create',
+      target: 'M-058246 · นางสาวพรพิมล ทองคำ', summary: 'ลงนัดออกสำรวจหลักทรัพย์ 1 รายการ (นส3ก-1180)' },
+    { id: 'A-100413', ts: '2026-04-05T10:41:30', user: 'ประเสริฐ วงศ์ดี', role: 'หัวหน้าฝ่ายสินเชื่อ', action: 'update',
+      target: 'M-058241 · นายสมชาย ใจดี รักษ์ออม', summary: 'แก้ไขนัดหมายออกสำรวจ (โฉนดเลขที่ 1180)',
+      changes: [
+        { field: 'วันที่นัดหมาย', before: '17 เม.ย. 2569', after: '24 เม.ย. 2569' },
+        { field: 'เวลา', before: '09:00 น.', after: '13:30 น.' },
+        { field: 'เจ้าหน้าที่', before: 'วินัย ตรงเวลา', after: 'ประเสริฐ วงศ์ดี' },
+      ] },
+    { id: 'A-100414', ts: '2026-04-05T16:05:12', user: 'วินัย ตรงเวลา', role: 'เจ้าหน้าที่สินเชื่อ', action: 'delete',
+      target: 'M-058244 · นางวิภา จันทร์เพ็ญ', summary: 'ยกเลิกนัดหมายออกสำรวจ (โฉนดเลขที่ 20871) — สมาชิกขอเลื่อนไม่มีกำหนด' },
+  ].forEach(r => seed.push({ changes: [], ...r, module: MOD, ip: '10.21.4.37' }));
+})();

@@ -35,7 +35,8 @@ const TT_GROUP = [
   { v: 'B/F', l: 'B/F', d: 'ยอดยกมา' },
   { v: 'DTE', l: 'DTE', d: 'ฝากเพิ่มด้วยการโอนภายนอก' },
   { v: 'VEC', l: 'VEC', d: 'ค่าใช้จ่ายประชุมใหญ่' },
-  { v: 'ฮฮฮ', l: 'ฮฮฮ', d: 'ไม่ระบุ' },
+  { v: 'TRF', l: 'TRF', d: 'โอนเงิน' },
+  { v: 'OTH', l: 'OTH', d: 'ไม่ระบุ' },
 ];
 const TT_VSIDE = [
   { v: '',   l: '—',  d: 'ไม่ระบุ' },
@@ -109,7 +110,9 @@ const TT_LEGACY_ROWS = [
   ["TAX", "ภาษี", -1, "TAX", "TAX"],
   ["WCA", "ถอนเงินสด", -1, "WTD", "WID"],
   ["WCL", "ถอนเช็ค/ตราสาร", -1, "WCQ", "WID"],
-  ["WFS", "ถอนเพื่อจ่ายเป็นค่าหุ้น/ชำระหนี้", -1, "WFS", "WID"],
+  ["WFS", "ถอนเพื่อจ่ายเป็นค่าหุ้น/ชำระหนี้", -1, "WFS", "WID"],   // ปิดใช้งาน — แยกเป็น WLN / WSH
+  ["WLN", "ถอนชำระหนี้เงินกู้", -1, "WLN", "WID"],
+  ["WSH", "ถอนซื้อหุ้น", -1, "WSH", "WID"],
   ["WTE", "ถอนเพื่อการโอนภายนอก", -1, "WTE", "WID"],
   ["WTI", "ถอนเพื่อการโอนภายใน", -1, "WTI", "WID"],
   ["WTO", "ถอนโอนย้อนหลัง", -1, "WIB", "WID"],
@@ -117,7 +120,7 @@ const TT_LEGACY_ROWS = [
   ["SUM", "ยอดยกมา", 1, "B/F", "B/F"],
   ["ERI", "รายการผิดพลาดเข้า", 1, "ERR", "ERR"],
   ["ERO", "รายการผิดพลาดออก", -1, "ERR", "ERR"],
-  ["ฮฮฮ", "ไม่ระบุ", 0, "ฮฮฮ", "ฮฮฮ"],
+  ["ฮฮฮ", "ไม่ระบุ", 0, "ฮฮฮ", "OTH"],
   ["AJI", "รายการปรับปรุงเข้า", 1, "ADJ", "ADJ"],
   ["AJO", "รายการปรับปรุงออก", -1, "ADJ", "ADJ"],
   ["DTE", "ฝากเพิ่มด้วยการโอนภายนอก", 1, "DTE", "DTE"],
@@ -172,18 +175,28 @@ const ttGuessKind = (name, group) => {
   if (/เงินสด/.test(name)) return 'CSH';
   return 'TRN';
 };
+// คู่บัญชีของรหัสที่แยกจาก WFS — WLN = ลูกหนี้เงินกู้ · WSH = ทุนเรือนหุ้น (ตามรหัสรายการหน้าฝาก/ถอน)
+const TT_SEED_PAIR = { WLN: '121101', WSH: '131101' };
+const TT_SEED_OFF = ['WFS'];
 window.DEP_TXNTYPE_SEED = TT_LEGACY_ROWS.map(([code, name, side, stm, group]) => {
   const d = (window.DEP_TXN_DEFS || []).find(x => x.key === code) || {};
   return { id: 'TT-' + code, code, defKey: d.key ? code : '', name, side, cross: '', stm, group,
            kind: d.kind || ttGuessKind(name, group),
            vside: side === 1 ? 'CR' : side === -1 ? 'DR' : '',
-           vc: side !== 0, vgroup: group === 'INT' ? 'AIT' : (side === 0 ? '' : 'AID') };
+           vc: side !== 0, vgroup: group === 'INT' ? 'AIT' : (side === 0 ? '' : 'AID'),
+           ...(TT_SEED_PAIR[code] ? { pair: TT_SEED_PAIR[code] } : {}),
+           ...(TT_SEED_OFF.includes(code) ? { enabled: false } : {}) };
 });
 
 // ════════════════════════════════════════════════════════════════════
 //  หมวดข้อกำหนด (categories) — เลือกก่อนสร้างรหัส
 // ════════════════════════════════════════════════════════════════════
 //  kind: 'txnslip' = ตารางเต็ม DeptSlip · 'generic' = ตารางตาม fields
+// รหัสรายการโอน (ใช้ในหน้าฝาก/ถอน/โอน) — ไม่มีในประเภทการทำรายการ จึงเติมให้เมนูรหัสรายการ
+const TT_DETITEM_EXTRA = [
+  { code: 'TRI', name: 'โอนเงินระหว่างบัญชีเงินฝาก', side: '0', cross: '', stm: 'TRI', group: 'TRF' },
+  { code: 'TRX', name: 'โอนข้ามสมาชิก', side: '0', cross: '', stm: 'TRX', group: 'TRF' },
+];
 const TT_CAT_CODE   = { k: 'code', label: 'รหัส', w: 110, mono: true, up: true, required: true };
 const TT_CATEGORIES = [
   { key: 'txnslip', label: 'ประเภทการทำรายการ', en: 'DeptSlip', kind: 'txnslip',
@@ -205,7 +218,8 @@ const TT_CATEGORIES = [
     fields: [{ ...TT_CAT_CODE, up: true, ph: 'กรอกรหัสรายการ (ห้ามซ้ำ)' },
              { k: 'name',  label: 'ประเภทรายการ', required: true, ph: 'กรอกประเภทรายการ' }],
     storeKey: 'dep_const_detitem_v3',
-    seedFn: () => ttLoad().map(r => ({ code: r.code, name: r.name, side: String(r.side), cross: r.cross || '', stm: r.stm, group: r.group })),
+    seedFn: () => [...ttLoad().map(r => ({ code: r.code, name: r.name, side: String(r.side), cross: r.cross || '', stm: r.stm, group: r.group, ...(r.enabled === false ? { enabled: false } : {}) })),
+                   ...TT_DETITEM_EXTRA.filter(x => !ttLoad().some(r => r.code === x.code))],
     seed: [
       { code: 'D01', name: 'รับฝากเงิน' },
       { code: 'W01', name: 'ถอนเงิน' },
@@ -230,6 +244,15 @@ const TT_CATEGORIES = [
       { code: '03', name: 'ผู้รับขอยกเลิก' },
       { code: '04', name: 'เช็คสูญหาย' },
       { code: '05', name: 'เปลี่ยนวิธีการจ่ายเงิน' },
+    ] },
+
+  { key: 'coopbranch', label: 'สาขาสหกรณ์', kind: 'generic',
+    desc: 'รหัสและชื่อสาขาของสหกรณ์ (0 = สำนักงานใหญ่) — เตรียมไว้ใช้เป็นรหัสสาขาในเลขที่บัญชี / เลขที่สมุด เมื่อมีสาขาในอนาคต',
+    fields: [{ ...TT_CAT_CODE, label: 'รหัสสาขา', w: 140, ph: 'เช่น 0' },
+             { k: 'name', label: 'ชื่อสหกรณ์ / สาขา', required: true, ph: 'กรอกชื่อสหกรณ์ / สาขา' }],
+    storeKey: 'dep_const_coopbranch_v1',
+    seed: [
+      { code: '0', name: 'สหกรณ์ออมทรัพย์แห่งประเทศไทย' },
     ] },
 
   { key: 'signer', label: 'ผู้ลงนามหนังสือรับรองเงินฝาก', kind: 'generic',
@@ -364,14 +387,14 @@ const TT_CATEGORIES = [
       { code: 'ZZZ', name: '===UNKNOW===', print: '', group: '', acctIn: '', acctOut: '', order: '99' },
     ] },
 
-  { key: 'txnpair', label: 'ประเภทคู่บัญชี', kind: 'generic', uniq: ['money', 'code'],
+  { key: 'txnpair', label: 'ประเภทคู่บัญชี', kind: 'generic', uniq: ['money', 'code'], searchPh: 'ค้นหารหัสบัญชี หรือชื่อบัญชี',
     desc: 'ผูกประเภทเงินกับรหัสบัญชีที่ทำรายการฝากถอนเงินฝาก และวิธีเปิดบัญชีที่ใช้คู่บัญชีนั้น',
     fields: [
-      { k: 'money', label: 'ประเภทเงิน', w: 120, mono: true, required: true, filter: true, type: 'opts', hint: 'อ้างอิงจากเมนูกำหนดประเภทเงินทำรายการ (รหัส)',
+      { k: 'money', label: 'ประเภทเงิน', w: 120, mono: true, required: true, filter: true, type: 'opts', span: true, hint: 'อ้างอิงจากเมนูกำหนดประเภทเงินทำรายการ (รหัส)',
         optsFn: () => gcLoad(ttCat('moneytype')).filter(g => g.enabled !== false).map(g => ({ v: g.code, l: g.code + ' · ' + g.name })) },
-      { k: 'code', label: 'รหัสบัญชี', w: 130, mono: true, required: true },
-      { k: 'name', label: 'ชื่อบัญชีที่ทำรายการฝากถอนเงินฝาก', required: true },
-      { k: 'openBy', label: 'เปิดบัญชีโดย', w: 280, type: 'opts', opts: ["เปิดบัญชีใหม่ด้วยเงินสด","เปิดบัญชีด้วยแคชเชียร์เช็ค","เปิดบัญชีด้วยดราฟท์","เปิดบัญชีด้วยเช็คส่วนบุคคล","เปิดบัญชีจากลูกหนี้ตัวแทนหักเงินเดือน","เปิดบัญชีใหม่ด้วยการโอนนอกระบบ","เปิดบัญชีโดยธนาณัติ","เปิดบัญชีใหม่ด้วยการโอน"].map(s => ({ v: s, l: s })) },
+      { k: 'code', label: 'รหัสบัญชี', required: true, type: 'coa', fillName: 'name', hint: 'เลือกจากผังบัญชี — ชื่อบัญชีจะดึงตามรหัสที่เลือก' },
+      { k: 'name', label: 'ชื่อบัญชีที่ทำรายการฝากถอนเงินฝาก', auto: true },
+      { k: 'openBy', label: 'เปิดบัญชีโดย', w: 280, type: 'opts', filter2: { all: 'ทุกวิธีเปิดบัญชี', none: 'ไม่ระบุ' }, opts: ["เปิดบัญชีใหม่ด้วยเงินสด","เปิดบัญชีด้วยแคชเชียร์เช็ค","เปิดบัญชีด้วยดราฟท์","เปิดบัญชีด้วยเช็คส่วนบุคคล","เปิดบัญชีจากลูกหนี้ตัวแทนหักเงินเดือน","เปิดบัญชีใหม่ด้วยการโอนนอกระบบ","เปิดบัญชีโดยธนาณัติ","เปิดบัญชีใหม่ด้วยการโอน"].map(s => ({ v: s, l: s })) },
     ],
     storeKey: 'dep_const_txnpair_v1',
     seed: [
@@ -479,10 +502,188 @@ const ttMoneyGroups = () => gcLoad(ttCat('moneygroup')).map(g => ({ v: g.code, l
 // ประเภทเงิน — ดึงจากกำหนดประเภทเงินทำรายการ (คอลัมน์รหัส)
 const ttMoneyTypes = () => gcLoad(ttCat('moneytype')).filter(g => g.enabled !== false).map(g => ({ v: g.code, l: g.code, d: g.name, g: g.group }));
 const ttKindNorm = (k) => (k === 'CBT' ? 'TBK' : k);
-const ttGroups = () => gcLoad(ttCat('depgroup')).map(g => ({ v: g.code, l: g.code, d: g.name }));
+const ttGroups = () => gcLoad(ttCat('depgroup')).map(g => ({ v: g.code, l: g.code, d: g.name, off: g.enabled === false }));
 // ประเภทกลุ่มเงินฝาก → ตัวเลือก “กลุ่มเงินฝาก” ของเมนูประเภทเงินฝาก (DAT_OPTS.depGroup)
 const DEP_KIND_LEGACY = { saving: '00', fixed: '04', current: '04', special: '01', internal: '00' };
 window.depKindNorm = (v) => DEP_KIND_LEGACY[v] || v;
+// อ่านรายการค่าคงที่ตามรหัสหมวด (เฉพาะที่เปิดใช้งาน) — ใช้ร่วมกับหน้าทำรายการ
+// ── ปรับข้อมูลที่บันทึกไว้แล้ว (ครั้งเดียว) — 2026-11-13
+//    รหัสกลุ่มรายการ: เพิ่ม TRF โอนเงิน · "ไม่ระบุ" ฮฮฮ → OTH
+//    รหัสรายการ / ประเภทการทำรายการ: เพิ่ม WLN ถอนชำระหนี้เงินกู้ · WSH ถอนซื้อหุ้น · ปิด WFS
+//    รหัสรายการ: เพิ่ม TRI โอนเงินระหว่างบัญชีเงินฝาก · TRX โอนข้ามสมาชิก
+(function () {
+  const FLAG = 'dep_code_mig_20261113';
+  try { if (localStorage.getItem(FLAG)) return; } catch (e) { return; }
+  const get = (k) => { try { const s = localStorage.getItem(k); return s ? JSON.parse(s) : null; } catch (e) { return null; } };
+  const put = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+  const grp = (r) => (r && r.group === 'ฮฮฮ' ? { ...r, group: 'OTH' } : r);
+  const seedOf = (code) => (window.DEP_TXNTYPE_SEED || []).find(r => r.code === code);
+  // รหัสกลุ่มรายการ
+  const gk = 'dep_const_depgroup_v3', g = get(gk);
+  if (g) {
+    let n = g.map(r => (r.code === 'ฮฮฮ' ? { ...r, code: 'OTH' } : r));
+    if (!n.some(r => r.code === 'TRF')) n = [...n, { id: 'DEPGROUP-TRF', code: 'TRF', name: 'โอนเงิน' }];
+    put(gk, n);
+  }
+  // ประเภทการทำรายการ
+  const tk = 'dep_txntype_v2', t = get(tk);
+  if (t) {
+    let n = t.map(r => grp(r.code === 'WFS' ? { ...r, enabled: false } : r));
+    ['WLN', 'WSH'].forEach(c => { if (!n.some(r => r.code === c) && seedOf(c)) n = [...n, { ...seedOf(c) }]; });
+    put(tk, n);
+  }
+  // รหัสรายการ
+  const dk = 'dep_const_detitem_v3', d = get(dk);
+  if (d) {
+    let n = d.map(r => grp(r.code === 'WFS' ? { ...r, enabled: false } : r));
+    const add = [...['WLN', 'WSH'].map(c => seedOf(c)).filter(Boolean).map(r => ({ code: r.code, name: r.name, side: String(r.side), cross: '', stm: r.stm, group: r.group })), ...TT_DETITEM_EXTRA];
+    add.forEach(x => { if (!n.some(r => r.code === x.code)) n = [...n, { id: 'DETITEM-' + x.code, ...x }]; });
+    put(dk, n);
+  }
+  put(FLAG, 1);
+})();
+// ค่าคงที่ที่ถูกใช้อยู่ — ปิดใช้งานไม่ได้ (เหมือนค่าคงที่สินเชื่อ)
+//  รหัสกลุ่มรายการ ← ประเภทการทำรายการที่เปิดใช้งาน · ประเภทกลุ่มเงิน ← ประเภทเงินทำรายการที่เปิดใช้งาน
+function ttConstInUse(key, r) {
+  try {
+    if (key === 'depgroup') {
+      const u = ttLoad().filter(t => t.enabled !== false && t.group === r.code);
+      return u.length ? `รหัสกลุ่ม “${r.code}” ถูกใช้อยู่ใน ${u.length} ประเภทการทำรายการที่เปิดใช้งาน: ${u.slice(0, 6).map(t => t.code).join(', ')}${u.length > 6 ? ' …' : ''} — เปลี่ยนกลุ่มหรือปิดรายการเหล่านั้นก่อน` : null;
+    }
+    if (key === 'depkind') {
+      // ใช้ที่เมนูประเภทเงินฝาก (เฉพาะที่เปิดใช้งาน) — ช่อง "กลุ่มเงินฝาก" หรือ "กลุ่มลง ACC"
+      const code = String(r.code);
+      const u = (window.datLoad ? window.datLoad() : []).filter(d => d.enabled !== false && d.settings && (
+        String(window.depKindNorm ? window.depKindNorm(d.settings.depGroup) : d.settings.depGroup) === code ||
+        String(window.depAccNorm ? window.depAccNorm(d.settings.accGroupACC) : d.settings.accGroupACC) === code));
+      return u.length ? `ประเภทกลุ่มเงินฝาก “${r.code}” ถูกใช้อยู่ใน ${u.length} ประเภทเงินฝากที่เปิดใช้งาน: ${u.slice(0, 6).map(d => d.code + ' ' + d.name).join(', ')}${u.length > 6 ? ' …' : ''} — เปลี่ยนกลุ่มหรือปิดประเภทเงินฝากเหล่านั้นก่อน` : null;
+    }
+    if (key === 'moneygroup') {
+      const u = gcLoad(ttCat('moneytype')).filter(m => m.enabled !== false && m.group === r.code);
+      return u.length ? `ประเภทกลุ่มเงิน “${r.code}” ถูกใช้อยู่ใน ${u.length} ประเภทเงินทำรายการที่เปิดใช้งาน: ${u.slice(0, 6).map(m => m.code).join(', ')} — ปิดรายการเหล่านั้นก่อน` : null;
+    }
+  } catch (e) {}
+  return null;
+}
+window.depConstList = (key) => { const c = TT_CATEGORIES.find(x => x.key === key); return c ? gcLoad(c).filter(r => r.enabled !== false) : []; };
+
+// ── เลขที่สมุดคู่ฝาก — รูปแบบจาก ข้อกำหนดระบบเงินฝาก › แท็บ "เลขที่บัญชี/สมุด" (ช่อง "รูปแบบเลขที่สมุด")
+//    TT = รหัสประเภทเงินฝาก 2 หลัก (เมนูประเภทเงินฝาก) · YY/YYYY = ปี พ.ศ. ของวันที่ออกสมุด · N…N = ลำดับ (แยกตามประเภท+ปี เริ่ม 1 ใหม่ทุกปี)
+//    C = หลักตรวจสอบ Luhn (ไม่ใส่ = ไม่มี) · อักขระอื่น = ตัวคั่น (ใช้ตอนแสดงผลเท่านั้น — จัดเก็บเป็นตัวเลขล้วน)
+const DEP_BOOK_FMT_DEFAULT = 'TTYYNNNNNN';
+const DEP_BOOK_FMT_OLD = 'T-YY-NNNNNN-C';
+// ประเภทเงินฝากที่ออกสมุด — ดูจากช่อง "การถือสมุด" ในเมนูประเภทเงินฝาก (ไม่มีสมุด → ไม่ออกเลข)
+const depBookDepTypes = () => { try { return window.datLoad ? window.datLoad() : []; } catch (e) { return []; } };
+window.depBookTypeOf = (acc) => {
+  if (!acc || !acc.typeCode) return null;
+  const code = String(acc.typeCode).trim();
+  if (!/^\d{2}$/.test(code)) return null;
+  const t = depBookDepTypes().find(r => r.code === code);
+  if (!t) return null;
+  const st = t.settings || {};
+  const hasBook = st.passbookHold ? st.passbookHold === 'book' : !(t.passbook && t.passbook.useBook === false);
+  return hasBook ? { code, name: t.name } : null;
+};
+const depBookCheck = (s9) => {
+  let sum = 0;
+  for (let i = 0; i < s9.length; i++) { let d = Number(s9[s9.length - 1 - i]); if (i % 2 === 0) { d *= 2; if (d > 9) d -= 9; } sum += d; }
+  return String((10 - sum % 10) % 10);
+};
+// แตกรูปแบบเป็นชิ้น: { k:'T'|'Y'|'N'|'C'|'sep', n, text }
+const depBookParse = (fmtStr) => {
+  const f = String(fmtStr || '').trim().toUpperCase();
+  const toks = []; let i = 0;
+  while (i < f.length) {
+    const ch = f[i];
+    if (ch === 'C') { toks.push({ k: ch, n: 1 }); i++; continue; }
+    if (ch === 'T' || ch === 'Y' || ch === 'N') { let j = i; while (j < f.length && f[j] === ch) j++; toks.push({ k: ch, n: j - i }); i = j; continue; }
+    const last = toks[toks.length - 1];
+    if (last && last.k === 'sep') last.text += ch; else toks.push({ k: 'sep', text: ch });
+    i++;
+  }
+  const cnt = (k) => toks.filter(t => t.k === k).length;
+  const y = toks.find(t => t.k === 'Y');
+  const ok = cnt('T') === 1 && toks.find(t => t.k === 'T').n === 2 && cnt('N') === 1 && cnt('Y') <= 1 && cnt('C') <= 1 && (!y || y.n === 2 || y.n === 4)
+    && toks.find(t => t.k === 'N').n >= 3 && toks.find(t => t.k === 'N').n <= 9;
+  return ok ? toks : null;
+};
+// ค่าตั้งรูปแบบเลขสมุด — จากข้อกำหนดระบบเงินฝาก (หรือจากค่าที่ส่งมา) · รูปแบบไม่ถูกต้อง → ใช้ค่าตั้งต้น
+const depBookCfg = (src) => {
+  const c = src || (window.depSysCfg ? window.depSysCfg() : {}) || {};
+  const f = String(c.bookFormat || '').trim().toUpperCase() === DEP_BOOK_FMT_OLD ? DEP_BOOK_FMT_DEFAULT : c.bookFormat;
+  const toks = depBookParse(f) || depBookParse(DEP_BOOK_FMT_DEFAULT);
+  const digits = toks.filter(t => t.k !== 'sep');
+  const y = (toks.find(t => t.k === 'Y') || { n: 0 }).n;
+  const sq = toks.find(t => t.k === 'N').n;
+  const chk = toks.some(t => t.k === 'C');
+  return { toks, y, sq, chk, len: digits.reduce((s, t) => s + t.n, 0) };
+};
+window.depBookCfg = depBookCfg;
+window.depBookFmtValid = (fmtStr) => !!depBookParse(fmtStr);
+// แยกเลขดิบตามตำแหน่ง → { T, Y, N, C }
+const depBookSplit = (s, c) => {
+  const out = {}; let p = 0;
+  c.toks.forEach(t => { if (t.k === 'sep') return; out[t.k] = s.slice(p, p + t.n); p += t.n; });
+  return out;
+};
+const depBookNoCheck = (s, c) => { const parts = depBookSplit(s, c); return c.toks.filter(t => t.k !== 'sep' && t.k !== 'C').map(t => parts[t.k]).join(''); };
+window.depBookValid = (no, src) => {
+  const s = String(no || ''); const c = depBookCfg(src);
+  if (s.length !== c.len || !/^\d+$/.test(s)) return false;
+  const parts = depBookSplit(s, c);
+  if (!/^[1-9]\d$/.test(parts.T)) return false;
+  return !c.chk || depBookCheck(depBookNoCheck(s, c)) === parts.C;
+};
+window.depBookFmt = (no, src) => {
+  const s = String(no || ''); const c = depBookCfg(src);
+  if (!window.depBookValid(s, src)) return s;
+  const parts = depBookSplit(s, c);
+  return c.toks.map(t => t.k === 'sep' ? t.text : parts[t.k]).join('');
+};
+// แสดงพร้อมชื่อประเภทเงินฝาก เช่น 1269000125 · ฝากประจำ 12 เดือน (เลขรูปแบบเดิมแสดงตามที่เก็บไว้)
+window.depBookLabel = (no) => {
+  const s = String(no || ''); if (!s) return '';
+  if (!window.depBookValid(s)) return s;
+  const c = depBookCfg();
+  const t = depBookDepTypes().find(r => String(r.code).trim() === depBookSplit(s, c).T);
+  return window.depBookFmt(s) + (t ? ' · ' + t.name : '');
+};
+const depBookYear = (dateIso, digits) => {
+  if (!digits) return '';
+  const be = Number(String(dateIso || (window.dpcToday ? window.dpcToday() : new Date().toISOString())).slice(0, 4)) + 543;
+  return digits === 4 ? String(be) : String(be % 100).padStart(2, '0');
+};
+const depBookCompose = (typeCode1, yearPart, n, c) => {
+  const v = { T: String(typeCode1), Y: yearPart, N: String(n).padStart(c.sq, '0'), C: '' };
+  if (c.chk) v.C = depBookCheck(c.toks.filter(t => t.k !== 'sep' && t.k !== 'C').map(t => v[t.k]).join(''));
+  return c.toks.filter(t => t.k !== 'sep').map(t => v[t.k]).join('');
+};
+function depBookNext(acc, dateIso, consume) {
+  const t = window.depBookTypeOf(acc); if (!t) return '';
+  const c = depBookCfg();
+  const T = String(t.code).trim(), Y = depBookYear(dateIso, c.y);
+  const shape = c.toks.map(x => x.k === 'sep' ? '' : x.k + x.n).join('');
+  const seqKey = T + Y + '/' + shape;   // แยกตัวนับตามรูปแบบ — เปลี่ยนรูปแบบแล้วไม่ชนกับเลขชุดเดิม
+  let seq = {};
+  try { seq = JSON.parse(localStorage.getItem('dep_book_seq') || '{}'); } catch (e) {}
+  let n = Number(seq[seqKey]) || 0;
+  // ไม่ให้ซ้ำกับเลขที่มีอยู่ในบัญชี (เล่มปัจจุบัน + ประวัติ) ที่เป็นรูปแบบเดียวกัน
+  try {
+    (window.depTxnLoadAccounts ? window.depTxnLoadAccounts() : []).forEach(a => {
+      [a.certNo, ...((a.bookHistory || []).map(h => h.no))].forEach(no => {
+        const s = String(no || ''); if (s.length !== c.len || !/^\d+$/.test(s)) return;
+        const p = depBookSplit(s, c);
+        if (p.T === T && (p.Y || '') === Y) n = Math.max(n, Number(p.N) || 0);
+      });
+    });
+  } catch (e) {}
+  n += 1;
+  if (n > Math.pow(10, c.sq) - 1) return '';
+  if (consume) { seq[seqKey] = n; try { localStorage.setItem('dep_book_seq', JSON.stringify(seq)); } catch (e) {} }
+  return depBookCompose(T, Y, n, c);
+}
+window.depBookPeek = (acc, dateIso) => depBookNext(acc, dateIso, false);
+window.depBookIssue = (acc, dateIso) => depBookNext(acc, dateIso, true);
 window.depKindOpts = () => gcLoad(ttCat('depkind')).filter(g => g.enabled !== false).map(g => ({ v: g.code, l: g.code + ' ' + g.name }));
 // กลุ่มลง ACC — ใช้รายการจากเมนูประเภทกลุ่มเงินฝากเช่นเดียวกับกลุ่มเงินฝาก (แปลงค่าเดิม DEP-xxx)
 const DEP_ACC_LEGACY = { 'DEP-SAV': '00', 'DEP-FIX': '04', 'DEP-CUR': '04', 'DEP-INT': '00' };
@@ -545,7 +746,7 @@ function TxnTypeModal({ mode, draft0, existing, onClose, onSubmit }) {
     (window.baLoad ? window.baLoad() : []).forEach(a => { if (a.coa && !coas.includes(a.coa)) coas.push(a.coa); });
     return coas.map(s => { const i = s.indexOf(' · '); return i > 0 ? { code: s.slice(0, i), name: s.slice(i + 3) } : { code: s, name: '' }; });
   }, []);
-  const itemCodes = React.useMemo(() => gcLoad(ttCat('detitem')).map(r => ({ code: String(r.code).toUpperCase(), name: r.name })), []);
+  const itemCodes = React.useMemo(() => gcLoad(ttCat('detitem')).map(r => ({ code: String(r.code).toUpperCase(), name: r.name, off: r.enabled === false })), []);
   const usedCodes = React.useMemo(() => new Set((existing || []).map(x => String(x.code).toUpperCase())), [existing]);
   const [error, setError]   = useState('');
 
@@ -593,8 +794,8 @@ function TxnTypeModal({ mode, draft0, existing, onClose, onSubmit }) {
                       onChange={(e) => pickItem(e.target.value)}>
                 <option value="">— เลือกรหัสรายการ —</option>
                 {isEdit && code && !itemCodes.some(x => x.code === code) && <option value={code}>{code}</option>}
-                {itemCodes.map(x => <option key={x.code} value={x.code} disabled={usedCodes.has(x.code) && x.code !== code}>
-                  {x.code} · {x.name}{usedCodes.has(x.code) && x.code !== code ? ' (ใช้แล้ว)' : ''}</option>)}
+                {itemCodes.filter(x => !x.off || x.code === code).map(x => <option key={x.code} value={x.code} disabled={usedCodes.has(x.code) && x.code !== code}>
+                  {x.code} · {x.name}{usedCodes.has(x.code) && x.code !== code ? ' (ใช้แล้ว)' : ''}{x.off ? ' (ปิดใช้งาน)' : ''}</option>)}
               </select>
               <div className="bud-fld-hint">อ้างอิงจากเมนูรหัสรายการ</div>
             </div>
@@ -641,7 +842,7 @@ function TxnTypeModal({ mode, draft0, existing, onClose, onSubmit }) {
             <div className="bud-fld span2">
               <label className="lt-modal-label">รหัสกลุ่ม</label>
               <select className="cfg-input" value={group} onChange={(e) => setGroup(e.target.value)}>
-                {ttGroups().map(o => <option key={o.v} value={o.v}>{o.l} · {o.d}</option>)}
+                {ttGroups().filter(o => !o.off || o.v === group).map(o => <option key={o.v} value={o.v}>{o.l} · {o.d}{o.off ? ' (ปิดใช้งาน)' : ''}</option>)}
               </select>
               <div className="bud-fld-hint">อ้างอิงจากเมนูรหัสกลุ่มรายการ</div>
             </div>
@@ -704,13 +905,13 @@ function GenericConstModal({ cat, mode, draft0, existing, onClose, onSubmit }) {
   const coaList = React.useMemo(() => {
     const all = window.coaFlatAccounts ? window.coaFlatAccounts() : [];
     const leaf = all.filter(a => a.kind !== 'control');
-    const out = (leaf.length ? leaf : all).map(a => ({ code: String(a.code), name: a.name }));
+    const out = (leaf.length ? leaf : all).map(a => ({ code: String(a.code), name: a.name, off: a.enabled === false }));
     // รวมรหัสบัญชีที่ใช้จริงในเมนูประเภทการทำรายการคู่บัญชี (รหัสเดิมที่ยังไม่อยู่ในผังบัญชี)
-    gcLoad(ttCat('txnpair')).forEach(r => { if (r.code && !out.some(a => a.code === String(r.code))) out.push({ code: String(r.code), name: r.name }); });
+    gcLoad(ttCat('txnpair')).forEach(r => { if (r.code && !out.some(a => a.code === String(r.code))) out.push({ code: String(r.code), name: r.name || '', legacy: true }); });
     // รหัสเดิมที่ใช้อยู่ในเมนูประเภทการทำรายการ แต่ยังไม่มีในผังบัญชี
     gcLoad(ttCat('moneytype')).forEach(r => ['acctIn', 'acctOut'].forEach(k => {
       const c = String(r[k] || '').trim();
-      if (c && !out.some(a => a.code === c)) out.push({ code: c, name: '(รหัสเดิม — ยังไม่มีในผังบัญชี)' });
+      if (c && !out.some(a => a.code === c)) out.push({ code: c, name: '', legacy: true });
     }));
     return out.sort((a, b) => a.code.localeCompare(b.code));
   }, []);
@@ -722,7 +923,7 @@ function GenericConstModal({ cat, mode, draft0, existing, onClose, onSubmit }) {
   const submit = (e) => {
     e.preventDefault();
     for (const f of cat.fields) {
-      if (f.required && !String(vals[f.k] || '').trim()) { setError(`กรุณาระบุ${f.label}`); return; }
+      if (f.required && !f.auto && !String(vals[f.k] || '').trim()) { setError(`กรุณาระบุ${f.label}`); return; }
     }
     const codeVal = String(vals.code || '').trim();
     const keys = cat.uniq || (cat.key === 'branch' ? ['bankCode', 'code'] : ['code']);
@@ -755,13 +956,13 @@ function GenericConstModal({ cat, mode, draft0, existing, onClose, onSubmit }) {
         <form className="modal-body" style={{ flex: '1 1 auto', minHeight: 0, overflowY: 'auto' }} onSubmit={submit}>
           <div className="bud-form-grid">
             {(() => {
-              const shorts = cat.fields.filter(x => x.k !== 'name');
-              const names = cat.fields.filter(x => x.k === 'name');
+              const shorts = cat.fields.filter(x => x.k !== 'name' && !x.auto);
+              const names = cat.fields.filter(x => x.k === 'name' && !x.auto);
               return [...shorts, ...names];
             })().map((f, i, arr) => {
               const isName = f.k === 'name';
               const shortCount = arr.filter(x => x.k !== 'name').length;
-              const lastOddShort = !isName && shortCount % 2 === 1 && i === shortCount - 1;
+              const lastOddShort = !isName && (f.span || f.fillName || (shortCount % 2 === 1 && i === shortCount - 1));
               return (
                 <div key={f.k} className={"bud-fld" + (isName || lastOddShort ? ' span2' : '')}>
                   <label className="lt-modal-label">{f.label} {f.required && <span className="cfg-required">*</span>}</label>
@@ -778,17 +979,21 @@ function GenericConstModal({ cat, mode, draft0, existing, onClose, onSubmit }) {
                       {(f.optsFn ? f.optsFn() : f.opts).map(o => <option key={o.v} value={o.v}>{o.l}</option>)}
                     </select>
                   ) : f.type === 'coa' ? (
-                    <select className="cfg-input" value={vals[f.k]} onChange={(e) => set(f.k, e.target.value)}>
+                    <select className="cfg-input" value={vals[f.k]} autoFocus={i === 0}
+                            onChange={(e) => { const v = e.target.value; const a = coaList.find(x => x.code === v);
+                                               if (f.fillName) setVals(p => ({ ...p, [f.k]: v, [f.fillName]: a && a.name ? a.name : (v ? p[f.fillName] : '') }));
+                                               else set(f.k, v);
+                                               setError(''); }}>
                       <option value="">— เลือกบัญชีจากผังบัญชี —</option>
-                      {vals[f.k] && !coaList.some(a => a.code === String(vals[f.k])) && <option value={vals[f.k]}>{vals[f.k]} · (ไม่พบในผังบัญชี)</option>}
-                      {coaList.map(a => <option key={a.code} value={a.code}>{a.code} · {a.name}</option>)}
+                      {vals[f.k] && !coaList.some(a => a.code === String(vals[f.k])) && <option value={vals[f.k]}>{vals[f.k]} · {(f.fillName && vals[f.fillName]) || ''} (ไม่พบในผังบัญชี)</option>}
+                      {coaList.filter(a => !a.off || a.code === String(vals[f.k])).map(a => <option key={a.code} value={a.code}>{a.code} · {a.name}{a.legacy ? ' (รหัสเดิม — ยังไม่มีในผังบัญชี)' : ''}{a.off ? ' (ปิดใช้งาน)' : ''}</option>)}
                     </select>
                   ) : f.ro ? (
                     <div className="cfg-display-box">{vals[f.k] || '—'}</div>
                   ) : f.type === 'bankref' ? (
                     <select className="cfg-input" value={vals[f.k]} onChange={(e) => set(f.k, e.target.value)} autoFocus={i === 0}>
                       <option value="">— เลือกธนาคาร —</option>
-                      {banks.map(b => <option key={b.code} value={b.code}>{b.code} · {b.name}</option>)}
+                      {banks.filter(b => b.enabled !== false || String(b.code) === String(vals[f.k])).map(b => <option key={b.code} value={b.code}>{b.code} · {b.name}{b.enabled === false ? ' (ปิดใช้งาน)' : ''}</option>)}
                     </select>
                   ) : (
                     <input className={'cfg-input' + (f.k === 'code' && dupNow ? ' is-error' : '')} value={vals[f.k]} placeholder={f.ph || ''}
@@ -963,15 +1168,11 @@ function TxnSlipTable({ onToast, addRef }) {
                     {r.vc ? <Icon name="check" size={14} style={{ color: 'var(--brand, #237450)', display: 'inline-block' }} /> : <span className="muted">—</span>}
                   </td>
                   <td className="center tt-vc-cell mono">{r.vc ? ((TT_VGROUP.find(o => o.v === r.vgroup) || {}).l || '—') : <span className="muted">—</span>}</td>
-                  <td className="center">{r.enabled !== false ? <span className="chip success">เปิดใช้งาน</span> : <span className="chip">ปิดใช้งาน</span>}</td>
-                  <td className="center"><button type="button" role="switch" data-st="" aria-checked={r.enabled !== false} aria-label="ใช้งาน"
+                  <td className="center"><window.ConstStatusPill on={r.enabled !== false} /></td>
+                  <td className="center"><window.ConstSwitch on={r.enabled !== false}
                         onClick={() => window.depConfirmOff(r.enabled !== false, (r.code || '') + ' · ' + (r.name || ''),
                           () => persist(list.map(x => x.id === r.id ? { ...x, enabled: x.enabled === false } : x)),
-                          'รายการนี้จะไม่แสดงเป็นตัวเลือกในการทำรายการ', 'ปิดการใช้งานรายการ')}
-                        style={{ width: 44, height: 22, borderRadius: 11, border: 0, padding: 2, cursor: 'pointer', display: 'inline-flex',
-                                 justifyContent: r.enabled !== false ? 'flex-end' : 'flex-start', background: r.enabled !== false ? 'var(--brand, #237450)' : 'rgba(0,0,0,.25)', transition: 'background .2s' }}>
-                        <span style={{ width: 18, height: 18, borderRadius: '50%', background: '#fff', boxShadow: '0 1px 2px rgba(0,0,0,.2)' }} />
-                      </button></td>
+                          'รายการนี้จะไม่แสดงเป็นตัวเลือกในการทำรายการ', 'ปิดการใช้งานรายการ')} /></td>
                   <td className="center">
                     <div className="col-gap" style={{ justifyContent: 'center', display: 'inline-flex', gap: 6 }}>
                       <button className="btn sm ex-row-btn" onClick={() => setModal({ mode: 'edit', rec: r })}><Icon name="edit" size={13} /> แก้ไข</button>
@@ -1017,12 +1218,18 @@ function GenericConstTable({ cat, onToast, addRef }) {
   const filterFld = (cat.fields || []).find(fd => fd.filter);
   const [fv, setFv] = useState('');
   const [fvQ, setFvQ] = useState('');
-  React.useEffect(() => { setQ(''); setQuery(''); setFv(''); setFvQ(''); }, [cat.key]);
+  // ตัวกรอง dropdown ช่องที่ 2 (เช่น “เปิดบัญชีโดย” ของประเภทคู่บัญชี) · '__none__' = ไม่ระบุ
+  const filterFld2 = (cat.fields || []).find(fd => fd.filter2);
+  const [fv2, setFv2] = useState('');
+  const [fv2Q, setFv2Q] = useState('');
+  const optsOf = (fd) => (fd.optsFn ? fd.optsFn() : fd.opts || []).map(o => (typeof o === 'string' ? { v: o, l: o } : o));
+  React.useEffect(() => { setQ(''); setQuery(''); setFv(''); setFvQ(''); setFv2(''); setFv2Q(''); }, [cat.key]);
   const kw = query.trim().toLowerCase();
   // ค้นหาเฉพาะรหัส + ชื่อ ให้ตรงกับข้อความในช่องค้นหา (ช่องอื่นใช้ตัวกรอง dropdown)
-  const filtered = list.filter(r => (!filterFld || !fvQ || String(r[filterFld.k] || '') === fvQ) && (!kw
+  const filtered = list.filter(r => (!filterFld || !fvQ || String(r[filterFld.k] || '') === fvQ)
+    && (!filterFld2 || !fv2Q || (fv2Q === '__none__' ? !String(r[filterFld2.k] || '').trim() : String(r[filterFld2.k] || '') === fv2Q)) && (!kw
     || String(r.code || '').toLowerCase().includes(kw) || String(r.name || '').toLowerCase().includes(kw)));
-  React.useEffect(() => { setPage(1); }, [query, fvQ]);
+  React.useEffect(() => { setPage(1); }, [query, fvQ, fv2Q]);
   const pageCount = Math.max(1, Math.ceil(filtered.length / TT_PAGE_SIZE));
   React.useEffect(() => { if (page > pageCount) setPage(pageCount); }, [pageCount, page]);
   const from = filtered.length ? (page - 1) * TT_PAGE_SIZE + 1 : 0;
@@ -1056,6 +1263,7 @@ function GenericConstTable({ cat, onToast, addRef }) {
   const cell = (f, r) => {
     if (f.type === 'bankref') return <span><span className="mono">{r[f.k]}</span> <span className="muted">· {bankName(r[f.k])}</span></span>;
     if (f.k === 'money' || (f.k === 'group' && cat.key === 'moneytype')) return r[f.k] ? <span className="chip mono">{r[f.k]}</span> : <span className="muted">—</span>;
+    if (f.k === 'code' && f.fillName) return <span><span className="mono" style={{ fontWeight: 600, color: 'var(--primary-700)' }}>{r[f.k]}</span> <span>· {r[f.fillName] || '—'}</span></span>;
     if (f.k === 'code') return <span className="mono" style={{ fontWeight: 600, color: 'var(--primary-700)' }}>{r[f.k]}</span>;
     if (f.type === 'opts' && !r[f.k]) return <span className="muted">—</span>;
     return <span className={f.mono ? 'mono' : ''}>{r[f.k] || '—'}</span>;
@@ -1069,7 +1277,7 @@ function GenericConstTable({ cat, onToast, addRef }) {
             <Icon name="search" size={14} />
             <input value={q} onChange={(e) => setQ(e.target.value)}
                    onKeyDown={(e) => { if (e.key === 'Enter') setQuery(q); }}
-                   placeholder={'ค้นหารหัส หรือ' + cat.label} />
+                   placeholder={cat.searchPh || ('ค้นหารหัส หรือ' + cat.label)} />
           </div>
           {filterFld && (
             <select className="cfg-input" style={{ width: 220, flex: '0 0 220px', height: 32, minHeight: 32, boxSizing: 'border-box' }} value={fv} onChange={(e) => setFv(e.target.value)}>
@@ -1077,15 +1285,22 @@ function GenericConstTable({ cat, onToast, addRef }) {
               {(filterFld.optsFn ? filterFld.optsFn() : filterFld.opts).map(o => <option key={o.v} value={o.v}>{o.l}</option>)}
             </select>
           )}
-          <button className="btn primary pa-tb-btn" onClick={() => { setQuery(q); setFvQ(fv); }}>ค้นหา</button>
-          <button className="btn pa-tb-btn" onClick={() => { setQ(''); setQuery(''); setFv(''); setFvQ(''); }}>รีเซ็ต</button>
+          {filterFld2 && (
+            <select className="cfg-input" style={{ width: 260, flex: '0 0 260px', height: 32, minHeight: 32, boxSizing: 'border-box' }} value={fv2} onChange={(e) => setFv2(e.target.value)}>
+              <option value="">{filterFld2.filter2.all || ('ทุก' + filterFld2.label)}</option>
+              {filterFld2.filter2.none && <option value="__none__">{filterFld2.filter2.none}</option>}
+              {optsOf(filterFld2).map(o => <option key={o.v} value={o.v}>{o.l}</option>)}
+            </select>
+          )}
+          <button className="btn primary pa-tb-btn" onClick={() => { setQuery(q); setFvQ(fv); setFv2Q(fv2); }}>ค้นหา</button>
+          <button className="btn pa-tb-btn" onClick={() => { setQ(''); setQuery(''); setFv(''); setFvQ(''); setFv2(''); setFv2Q(''); }}>รีเซ็ต</button>
         </div>
         <div className="table-wrap"><div className="table-scroll">
           <table className="tbl" style={{ minWidth: 640 }}>
             <thead>
               <tr>
                 <th className="center" style={{ width: 60 }}>ลำดับ</th>
-                {cat.fields.map(f => <th key={f.k} className={f.k === 'code' || f.type === 'bankref' ? '' : ''} style={f.w ? { width: f.w } : { minWidth: 240 }}>{f.label}</th>)}
+                {cat.fields.filter(f => !f.auto).map(f => <th key={f.k} className={f.k === 'code' || f.type === 'bankref' ? '' : ''} style={f.w ? { width: f.w } : { minWidth: 240 }}>{f.fillName ? 'บัญชี' : f.label}</th>)}
                 <th className="center" style={{ width: 100 }}>สถานะ</th>
                 <th className="center" style={{ width: 80, paddingRight: 16 }}>ใช้งาน</th>
                 <th className="center" style={{ width: 110, paddingLeft: 16 }}>จัดการ</th>
@@ -1093,24 +1308,21 @@ function GenericConstTable({ cat, onToast, addRef }) {
             </thead>
             <tbody>
               {list.length === 0 && (
-                <tr><td colSpan={cat.fields.length + 4} className="center muted" style={{ padding: '32px 12px' }}>ยังไม่มีรายการ — กดปุ่ม “สร้างรหัส” เพื่อเพิ่ม</td></tr>
+                <tr><td colSpan={cat.fields.filter(f => !f.auto).length + 4} className="center muted" style={{ padding: '32px 12px' }}>ยังไม่มีรายการ — กดปุ่ม “สร้างรหัส” เพื่อเพิ่ม</td></tr>
               )}
               {list.length > 0 && filtered.length === 0 && (
-                <tr><td colSpan={cat.fields.length + 4} className="center muted" style={{ padding: '32px 12px' }}>ไม่พบข้อมูล</td></tr>
+                <tr><td colSpan={cat.fields.filter(f => !f.auto).length + 4} className="center muted" style={{ padding: '32px 12px' }}>ไม่พบข้อมูล</td></tr>
               )}
               {rows.map((r, i) => (
                 <tr key={r.id} className={r.enabled === false ? 'dat-off' : undefined}>
                   <td className="center mono">{from + i}</td>
-                  {cat.fields.map(f => <td key={f.k} className={f.align === 'center' ? 'center' : undefined}>{cell(f, r)}</td>)}
-                  <td className="center">{r.enabled !== false ? <span className="chip success">เปิดใช้งาน</span> : <span className="chip">ปิดใช้งาน</span>}</td>
-                  <td className="center"><button type="button" role="switch" data-st="" aria-checked={r.enabled !== false} aria-label="ใช้งาน"
+                  {cat.fields.filter(f => !f.auto).map(f => <td key={f.k} className={f.align === 'center' ? 'center' : undefined}>{cell(f, r)}</td>)}
+                  <td className="center"><window.ConstStatusPill on={r.enabled !== false} /></td>
+                  <td className="center"><window.ConstSwitch on={r.enabled !== false}
                         onClick={() => window.depConfirmOff(r.enabled !== false, (r.code || '') + ' · ' + (r.name || ''),
                           () => persist(list.map(x => x.id === r.id ? { ...x, enabled: x.enabled === false } : x)),
-                          'รายการนี้จะไม่แสดงเป็นตัวเลือกในการทำรายการ', 'ปิดการใช้งานรายการ')}
-                        style={{ width: 44, height: 22, borderRadius: 11, border: 0, padding: 2, cursor: 'pointer', display: 'inline-flex',
-                                 justifyContent: r.enabled !== false ? 'flex-end' : 'flex-start', background: r.enabled !== false ? 'var(--brand, #237450)' : 'rgba(0,0,0,.25)', transition: 'background .2s' }}>
-                        <span style={{ width: 18, height: 18, borderRadius: '50%', background: '#fff', boxShadow: '0 1px 2px rgba(0,0,0,.2)' }} />
-                      </button></td>
+                          'รายการนี้จะไม่แสดงเป็นตัวเลือกในการทำรายการ', 'ปิดการใช้งานรายการ',
+                          { blocked: () => ttConstInUse(cat.key, r) })} /></td>
                   <td className="center">
                     <div className="col-gap" style={{ justifyContent: 'center', display: 'inline-flex', gap: 6 }}>
                       <button className="btn sm ex-row-btn" onClick={() => setModal({ mode: 'edit', rec: r })}><Icon name="edit" size={13} /> แก้ไข</button>
@@ -1152,7 +1364,7 @@ function DepTxnTypeConfigPage({ onToast, cat: catProp }) {
             {locked ? cat.label + (cat.en ? ` (${cat.en})` : '') : 'กำหนดประเภทการทำรายการ'}
           </h1>
           <div className="muted" style={{ fontSize: 12, marginTop: 2, maxWidth: 820 }}>
-            {locked ? cat.desc : 'ค้นหาด้วยรหัสหรือชื่อประเภทการทำรายการ แล้วสร้าง / แก้ไข / ลบรหัสได้จากตารางด้านล่าง'}
+            {locked ? cat.desc : 'ค้นหาด้วยรหัสหรือชื่อประเภทการทำรายการ แล้วสร้าง / แก้ไข'}
           </div>
         </div>
         <span className="spacer" />

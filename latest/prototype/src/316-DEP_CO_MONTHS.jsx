@@ -15,35 +15,28 @@ const DEP_CO_ORGS = [
   { code: '4', label: '4 — ไปรษณีย์ไทย' },
 ];
 
-// ยอดเงินฝากคงเหลือรายบัญชี (จำลอง) — ดึงตามหน่วยงาน/งวด
-// closed = วันที่ปิดบัญชี (ถ้ามี → ยอดโอนออกเต็มจำนวน)
-const DEP_CO_ACCOUNTS = [
-  { reg: '039450', accNo: '0100106077', name: 'นายศุภชัย  วิมโลภาส',    amount: 10000, adjust: 0 },
-  { reg: '050981', accNo: '0100106458', name: 'นายวุฒิชัย  แซ่โง้ว',      amount: 200,   adjust: 0 },
-  { reg: '052520', accNo: '0100106683', name: 'น.ส.สุชาดา  เผือกม่วง',   amount: 2000,  adjust: 0 },
-  { reg: '052802', accNo: '0100107053', name: 'น.ส.ศลิษา  หงษ์สี',       amount: 500,   adjust: 0 },
-  { reg: '052944', accNo: '0100107289', name: 'นายเอกดนัย  เจะเมาะ',      amount: 500,   adjust: 0 },
-  { reg: '052950', accNo: '0100107295', name: 'นายเกษมสุข  ช่วยป่า',      amount: 500,   adjust: 0 },
-  { reg: '052957', accNo: '0100107302', name: 'นายชัชวาลย์  สท้านไพร',    amount: 600,   adjust: 0 },
-  { reg: '052964', accNo: '0100107309', name: 'นายสมเกียรติ  ชูสุข',      amount: 500,   adjust: 0 },
-  { reg: '052965', accNo: '0100107310', name: 'นายชัยวิชิต  ดชนุต',       amount: 500,   adjust: 0 },
-  { reg: '039658', accNo: '0100108068', name: 'นางภรณี  ยาวิชัย (โคตร)',  amount: 1000,  adjust: 0 },
-  { reg: '027988', accNo: '0100108069', name: 'น.ส.อัญญรัตน์  สุขหร่าย',  amount: 1000,  adjust: 0 },
-  { reg: '053612', accNo: '0100108571', name: 'น.ส.เสาวลักษณ์  พลอย',     amount: 500,   adjust: 0 },
-  { reg: '050929', accNo: '0100108787', name: 'น.ส.ทิพสุคนธ์  สว่างดี',   amount: 500,   adjust: 0 },
-  { reg: '052231', accNo: '0100109046', name: 'นายธีระพงศ์  ชาติชาญ',     amount: 500,   adjust: 0 },
-  { reg: '054048', accNo: '0100109231', name: 'นายโชติวัฒน์  ศรีมิตร',    amount: 1500,  adjust: 0 },
-  { reg: '054123', accNo: '0100109318', name: 'นายพชร  สาลีพันธ์',        amount: 300,   adjust: 0 },
-  { reg: '054185', accNo: '0100109394', name: 'นายอดิศร  น้อยนารายณ์',    amount: 500,   adjust: 0 },
-  { reg: '054187', accNo: '0100109396', name: 'นายพงษ์พัฒน์  ชอบชม',      amount: 100,   adjust: 0 },
-  { reg: '054191', accNo: '0100109400', name: 'นายธนสรรค์  แก่นเพชร',     amount: 500,   adjust: 0 },
-  { reg: '034296', accNo: '0100109527', name: 'นางวีระยา  ปารุง',         amount: 700,   adjust: 0 },
-  { reg: '054298', accNo: '0100109549', name: 'นายปติ  เหลืองอร่าม',      amount: 500,   adjust: 0 },
-  { reg: '054909', accNo: '0100110211', name: 'นายรองศิริ  ผู้ศรัทธาธรรม', amount: 500,  adjust: 0 },
-  { reg: '054981', accNo: '0100110293', name: 'นายนาวิน  อุ้มเพชร',       amount: 500,   adjust: 0 },
-  { reg: '044287', accNo: '0100110951', name: 'น.ส.ดวงพร  โพธิ์ทอง',      amount: 5000,  adjust: 0, closed: '2026-07-15' },
-  { reg: '033941', accNo: '0100112940', name: 'ว่าที่ ร.ต.ณ.สดารัตน์ ศ.', amount: 1000,  adjust: 0 },
-];
+// ยอดฝากรายเดือนรายบัญชี — ดึงจากทะเบียนบัญชีจริง (ยอดตั้งที่เมนูเปลี่ยนแปลงฝากรายเดือน / ส่งงวดละตอนเปิดบัญชี)
+//  เรียกเก็บเฉพาะ: บัญชีใช้งาน · ยอดฝากรายเดือน > 0 · งวดยังไม่เลย "เรียกเก็บถึงงวด" · ไม่ถูกอายัดห้ามฝาก · สมาชิกไม่ลาออก/พ้นสภาพ
+//  หน่วยงานของบัญชี = orgCode ของบัญชี (ยังไม่ระบุ = 3 กสท)
+function depCoPull(org, period) {
+  const accs = window.depTxnLoadAccounts ? window.depTxnLoadAccounts() : [];
+  const rows = [], skip = { expired: 0, notStarted: 0, frozen: 0, gone: 0 };
+  accs.forEach(a => {
+    if (a.status !== 'active' || String(a.orgCode || '3') !== String(org)) return;
+    const st = window.depMonthlyState ? window.depMonthlyState(a, period) : { active: Number(a.monthlyDeposit) > 0, amt: Number(a.monthlyDeposit) || 0 };
+    if (!(st.amt > 0)) return;
+    if (st.notStarted) { skip.notStarted++; return; }
+    if (!st.active) { skip.expired++; return; }
+    const frz = window.dpcFreezeOf ? window.dpcFreezeOf(a.accNo) : null;
+    if (frz && window.dpcFreezeRule && window.dpcFreezeRule(frz).in) { skip.frozen++; return; }
+    const live = window.depMemberLive ? window.depMemberLive(a.member) : null;
+    const status = (live && live.status) || a.memberStatus || '';
+    if (window.depMemberGone && window.depMemberGone(status)) { skip.gone++; return; }
+    rows.push({ reg: a.member, accNo: a.accNo, name: (live && live.name) || a.name, amount: st.amt, adjust: 0 });
+  });
+  return { rows, skip };
+}
+const depCoRunsLoad = () => { try { return JSON.parse(localStorage.getItem('dep_cutoff_runs') || '{}'); } catch (e) { return {}; } };
 
 function DepCutoffProcessPage({ onToast }) {
   const audit = React.useContext(window.AuditContext || React.createContext({ log: () => {} }));
@@ -60,16 +53,23 @@ function DepCutoffProcessPage({ onToast }) {
   const [ask, setAsk] = useState(false);
 
   const orgLabel = (DEP_CO_ORGS.find(o => o.code === org) || {}).label || org;
+  const period = String(year) + String(month).padStart(2, '0');
+  const runKey = org + '/' + period;
+  const [runs, setRuns] = useState(depCoRunsLoad);
+  const doneRun = runs[runKey] || null;
+  const opsUser = window.depOpsUser ? window.depOpsUser() : (window.DEP_OPS_USER || '');
 
   const pull = () => {
-    const found = DEP_CO_ACCOUNTS.map((a, i) => ({
+    const { rows: raw, skip } = depCoPull(org, period);
+    const found = raw.map((a, i) => ({
       seq: i + 1, ...a,
       transfer: a.amount + a.adjust, // ยอดโอน = จำนวนเงิน + ยอดปรับปรุง
     }));
-    setRows(found); setSel(found.map(r => r.accNo));
-    setPosted(false);
+    setRows(found); setSel(doneRun ? [] : found.map(r => r.accNo));
+    setPosted(!!doneRun);
     const tot = found.reduce((s, x) => s + x.transfer, 0);
-    onToast && onToast(`ดึงข้อมูลยอดเงินฝาก ${orgLabel} งวด ${DEP_CO_MONTHS[month - 1]} ${year} — ${found.length} ราย รวม ${fmt.money(tot, 2)} บาท`);
+    const skipTxt = [skip.expired && `หมดงวด ${skip.expired}`, skip.notStarted && `ยังไม่ถึงงวดเริ่มหัก ${skip.notStarted}`, skip.frozen && `อายัดห้ามฝาก ${skip.frozen}`, skip.gone && `ลาออก/พ้นสภาพ ${skip.gone}`].filter(Boolean).join(' · ');
+    onToast && onToast(`ดึงข้อมูลยอดฝากรายเดือน ${orgLabel} งวด ${DEP_CO_MONTHS[month - 1]} ${year} — ${found.length} ราย รวม ${fmt.money(tot, 2)} บาท` + (skipTxt ? ` (ข้าม: ${skipTxt})` : '') + (doneRun ? ' · งวดนี้ผ่านรายการแล้ว' : ''));
     audit.log({ action: 'process', module: 'เงินฝาก — ประมวลผลตัดยอดเงินฝาก',
       target: `${orgLabel} · ${DEP_CO_MONTHS[month - 1]} ${year}`,
       summary: `ดึงข้อมูลยอดตัด ${found.length} บัญชี รวม ${fmt.money(tot, 2)} บาท` });
@@ -78,21 +78,35 @@ function DepCutoffProcessPage({ onToast }) {
   const postTxn = () => {
     setAsk(false);
     if (!rows) { onToast && onToast('กรุณาดึงข้อมูลก่อนผ่านรายการ'); return; }
+    if (doneRun) { onToast && onToast('งวดนี้ผ่านรายการไปแล้ว'); return; }
+    // ฝากเข้าบัญชีตามยอดฝากรายเดือน + บันทึกรายการเคลื่อนไหว · กันผ่านรายการซ้ำงวดเดิม
+    const pick = rows.filter(r => sel.includes(r.accNo));
+    const amtOf = {}; pick.forEach(r => { amtOf[r.accNo] = r.transfer; });
+    const accs = window.depTxnLoadAccounts();
+    const nextAccs = accs.map(a => amtOf[a.accNo] ? { ...a, balance: Math.round((Number(a.balance) + amtOf[a.accNo]) * 100) / 100 } : a);
+    window.depTxnSaveAccounts(nextAccs);
+    const ledger = window.depTxnLoadLedger();
+    const add = nextAccs.filter(a => amtOf[a.accNo]).map(a => ({ id: window.depTxnNextId(), date: txnDate, accNo: a.accNo, member: a.member, type: 'deposit',
+      channel: 'ฝากรายเดือน (หักเงินเดือน) งวด ' + DEP_CO_MONTHS[month - 1] + ' ' + year, amount: amtOf[a.accNo], balance: a.balance, ref: 'MONTHLY-' + period, by: opsUser }));
+    window.depTxnSaveLedger([...add, ...ledger]);
+    const nr = { ...runs, [runKey]: { date: txnDate, count: pick.length, total: pick.reduce((s, r) => s + r.transfer, 0), by: opsUser, at: new Date().toISOString() } };
+    setRuns(nr); try { localStorage.setItem('dep_cutoff_runs', JSON.stringify(nr)); } catch (e) {}
     setPosted(true);
-    onToast && onToast(`ผ่านรายการตัดยอดเงินฝาก ${rows.length} รายการเรียบร้อย — พร้อมบันทึกลงบัญชี`);
-    audit.log({ action: 'update', module: 'เงินฝาก — ประมวลผลตัดยอดเงินฝาก',
+    onToast && onToast(`ผ่านรายการตัดยอดเงินฝาก ${pick.length} รายการเรียบร้อย — ฝากเข้าบัญชีแล้ว`);
+    audit.log({ action: 'update', module: 'เงินฝาก — ประมวลผลตัดยอดเงินฝาก', user: opsUser,
       target: `ผ่านรายการ ${DEP_CO_MONTHS[month - 1]} ${year}`,
-      summary: `ผ่านรายการตัดยอด ${rows.length} บัญชี` });
+      summary: `ผ่านรายการตัดยอด ${pick.length} บัญชี` });
   };
 
-  const saveTxn = () => {
+  const saveTxn = (force) => {
     if (!rows) { onToast && onToast('กรุณาดึงข้อมูลก่อนบันทึกรายการ'); return; }
-    if (!posted) { onToast && onToast('กรุณาผ่านรายการก่อนบันทึก'); return; }
-    const tot = rows.reduce((s, x) => s + x.transfer, 0);
-    onToast && onToast(`บันทึกรายการตัดยอดเงินฝาก ${rows.length} รายการ รวม ${fmt.money(tot, 2)} บาท เข้าระบบบัญชีเรียบร้อย`);
-    audit.log({ action: 'create', module: 'เงินฝาก — ประมวลผลตัดยอดเงินฝาก',
+    if (!posted && force !== true) { onToast && onToast('กรุณาผ่านรายการก่อนบันทึก'); return; }
+    const sr = rows.filter(r => sel.includes(r.accNo));
+    const tot = sr.reduce((s, x) => s + x.transfer, 0);
+    onToast && onToast(`บันทึกรายการตัดยอดเงินฝาก ${sr.length} รายการ รวม ${fmt.money(tot, 2)} บาท เข้าระบบบัญชีเรียบร้อย`);
+    audit.log({ action: 'create', module: 'เงินฝาก — ประมวลผลตัดยอดเงินฝาก', user: opsUser,
       target: `บันทึกรายการ ${DEP_CO_MONTHS[month - 1]} ${year}`,
-      summary: `บันทึกตัดยอดเงินฝาก ${rows.length} บัญชี รวม ${fmt.money(tot, 2)} บาท ลงวันที่ ${fmt.date(txnDate)}` });
+      summary: `บันทึกตัดยอดเงินฝาก ${sr.length} บัญชี รวม ${fmt.money(tot, 2)} บาท ลงวันที่ ${fmt.date(txnDate)}` });
   };
 
   const totAmount = rows ? rows.reduce((s, x) => s + x.amount, 0) : 0;
@@ -104,7 +118,7 @@ function DepCutoffProcessPage({ onToast }) {
       <div className="page-actions dep-open-sticky" ref={(el) => { if (!el || el.__stk) return; el.__stk = true; const sc = el.closest('.main') || window; const bc = sc.querySelector ? sc.querySelector('.breadcrumb-bar') : null; el.style.top = ((bc ? bc.offsetHeight : 0) - 16) + 'px'; }}>
         <div>
           <h1 style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>ประมวลผลตัดยอดเงินฝาก</h1>
-          <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>พิมพ์รายงานการปรับยอด · ดึงยอดเงินฝากคงเหลือรายบัญชีของหน่วยงานตามงวด แล้วปรับปรุง–โอนยอด (ตัดยอด) เพื่อผ่านและบันทึกลงระบบบัญชี</div>
+          <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>พิมพ์รายงานการปรับยอด · ดึงยอดฝากรายเดือนรายบัญชีของหน่วยงานตามงวด แล้วปรับปรุง–โอนยอด (ตัดยอด) เพื่อผ่านและบันทึกลงระบบบัญชี</div>
         </div>
         <span className="spacer" style={{ flex: 1 }} />
         <button className="btn primary sm" data-keep-top="" disabled={!rows || posted || sel.length === 0} onClick={() => setAsk(true)}>{posted ? 'ผ่านรายการแล้ว' : 'ผ่านรายการ' + (rows && sel.length ? ' (' + sel.length + ' ราย)' : '')}</button>
@@ -131,7 +145,7 @@ function DepCutoffProcessPage({ onToast }) {
           <button className="btn primary" style={{ height: 32 }} onClick={pull}>ดึงข้อมูล</button>
         </div>
         <div className="muted" style={{ fontSize: 11.5, marginTop: 8 }}>
-          <Icon name="info" size={11} /> ยอดโอน = จำนวนเงินคงเหลือ + ยอดปรับปรุง · บัญชีที่มีวันที่ปิดบัญชีจะถูกตัดโอนออกเต็มจำนวน · ผ่านรายการก่อนจึงจะบันทึกลงบัญชีได้
+          <Icon name="info" size={11} /> จำนวนเงิน = ยอดฝากรายเดือนของบัญชี (เมนูเปลี่ยนแปลงฝากรายเดือน) · ยอดโอน = จำนวนเงิน + ยอดปรับปรุง · ไม่รวมบัญชีที่หมดงวดเรียกเก็บ อายัดห้ามฝาก หรือสมาชิกลาออก · ผ่านรายการแล้วยอดเข้าบัญชีทันที และผ่านซ้ำงวดเดิมไม่ได้
         </div>
       </div>
 
@@ -146,7 +160,7 @@ function DepCutoffProcessPage({ onToast }) {
           <div className="search-card" style={{ padding: 0, overflow: 'hidden', marginTop: 12 }}>
             <div className="dat-section-head is-bar"><span className="head-bar" />
               <div className="dat-section-title">รายงานการปรับยอด · {orgLabel} · {DEP_CO_MONTHS[month - 1]} {year}</div>
-              {posted && <span className="pill ok" style={{ marginLeft: 'auto' }}>ผ่านรายการแล้ว</span>}
+              {posted && <span className="pill ok" style={{ marginLeft: 'auto' }}>ผ่านรายการแล้ว{doneRun ? ' · ' + fmt.date(doneRun.date) : ''}</span>}
             </div>
             <div className="table-wrap" style={{ margin: '12px 16px 16px', overflowX: 'auto' }}>
               <table className="tbl" style={{ minWidth: 960 }}>
@@ -196,7 +210,7 @@ function DepCutoffProcessPage({ onToast }) {
           {ask && window.DepConfirmModal && <window.DepConfirmModal title="ยืนยันผ่านรายการตัดยอดเงินฝาก"
             lines={[['งวด', DEP_CO_MONTHS[month - 1] + ' ' + year], ['หน่วยงาน', orgLabel], ['ผ่านรายการ', sel.length + ' ราย'],
               ['ยอดโอนรวม', fmt.money(rows.filter(r => sel.includes(r.accNo)).reduce((s, r) => s + (r.transfer || 0), 0), 2) + ' บาท']]}
-            okLabel="ยืนยันผ่านรายการ" onOk={() => { postTxn(); setTimeout(saveTxn, 0); }} onClose={() => setAsk(false)} />}
+            okLabel="ยืนยันผ่านรายการ" onOk={() => { postTxn(); setTimeout(() => saveTxn(true), 0); }} onClose={() => setAsk(false)} />}
         </>
       )}
     </div>

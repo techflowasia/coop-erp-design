@@ -63,7 +63,7 @@ window.depAskConfirm = function (opts) {
   root.render(<window.DepConfirmModal title={o.title} lines={o.lines} okLabel={o.okLabel} tone={o.tone}
     onOk={() => { close(); o.onOk && o.onOk(); }} onClose={close} />);
 };
-// ยืนยันก่อนปิดใช้งาน (เปิดใช้งานกลับไม่ต้องยืนยัน) — รูปแบบเดียวกันทุกเมนูค่าคงที่
+// (เดิม) ยืนยันก่อนปิดใช้งาน — สำรองไว้กรณีไม่มี ToggleConfirmModal · รูปแบบเดียวกันทุกเมนูค่าคงที่
 //  window.depConfirmOff(isOn, name, apply, effect, title)
 function DepOffConfirm({ title, name, effect, onOk, onClose }) {
   const parts = String(name || '').split(' · ');
@@ -91,14 +91,86 @@ function DepOffConfirm({ title, name, effect, onOk, onClose }) {
     </>
   );
 }
-window.depConfirmOff = function (isOn, name, apply, effect, title) {
-  if (!isOn) { apply(); return; }
+// หน้าต่างยืนยันเปิด/ปิดใช้งาน — หน้าตาเดียวกับค่าคงที่สินเชื่อ (ประเภทเงินกู้)
+function DepConstConfirm({ next, blocked, title, subtitle, detail, onCancel, onConfirm }) {
+  const G = '#237450';
+  const tone = blocked ? { bg: '#fff1f0', fg: '#cf1322' } : next ? { bg: '#eafef2', fg: G } : { bg: '#fffbe6', fg: '#d48806' };
+  const btn = (primary) => ({ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7, height: 38,
+    border: '1px solid ' + (primary ? G : '#d9d9d9'), background: primary ? G : '#fff', borderRadius: 4, fontFamily: 'inherit',
+    fontSize: 13, fontWeight: 600, color: primary ? '#fff' : 'rgba(0,0,0,.65)', cursor: 'pointer', flex: 1 });
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.45)', zIndex: 940, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+      <div role="dialog" aria-modal="true" style={{ width: 460, maxWidth: '100%', background: '#fff', borderRadius: 12, boxShadow: '0 6px 24px rgba(0,0,0,.18)', overflow: 'hidden', fontFamily: 'inherit' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '20px 20px 16px', borderBottom: '1px solid #f0f0f0' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 36, height: 36, borderRadius: 9999, flexShrink: 0, background: tone.bg, color: tone.fg }}>
+            {next && !blocked
+              ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="m4 12.5 5.5 5.5L20 7" /></svg>
+              : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" strokeWidth="1.8" /><path d="M12 7.5v5.5" /><path d="M12 16.3v.4" /></svg>}
+          </span>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'rgba(0,0,0,.88)', lineHeight: 1.4 }}>{title}</h2>
+            {subtitle && <div style={{ fontSize: 12, color: 'rgba(0,0,0,.45)', marginTop: 2 }}>{subtitle}</div>}
+          </div>
+          <button type="button" aria-label="ปิด" onClick={onCancel}
+                  style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'rgba(0,0,0,.35)', fontSize: 18, lineHeight: 1, padding: 0, marginTop: 2 }}>×</button>
+        </div>
+        <p style={{ margin: 0, padding: '20px 20px 0', fontSize: 13, color: 'rgba(0,0,0,.65)', lineHeight: 1.7, whiteSpace: 'pre-line' }}>{detail}</p>
+        <div style={{ display: 'flex', gap: 10, padding: 20 }}>
+          {blocked
+            ? <button type="button" style={btn(false)} onClick={onCancel}>ปิด</button>
+            : <>
+                <button type="button" style={btn(false)} onClick={onCancel}>ยกเลิก</button>
+                <button type="button" style={btn(true)} onClick={onConfirm}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m4 12.5 5.5 5.5L20 7" /></svg> ยืนยัน
+                </button>
+              </>}
+        </div>
+      </div>
+    </div>
+  );
+}
+// ยืนยันเปิด/ปิดใช้งานค่าคงที่ — รูปแบบเดียวกับค่าคงที่สินเชื่อ (Design System ToggleConfirmModal)
+//  ยืนยันทั้งตอนเปิดและปิด · opts.blocked = เหตุผลที่ปิดไม่ได้ (ถูกใช้อยู่) → หน้าต่าง "ปิดใช้งานไม่ได้"
+//  window.depConfirmOff(isOn, name, apply, effectOff, title, { effectOn, blocked })
+window.depConfirmOff = function (isOn, name, apply, effect, title, opts) {
+  const o = opts || {};
+  const turningOn = !isOn;
+  const blocked = !turningOn && typeof o.blocked === 'function' ? o.blocked() : (!turningOn ? o.blocked : null);
+  const base = String(title || 'ปิดการใช้งาน').replace(/^(เปิด|ปิด)/, '');
+  const ttl = (turningOn ? 'เปิด' : 'ปิด') + (base || 'การใช้งาน');
+  const parts = String(name || '').split(' · ');
+  const short = parts.length > 1 ? parts.slice(1).join(' · ') : name;
+  const detail = blocked ? 'ปิดใช้งานไม่ได้ — ' + blocked
+    : turningOn ? 'เปิดการใช้งาน “' + short + '” — ' + (o.effectOn || 'จะกลับมาแสดงเป็นตัวเลือกในการทำรายการ')
+    : 'ปิดการใช้งาน “' + short + '” — ' + (effect || 'จะไม่แสดงเป็นตัวเลือกในการทำรายการ ข้อมูลเดิมยังคงอยู่');
   const host = document.createElement('div');
   document.body.appendChild(host);
   const root = ReactDOM.createRoot(host);
   const close = () => { root.unmount(); host.remove(); };
-  root.render(<DepOffConfirm title={title} name={name} effect={effect} onOk={() => { close(); apply(); }} onClose={close} />);
+  const M = DepConstConfirm;
+  if (!M) { if (blocked) { close(); window.alert(detail); return; } root.render(<DepOffConfirm title={ttl} name={name} effect={effect} onOk={() => { close(); apply(); }} onClose={close} />); return; }
+  // ชั้นที่ 2 — แจ้งผลสำเร็จ (เหมือนค่าคงที่สินเชื่อ)
+  const done = () => {
+    const S = window.StatusModal; if (!S) { close(); return; }
+    root.render(<S variant="success" title={(turningOn ? 'เปิด' : 'ปิด') + 'การใช้งานเรียบร้อยแล้ว'}
+      detail={'“' + short + '” ถูก' + (turningOn ? 'เปิด' : 'ปิด') + 'ใช้งานเรียบร้อยแล้ว'} onClose={close} />);
+  };
+  root.render(<M next={turningOn} blocked={!!blocked} title={ttl} subtitle={name} detail={detail}
+    onCancel={close} onConfirm={() => { if (blocked) { close(); return; } apply(); done(); }} />);
 };
+// สวิตช์เปิด/ปิดใช้งานในตารางค่าคงที่ — ขนาด/สีเดียวกับค่าคงที่สินเชื่อ (สีหลักเมื่อเปิด)
+window.ConstSwitch = function ConstSwitch({ on, onClick, disabled, title }) {
+  return (
+    <button type="button" className={'lt-switch' + (on ? ' on' : '')} role="switch" aria-checked={!!on}
+            aria-label={on ? 'ปิดใช้งาน' : 'เปิดใช้งาน'} title={title} disabled={disabled}
+            style={on ? { background: 'var(--primary)' } : undefined}
+            onClick={(e) => { e.stopPropagation(); onClick && onClick(e); }}>
+      <span className="lt-switch-knob" />
+    </button>
+  );
+};
+// ป้ายสถานะในตารางค่าคงที่ (เหมือนสินเชื่อ)
+window.ConstStatusPill = ({ on }) => (on ? <span className="pill ok">เปิดใช้งาน</span> : <span className="pill neutral">ปิดใช้งาน</span>);
 
 // ─── popup บันทึกสำเร็จ (เรียกจากที่ไหนก็ได้) ────────────────────────
 //  window.depSuccess({ title, desc, lines:[[k,v]], onPrint, printLabel, next })
@@ -282,6 +354,177 @@ function DpcUnlockModal({ acc, lastMove, idleDays, onClose, onUnlock }) {
   );
 }
 
+// ════════════════════════════════════════════════════════════════════
+//  กฎคำนวณจากค่าคงที่ประเภทเงินฝาก (ข้อ 1–6)
+//  1 คงเหลือขั้นต่ำ · 2 เงินฝากมีระยะเวลา · 3 ค่าปรับก่อนกำหนด ·
+//  4 ดอกเบี้ยถึงวันปิด · 5 ภาษี ณ ที่จ่าย · 6 ค่าปรับถอนเกินครั้ง / ค่าธรรมเนียมปิดบัญชี
+//  ถ้าหาประเภทบัญชีในค่าคงที่ไม่เจอ → ใช้วิธีเดิม (กันหน้าพัง)
+// ════════════════════════════════════════════════════════════════════
+const DPC_TAX_DEF = { all: { m: 'fixed', r: 15 }, regular: { m: 'exempt', r: 0 }, associate: { m: 'exempt', r: 0 },
+                      'ext-person': { m: 'fixed', r: 15 }, 'ext-juristic': { m: 'fixed', r: 1 } };
+const DPC_REF_GROUP = { saving: 'saving', special: 'special', fixed: 'fixed' };
+const dpcR2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
+const dpcDaysBetween = (a, b) => Math.round((new Date(b) - new Date(a)) / 86400000);
+const dpcUnitDays = (n, u) => { n = Number(n) || 0; return u === 'year' ? n * 365 : u === 'month' ? n * 30.4375 : n; };
+const dpcAddMonths = (iso, n) => { const d = new Date(iso); d.setMonth(d.getMonth() + (Number(n) || 0)); return d.toISOString().slice(0, 10); };
+const dpcMtNorm = (v) => (/^associate/.test(v || '') ? 'associate' : (DPC_TAX_DEF[v] ? v : 'all'));
+function dpcTypeList() { try { return window.datLoad ? window.datLoad() : []; } catch (e) { return []; } }
+function dpcIntTables() { try { return window.depIntTables ? window.depIntTables() : []; } catch (e) { return []; } }
+// ประเภทสมาชิกของบัญชี (ใช้เลือกแถวอัตรา/ภาษีในแท็บอัตรา Int./Div.)
+function dpcMemberType(cur) {
+  if (cur.memberType) return dpcMtNorm(cur.memberType);
+  const juristic = cur.ownerKind === 'juristic' || cur.openerType === 'juristic' || /^L\d/i.test(String(cur.member || ''));
+  return juristic ? 'ext-juristic' : 'regular';
+}
+// ตารางอัตราที่ชื่อตรงกับประเภทเงินฝาก (เหมือนค่าตั้งต้นในแท็บอัตรา Int./Div.)
+function dpcNameTable(rec, tables) {
+  const live = tables.filter(x => x.enabled && (x.rows || []).length);
+  const bare = (t) => t.name.replace(new RegExp('^' + t.code + '-'), '').trim();
+  const recName = String(rec.name || '').replace(/^เงินฝาก/, '').trim();
+  return live.find(t => bare(t) === recName)
+    || live.filter(t => recName.includes(bare(t))).sort((x, y) => bare(y).length - bare(x).length)[0]
+    || live.find(t => bare(t).includes(recName)) || live[0] || null;
+}
+// อัตราขั้นบันไดตามยอดเงิน ณ วันที่
+function dpcTierRate(tb, bal, date, mt) {
+  const rows = (tb.rows || []).filter(r => (!r.effectiveDate || r.effectiveDate <= date) && (!r.endDate || r.endDate >= date)
+    && (!r.memberType || r.memberType === 'all' || dpcMtNorm(r.memberType) === mt));
+  const hit = rows.filter(r => bal >= Number(r.balFrom || 0) && (r.balTo == null || r.balTo === '' || bal <= Number(r.balTo)))
+    .sort((a, b) => Number(b.balFrom || 0) - Number(a.balFrom || 0))[0];
+  return hit ? Number(hit.rate) : null;
+}
+// อัตราดอกเบี้ย + ฐานวัน + ภาษี ของประเภทบัญชี
+function dpcRateOf(rec, cur, date, mt, tables) {
+  const s = rec.settings || {};
+  const rows = rec.rateTiers || [];
+  const isNew = rows.some(r => r.rateTable);
+  const row = isNew ? (rows.find(r => dpcMtNorm(r.memberType) === mt) || rows.find(r => dpcMtNorm(r.memberType) === 'all') || rows[0]) : null;
+  // ตารางอัตราที่ปิดใช้งาน → ไม่ใช้ (ใช้อัตราของประเภทเงินฝากแทน — เหมือนหน้าเปิดบัญชี)
+  const tb = isNew ? (tables.find(t => t.code === row.rateTable && t.enabled !== false) || null) : dpcNameTable(rec, tables);
+  let rate = tb ? dpcTierRate(tb, cur.balance, date, mt) : null;
+  let src = tb ? 'ตาราง ' + tb.code : '';
+  if (rate == null && row && row.rate !== '' && row.rate != null) { rate = Number(row.rate); src = 'ประเภทเงินฝาก'; }
+  if (rate == null && !isNew && rows.length) {
+    const eff = rows.filter(r => !r.effectiveDate || r.effectiveDate <= date);
+    const last = eff.reduce((m, r) => (r.effectiveDate || '') > m ? r.effectiveDate : m, '');
+    const hit = eff.filter(r => (r.effectiveDate || '') === last && cur.balance >= Number(r.balFrom || 0))
+      .sort((a, b) => Number(b.balFrom || 0) - Number(a.balFrom || 0))[0];
+    if (hit) { rate = Number(hit.rate); src = 'ประเภทเงินฝาก'; }
+  }
+  if (rate == null) { rate = Number(cur.rate) || 0; src = 'บัญชี'; }
+  if (s.intGiveOn === false) { rate = 0; src = 'ประเภทนี้ไม่ให้ดอกเบี้ย'; }
+  const def = DPC_TAX_DEF[mt] || DPC_TAX_DEF.all;
+  const tMode = row && row.taxMode ? (row.taxMode === 'wht' ? 'fixed' : row.taxMode) : def.m;
+  const tRate = row && row.taxRate != null && row.taxRate !== '' ? Number(row.taxRate) : def.r;
+  return { rate, src, dayBase: Number(row && row.dayBase) || 365, taxRate: tMode === 'exempt' ? 0 : tRate };
+}
+// ── อายัดบัญชี (จากหน้าอายัดบัญชี) — คำขอที่ยังรออนุมัติยังไม่มีผล (ใช้สถานะก่อนหน้า)
+window.dpcFreezeInfo = function (accNo) {
+  let m = {};
+  try { m = JSON.parse(localStorage.getItem('dep_freezes') || '{}'); } catch (e) {}
+  const e = m[accNo];
+  if (!e) return { eff: null, pending: null, releasePending: false };
+  const isPend = e.approveStatus === 'pending';
+  return { eff: isPend ? (e.prev || null) : e, pending: isPend ? e : null, releasePending: !!e.releasePending };
+};
+window.dpcFreezeOf = (accNo) => window.dpcFreezeInfo(accNo).eff;
+// ข้อจำกัดตามประเภทรายการอายัด — in: ห้ามรับเงินเข้า · out: ห้ามถอน/โอนออก · close: ห้ามปิดบัญชี · amt: วงเงินที่กันไว้
+//  1 อายัดจำนวนเงิน · 2 อายัดการเคลื่อนไหว · 3 อายัดรอปิดบัญชี · 4 ห้ามถอน/ปิดบัญชี · 5 ห้ามฝากเงิน
+window.dpcFreezeRule = function (frz, balance) {
+  if (!frz) return { in: false, out: false, close: false, amt: 0 };
+  const t = String(frz.type);
+  return { in: ['2', '5'].includes(t), out: ['2', '3', '4'].includes(t), close: ['1', '2', '4'].includes(t),
+           amt: t === '1' ? (Number(frz.amount) || Number(balance) || 0) : 0 };
+};
+window.dpcFreezeText = function (frz, balance) {
+  const r = window.dpcFreezeRule(frz, balance);
+  return [r.in && 'ห้ามฝาก', r.out && 'ห้ามถอน/โอนออก', r.close && 'ห้ามปิดบัญชี'].filter(Boolean).join(' / ');
+};
+// รหัสรายการของหน้าเคาน์เตอร์ — โอนระหว่างบัญชีไม่รวม "โอนชำระหนี้เงินกู้" และ "โอนซื้อหุ้น"
+const dpcCounterCodes = (t) => {
+  const l = (window.dpcCodesFor ? window.dpcCodesFor(t) : (window.DPC_TXN_CODES || {})[t]) || [];
+  return t === 'transfer' ? l.filter(c => !/^(TRL|TRS)$/i.test(c.code || '') && !/ชำระหนี้|ซื้อหุ้น/.test(c.label || '')) : l;
+};
+// ธนาคาร / ประเภทเช็ค (+วันรอเรียกเก็บ) จากค่าคงที่ — ตารางเช็คแบบเดียวกับหน้าเปิดบัญชีเงินฝาก
+const dpcConst = (k) => { try { return window.depConstList ? window.depConstList(k) : []; } catch (e) { return []; } };
+const dpcChqBanks = () => {
+  let l = dpcConst('bank').map(b => b.name).filter(Boolean);
+  if (!l.length && window.depBankLoad) l = window.depBankLoad().filter(b => b.enabled !== false).map(b => b.name);
+  return l.length ? l : (window.DEP_BANKS || []);
+};
+// จำนวนวันผ่านเช็ค (วันรอเรียกเก็บ) — ค่ากลางจาก ข้อกำหนดระบบเงินฝาก › เช็คและการรับฝาก–ถอน
+window.depChqClearDays = () => { try { const c = window.depSysCfg ? window.depSysCfg() : {}; const n = Number(c.checkClearDays); return isFinite(n) && n >= 0 ? n : 1; } catch (e) { return 1; } };
+// รวมกฎทั้งหมดของบัญชี ณ วันทำรายการ
+window.dpcRules = function (cur, ctx) {
+  const { type, date, amt, moves } = ctx;
+  const list = dpcTypeList();
+  const rec = list.find(r => r.code === cur.typeCode);
+  if (!rec) return null;
+  const s = rec.settings || {};
+  const tables = dpcIntTables();
+  const mt = dpcMemberType(cur);
+  // 1) คงเหลือขั้นต่ำหลังถอน
+  const minBal = Number(s.minBalance) || 0;
+  // 2) เงินฝากมีระยะเวลา + วันครบกำหนด
+  const isTerm = !!s.hasTerm;
+  const startDate = (s.depAgeRef === 'open' ? cur.openDate : (cur.principalDate || cur.openDate)) || date;
+  const maturity = cur.maturityDate || (isTerm && Number(s.termMonths) ? dpcAddMonths(startDate, s.termMonths) : null);
+  const notMatured = isTerm && !!maturity && maturity > date;
+  // แถวเงื่อนไขถอนก่อนกำหนด ตามอายุเงินฝากจริง
+  const ageDays = Math.max(0, dpcDaysBetween(startDate, date));
+  const ew = notMatured ? ((rec.earlyWithdraw || []).map(r => ({ ...r, _d: dpcUnitDays(r.ageLessThan, r.unit) }))
+    .filter(r => r._d > 0 && ageDays < r._d).sort((a, b) => a._d - b._d)[0] || null) : null;
+  // 4) อัตราดอกเบี้ย (+ อัตราอ้างอิงเมื่อถอนก่อนกำหนด)
+  let ri = dpcRateOf(rec, cur, date, mt, tables);
+  let intOn = true, intNote = '';
+  if (notMatured && ew) {
+    if (ew.intCond === 'none') { intOn = false; intNote = 'ถอนก่อนกำหนด อายุฝากน้อยกว่า ' + ew.ageLessThan + ' ' + (ew.unit === 'year' ? 'ปี' : ew.unit === 'day' ? 'วัน' : 'เดือน') + ' — ไม่ได้ดอกเบี้ย'; }
+    else if (ew.rateType && ew.rateType !== '-') {
+      const ref = list.find(r => r.settings && r.settings.depGroup === DPC_REF_GROUP[ew.rateType]);
+      if (ref) { const rr = dpcRateOf(ref, cur, date, mt, tables); ri = { ...ri, rate: rr.rate, src: 'อัตรา' + ref.name + ' (ถอนก่อนกำหนด)' }; }
+    }
+  } else if (notMatured && s.earlyWithdrawIntOn === false) { intOn = false; intNote = 'ถอนก่อนกำหนด — ไม่ได้ดอกเบี้ย'; }
+  // อัตราพิเศษตามโครงการประเภทเงินฝาก — บวกเพิ่มเมื่อบัญชีเปิดในโครงการที่มีอัตราพิเศษ (ยกเว้นถอนก่อนกำหนด)
+  const bonus = cur.projectCode && Number(cur.rateBonus) > 0 && s.intGiveOn !== false && !(notMatured && ew) ? Number(cur.rateBonus) : 0;
+  if (bonus) ri = { ...ri, rate: ri.rate + bonus, src: ri.src + ' + โครงการ ' + (cur.projectName || cur.projectCode) };
+  // 5) ภาษี ณ ที่จ่าย
+  let taxRate = notMatured && ew ? (ew.tax ? Number(ew.taxRate == null || ew.taxRate === '' ? 15 : ew.taxRate) : 0) : ri.taxRate;
+  if (cur.taxMode === 'exempt') taxRate = 0;            // ยกเว้นภาษีเฉพาะบัญชี
+  else if (cur.taxMode === 'fixed') taxRate = 15;       // ค่าเดิม — อัตราคงที่ 15%
+  // 3) ค่าปรับถอน/ปิดก่อนกำหนด
+  const penaltyOn = notMatured && (ew ? !!ew.penalty : !!s.earlyCloseePenaltyOn);
+  const penPct = Number(s.earlyPenaltyRate) || Number(s.earlyClosePercent) || 0;
+  const penAmt = Number(s.earlyPenaltyAmount) || 0;
+  const penBase = type === 'close' ? cur.balance : amt;
+  const penalty = penaltyOn && (type === 'withdraw' || type === 'close') ? dpcR2(penPct > 0 ? penBase * penPct / 100 : penAmt) : 0;
+  const penText = penaltyOn ? (penPct > 0 ? fmt.money(penPct, 2) + '% ของยอด' : fmt.money(penAmt, 2) + ' บาท') : '';
+  // 6) ค่าปรับถอนเกินจำนวนครั้ง
+  let overFee = 0, wdUsed = null, wdMax = 0;
+  if (type === 'withdraw' && s.wdCountLimit && Number(s.wdCountMax) > 0) {
+    wdMax = Number(s.wdCountMax);
+    const within = Number(s.wdCountWithin) || 1, unit = s.wdCountWithinUnit || 'month';
+    const skip = new Set(s.nonCountTxns || []);
+    const codeOf = (m) => (String(m.label || '').match(/^([A-Z]{2,4})\s/) || [])[1] || m.code;
+    const inWin = (d) => {
+      if (!d || d > date) return false;
+      if (within === 1 && unit === 'month') return d.slice(0, 7) === date.slice(0, 7);
+      if (within === 1 && unit === 'year') return d.slice(0, 4) === date.slice(0, 4);
+      return dpcDaysBetween(d, date) < dpcUnitDays(within, unit);
+    };
+    wdUsed = (moves || []).filter(m => m.dc === '−' && inWin(m.date)).map(codeOf)
+      .filter(c => !skip.has(c) && !/^(TR|CL)/.test(String(c))).length;
+    if (s.overWdPenaltyOn && amt > 0 && wdUsed >= wdMax) {
+      const base = s.overWdBase === 'balance' ? cur.balance : amt;
+      const cond = Number(s.overWdRangeCond) || 0;
+      if (!(cond > 0 && base > cond)) overFee = dpcR2(Math.max(base * (Number(s.overWdPercent) || 0) / 100, Number(s.overWdMinFee) || 0));
+    }
+  }
+  // 6) ค่าธรรมเนียมปิดบัญชี
+  const closeFee = type === 'close' && s.closeFeeOn ? dpcR2(s.closeFee) : 0;
+  return { rec, bonus, minBal, isTerm, maturity, notMatured, ew, rate: ri.rate, rateSrc: ri.src, dayBase: ri.dayBase,
+    intOn, intNote, taxRate, penalty, penaltyOn, penText, overFee, wdUsed, wdMax, closeFee };
+};
+
 function DepCounterPage({ onToast }) {
   const audit = React.useContext(window.AuditContext || React.createContext({ log: () => {} }));
   const [accounts, setAccounts] = useState(window.depTxnLoadAccounts);
@@ -316,7 +559,7 @@ function DepCounterPage({ onToast }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [chqRows, setChqRows] = useState([]);
 
-  const codes = window.dpcCodesFor ? window.dpcCodesFor(type) : window.DPC_TXN_CODES[type];
+  const codes = dpcCounterCodes(type);
   const cd = codes.find(c => c.code === code) || codes[0];
   const cur = acc ? accounts.find(a => a.accNo === acc.accNo) || acc : null;
   const curDst = dst ? accounts.find(a => a.accNo === dst.accNo) || dst : null;
@@ -350,26 +593,40 @@ function DepCounterPage({ onToast }) {
   const locked = dormant && !unlockedToday;
 
   // ── คำนวณตามประเภทรายการ ──
-  const minBal = accType?.cond?.minBalance || 0;
-  const isFixed = cur && cur.typeCode.startsWith('F');
-  const notMatured = cur && isFixed && cur.maturityDate && cur.maturityDate > date;
-  const withdrawable = cur ? Math.max(0, cur.balance - minBal) : 0;
+  // กฎจากค่าคงที่ประเภทเงินฝาก (ไม่พบประเภท → ใช้วิธีเดิม)
+  const rule = cur ? window.dpcRules(cur, { type, date, amt: amtNum, moves }) : null;
+  const minBal = rule ? rule.minBal : (accType?.cond?.minBalance || 0);
+  const isFixed = rule ? rule.isTerm : !!(cur && window.depIsFixedType(cur.typeCode));
+  const maturityDate = rule ? rule.maturity : (cur && cur.maturityDate);
+  const notMatured = rule ? rule.notMatured : !!(cur && isFixed && cur.maturityDate && cur.maturityDate > date);
+  const frzInfo = cur ? window.dpcFreezeInfo(cur.accNo) : { eff: null, pending: null, releasePending: false };
+  const frz = frzInfo.eff;
+  const frzR = window.dpcFreezeRule(frz, cur ? cur.balance : 0);
+  const withdrawable = cur ? (frzR.out ? 0 : Math.max(0, cur.balance - minBal - frzR.amt)) : 0;
+  const intRate = rule ? rule.rate : (cur ? Number(cur.rate) || 0 : 0);
+  const dayBase = rule ? rule.dayBase : 365;
   const accrued = useMemo(() => {
-    if (!cur) return 0;
+    if (!cur || (rule && !rule.intOn)) return 0;
     const d = new Date(date), y0 = new Date(d.getFullYear(), 0, 1);
     const days = Math.max(0, Math.round((d - y0) / 86400000));
-    return Math.round(cur.balance * (cur.rate / 100) * days / 365 * 100) / 100;
-  }, [cur, date]);
+    return Math.round(cur.balance * (intRate / 100) * days / dayBase * 100) / 100;
+  }, [cur, date, intRate, dayBase, rule && rule.intOn]);
   const intAccum = cur ? Math.round((cur.accrued || 0) * 100) / 100 : 0;
   const intTotal = Math.round((intAccum + accrued) * 100) / 100;
-  const wht = type === 'close' && isFixed ? Math.round(accrued * 0.15 * 100) / 100 : 0;
-  const penalty = (type === 'withdraw' || type === 'close') && notMatured ? Math.round((type === 'close' ? cur.balance : amtNum) * 0.005 * 100) / 100 : 0;
+  const taxRate = rule ? rule.taxRate : (isFixed ? 15 : 0);
+  const wht = type === 'close' && taxRate > 0 ? Math.round(accrued * taxRate / 100 * 100) / 100 : 0;
+  const penalty = rule ? rule.penalty : ((type === 'withdraw' || type === 'close') && notMatured ? Math.round((type === 'close' ? cur.balance : amtNum) * 0.005 * 100) / 100 : 0);
+  const penText = rule ? rule.penText : '0.50% ของยอด';
+  // ค่าปรับถอนเกินครั้ง + ค่าธรรมเนียมปิดบัญชี (คิดอัตโนมัติจากค่าคงที่ — แยกจากช่องค่าธรรมเนียมที่กรอกเอง)
+  const overFee = rule ? rule.overFee : 0;
+  const closeFee = rule ? rule.closeFee : 0;
+  const sysFee = overFee + closeFee;
 
   const net = !cur ? 0
     : type === 'deposit' ? amtNum - feeNum
-    : type === 'close' ? cur.balance + accrued - wht - penalty - feeNum
-    : -(amtNum + feeNum + penalty);
-  const newBal = !cur ? 0 : type === 'close' ? 0 : cur.balance + (type === 'deposit' ? amtNum - feeNum : -(amtNum + feeNum + penalty));
+    : type === 'close' ? cur.balance + accrued - wht - penalty - feeNum - sysFee
+    : -(amtNum + feeNum + penalty + sysFee);
+  const newBal = !cur ? 0 : type === 'close' ? 0 : cur.balance + (type === 'deposit' ? amtNum - feeNum : -(amtNum + feeNum + penalty + sysFee));
 
   // ── ผู้มาถอน (บัญชีนิติบุคคล) ──
   const isJuristic = !!cur && (cur.ownerKind === 'juristic' || cur.openerType === 'juristic' || /^L\d/i.test(String(cur.member || '')));
@@ -421,10 +678,22 @@ function DepCounterPage({ onToast }) {
   if (cur && locked) errors.push('บัญชีถูกล็อกจากการไม่เคลื่อนไหวเกิน ' + dRule.years + ' ปี — ต้องปลดล็อกก่อนทำรายการ');
   if (cur && cur.status !== 'active') errors.push('บัญชีนี้ปิดแล้ว ไม่สามารถทำรายการได้');
   if (type !== 'close' && cur && amtNum <= 0) errors.push('ระบุยอดทำรายการ');
-  if ((type === 'withdraw' || type === 'transfer') && cur && amtNum + feeNum + penalty > cur.balance) errors.push('ยอดทำรายการเกินยอดคงเหลือ');
+  if ((type === 'withdraw' || type === 'transfer') && cur && amtNum + feeNum + penalty + sysFee > cur.balance) errors.push('ยอดทำรายการเกินยอดคงเหลือ');
   if (type === 'withdraw' && cur && amtNum > 0 && newBal < minBal) errors.push(`ถอนแล้วคงเหลือต่ำกว่าขั้นต่ำ ${fmt.money(minBal, 0)} บาท`);
   if (type === 'transfer' && !curDst) errors.push('เลือกบัญชีปลายทาง');
   if (type === 'transfer' && curDst && cur && curDst.accNo === cur.accNo) errors.push('บัญชีต้นทางและปลายทางต้องไม่ใช่บัญชีเดียวกัน');
+  if (cur && frz) {
+    const fl = 'บัญชีถูกอายัด — ' + frz.label + (frz.reason ? ' (' + frz.reason + ')' : '');
+    if (type === 'deposit' && frzR.in) errors.push(fl + ' · ห้ามรับฝาก');
+    if ((type === 'withdraw' || type === 'transfer') && frzR.out) errors.push(fl + ' · ห้ามถอน/โอนออก');
+    if (type === 'close' && frzR.close) errors.push(fl + ' · ห้ามปิดบัญชี');
+    if ((type === 'withdraw' || type === 'transfer') && !frzR.out && frzR.amt > 0 && amtNum + feeNum + penalty + sysFee > cur.balance - frzR.amt)
+      errors.push('ยอดทำรายการเกินยอดที่ไม่ถูกอายัด (อายัดไว้ ' + fmt.money(frzR.amt, 2) + ' บาท)');
+  }
+  if (type === 'transfer' && curDst) {
+    const f2 = window.dpcFreezeOf(curDst.accNo);
+    if (f2 && window.dpcFreezeRule(f2).in) errors.push('บัญชีปลายทางถูกอายัด — ' + f2.label + ' · ห้ามรับเงินเข้า');
+  }
   if (type === 'close' && !reason.trim()) errors.push('ระบุเหตุผลการปิดบัญชี');
   if (cd.needRef && !ref.trim()) errors.push('ระบุเลขที่อ้างอิงรายการ');
   const canSubmit = cur && errors.length === 0;
@@ -458,7 +727,8 @@ function DepCounterPage({ onToast }) {
 
   const isCheque = cd.money === 'CHQ' || !!cd.clearing;
   const chqTotal = chqRows.reduce((a, r) => a + (parseFloat(r.amount) || 0), 0);
-  const addChq = () => setChqRows(rs => [...rs, { id: Date.now() + Math.random(), no: '', bank: srcBank || '', branch: '', date: date, amount: '' }]);
+  const addChq = () => {
+    setChqRows(rs => [...rs, { id: Date.now() + Math.random(), no: '', bank: srcBank || '', branch: '', date: date, type: '', float: window.depChqClearDays(), amount: '', late: false }]); };
   const setChq = (id, k, v) => setChqRows(rs => rs.map(r => r.id === id ? { ...r, [k]: v } : r));
   const delChq = (id) => setChqRows(rs => rs.filter(r => r.id !== id));
   React.useEffect(() => { if (!isCheque) setChqRows([]); }, [isCheque, code]);
@@ -470,7 +740,9 @@ function DepCounterPage({ onToast }) {
   }, [slip]);
 
   const pickType = (t) => {
-    setType(t); setCode(((window.dpcCodesFor ? window.dpcCodesFor(t) : window.DPC_TXN_CODES[t])[0] || {}).code);
+    // ค่าเริ่มต้น = รายการเงินสดของประเภทนั้น (ไม่มี → รายการแรก)
+    const cl = dpcCounterCodes(t);
+    setType(t); setCode((cl.find(c => c.money === 'CSH') || cl[0] || {}).code);
     setAmount(''); setFee(''); setRef(''); setSrcBank(''); setBankAcc(''); setReason(''); setDst(null); setSlip(null);
   };
   const reset = () => { setAmount(''); setFee(''); setRef(''); setSrcBank(''); setBankAcc(''); setReason(''); setBookBal(''); setDst(null);
@@ -507,7 +779,7 @@ function DepCounterPage({ onToast }) {
     const txId = window.depTxnNextId();
     if (type === 'close') {
       nextAcc = accounts.map(a => a.accNo === cur.accNo ? { ...a, status: 'closed', balance: 0 } : a);
-      entries.push({ id: txId, date, accNo: cur.accNo, member: cur.member, type: 'withdraw', channel: `${cd.code} ${cd.label}`, amount: net, fee: feeNum, balance: 0, ref: ref.trim() || 'CLOSE', by: DEPC_TELLER });
+      entries.push({ id: txId, date, accNo: cur.accNo, member: cur.member, type: 'withdraw', channel: `${cd.code} ${cd.label}`, amount: net, fee: feeNum, sysFee, penalty, interest: accrued, wht, balance: 0, ref: ref.trim() || 'CLOSE', by: DEPC_TELLER });
     } else if (type === 'transfer') {
       const srcNew = cur.balance - amtNum - feeNum, dstNew = curDst.balance + amtNum;
       nextAcc = accounts.map(a => a.accNo === cur.accNo ? { ...a, balance: srcNew } : a.accNo === curDst.accNo ? { ...a, balance: dstNew } : a);
@@ -515,9 +787,14 @@ function DepCounterPage({ onToast }) {
       entries.push({ id: window.depTxnNextId(), date, accNo: curDst.accNo, member: curDst.member, type: 'transfer-in', channel: `${cd.code} ${cd.label}`, amount: amtNum, fee: 0, balance: dstNew, ref: cur.accNo, by: DEPC_TELLER });
     } else {
       nextAcc = accounts.map(a => a.accNo === cur.accNo ? { ...a, balance: newBal, freeUsed: type === 'withdraw' ? (a.freeUsed || 0) + 1 : a.freeUsed } : a);
-      entries.push({ id: txId, date, accNo: cur.accNo, member: cur.member, type, channel: `${cd.code} ${cd.label}`, amount: amtNum, fee: feeNum, penalty, balance: newBal, ref: ref.trim() || cd.code, srcBank, by: DEPC_TELLER });
+      entries.push({ id: txId, date, accNo: cur.accNo, member: cur.member, type, channel: `${cd.code} ${cd.label}`, amount: amtNum, fee: feeNum, sysFee, penalty, balance: newBal, ref: ref.trim() || cd.code, srcBank, by: DEPC_TELLER });
     }
     setAccounts(nextAcc); window.depTxnSaveAccounts(nextAcc);
+    if (type === 'deposit' && isCheque && window.depChqRegAdd) {
+      window.depChqRegAdd(chqRows.filter(r => (parseFloat(r.amount) || 0) > 0).map(r => ({ chqNo: r.no, bank: r.bank, branch: r.branch,
+        type: r.type || '', floatDays: Number(r.float) || 0, late: !!r.late, faceDate: r.date || date, sendDate: date,
+        amount: parseFloat(r.amount) || 0, accNo: cur.accNo, accName: cur.name, src: 'ฝาก / ถอน / โอน / ปิดบัญชี', by: DEPC_TELLER })));
+    }
     const nextL = [...entries, ...ledger];
     setLedger(nextL); window.depTxnSaveLedger(nextL);
 
@@ -540,8 +817,10 @@ function DepCounterPage({ onToast }) {
         ...(ref.trim() ? [{ k: 'อ้างอิงรายการ', v: ref.trim(), mono: true }] : []),
         ...(srcBank ? [{ k: 'ธนาคาร', v: srcBank }] : []),
         ...(type === 'close' ? [{ k: 'ยอดคงเหลือ', v: fmt.money(cur.balance, 2), mono: true }, { k: 'ดอกเบี้ยถึงวันปิด', v: fmt.money(accrued, 2), mono: true }] : []),
-        ...(wht ? [{ k: 'ภาษีหัก ณ ที่จ่าย (15%)', v: '− ' + fmt.money(wht, 2), mono: true }] : []),
+        ...(wht ? [{ k: 'ภาษีหัก ณ ที่จ่าย (' + fmt.money(taxRate, 2).replace(/\.00$/, '') + '%)', v: '− ' + fmt.money(wht, 2), mono: true }] : []),
         ...(penalty ? [{ k: 'ค่าปรับก่อนครบกำหนด', v: '− ' + fmt.money(penalty, 2), mono: true }] : []),
+        ...(overFee ? [{ k: 'ค่าปรับถอนเกินจำนวนครั้ง', v: '− ' + fmt.money(overFee, 2), mono: true }] : []),
+        ...(closeFee ? [{ k: 'ค่าธรรมเนียมปิดบัญชี', v: '− ' + fmt.money(closeFee, 2), mono: true }] : []),
         ...(feeNum ? [{ k: 'ค่าธรรมเนียม', v: '− ' + fmt.money(feeNum, 2), mono: true }] : []),
         { k: type === 'close' ? 'ยอดจ่ายสุทธิ' : 'ยอดทำรายการ', v: fmt.money(Math.abs(type === 'close' ? net : amtNum), 2) + ' บาท', mono: true, strong: true },
         { k: 'ยอดคงเหลือใหม่', v: fmt.money(type === 'close' ? 0 : newBal, 2) + ' บาท', mono: true, strong: true },
@@ -636,9 +915,13 @@ function DepCounterPage({ onToast }) {
               </select>
             </div>
             <div className="dpc-srow"><span className="dpc-lbl" style={lblTint}>รหัสรายการ</span>
-              <select className="cfg-input" value={code} onChange={(e) => setCode(e.target.value)}>
-                {codes.map(c => <option key={c.code} value={c.code}>{c.code} — {c.label}</option>)}
-              </select>
+              {window.SearchSelect
+                ? <window.SearchSelect value={cd ? cd.code : code} onChange={(v) => v && setCode(v)}
+                    options={codes.map(c => ({ value: c.code, label: c.code + ' — ' + c.label }))}
+                    searchPlaceholder="พิมพ์รหัสหรือชื่อรายการ…" />
+                : <select className="cfg-input" value={code} onChange={(e) => setCode(e.target.value)}>
+                    {codes.map(c => <option key={c.code} value={c.code}>{c.code} — {c.label}</option>)}
+                  </select>}
             </div>
             <div className="dpc-srow date"><span className="dpc-lbl" style={lblTint}>วันที่</span>
               <span className="dpc-ro mono" title="วันทำการปัจจุบัน — แก้ไขไม่ได้">{thaiDate(date)}</span>
@@ -723,10 +1006,18 @@ function DepCounterPage({ onToast }) {
               </div>
             )}
 
+            {(frz || frzInfo.pending) && (
+              <div className="dat-warn" style={{ marginTop: 12, ...{ background: 'var(--danger-50)', borderColor: 'color-mix(in srgb, var(--danger) 28%, transparent)', color: 'var(--danger)' } }}>
+                <Icon name="lock" size={14} />
+                <span>{frz
+                  ? <>บัญชีถูกอายัด — <b>{frz.label}</b>{frzR.amt ? ` (วงเงิน ${fmt.money(frzR.amt, 2)} บาท)` : ''}{frz.reason ? ' · เหตุผล: ' + frz.reason : ''} · {window.dpcFreezeText(frz, cur.balance)}{frzInfo.releasePending ? ' · มีคำขอยกเลิกอายัดรออนุมัติ' : ''}</>
+                  : <>มีคำขออายัด <b>{frzInfo.pending.label}</b> รออนุมัติ — ยังไม่มีผลจนกว่าจะอนุมัติ</>}</span>
+              </div>
+            )}
             {notMatured && (
               <div className="dat-warn" style={{ marginTop: 12 }}>
                 <Icon name="info" size={14} />
-                <span>บัญชีฝากประจำ<b>ยังไม่ครบกำหนด</b> (ครบ {fmt.date(cur.maturityDate)}) — {type === 'close' ? 'ปิดก่อนกำหนดคิดค่าปรับ' : 'ถอนก่อนกำหนดคิดค่าปรับ'} 0.50% ของยอด</span>
+                <span>บัญชีเงินฝากมีระยะเวลา <b>ยังไม่ครบกำหนด</b>{maturityDate ? <> (ครบ {fmt.date(maturityDate)})</> : null} — {penText ? <>{type === 'close' ? 'ปิดก่อนกำหนด' : 'ถอนก่อนกำหนด'}คิดค่าปรับ {penText}</> : 'ไม่คิดค่าปรับตามเงื่อนไขประเภทเงินฝาก'}{rule && rule.intNote ? <> · {rule.intNote}</> : null}</span>
               </div>
             )}
 
@@ -753,6 +1044,15 @@ function DepCounterPage({ onToast }) {
                   </div>
                 ))}
               </div>
+              {cur && (
+                <div className="muted" style={{ fontSize: 11.5, margin: '6px 16px 0', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                  <Icon name="info" size={11} />
+                  {rule
+                    ? <>ดอกเบี้ย {fmt.money(intRate, 2)}% ({rule.rateSrc}) · ฐาน {dayBase} วัน · ภาษี ณ ที่จ่าย {taxRate > 0 ? fmt.money(taxRate, 2) + '%' : 'ยกเว้น'}
+                        {rule.wdUsed != null && <> · ถอนแล้ว {rule.wdUsed}/{rule.wdMax} ครั้ง</>} · ตามค่าคงที่ประเภทเงินฝาก</>
+                    : <>ไม่พบประเภทบัญชี {cur.typeCode} ในค่าคงที่ — ใช้อัตราของบัญชี</>}
+                </div>
+              )}
               <div className="dpc-rows two">
                 <div className="dpc-col">
                   <div className="dpc-srow"><span className="dpc-lbl" style={lblTint}>ประเภทเงิน</span><span className="dpc-ro yl mono">{cd.money}</span></div>
@@ -811,47 +1111,52 @@ function DepCounterPage({ onToast }) {
 
             {isCheque && (
               <div className="search-card dat-section">
-                <DepSecHead bar icon="report" title="รายการเช็ค" sub="ระบุเช็คที่นำมาฝากแต่ละฉบับ" style={{ background: 'transparent' }}
-                  meta={'รวม ' + fmt.money(chqTotal, 2) + ' บาท · ' + chqRows.length + ' ฉบับ'}
-                  right={<button className="btn primary sm" disabled={locked} onClick={addChq}><Icon name="plus" size={13} /> เพิ่มเช็ค</button>} />
-                <div className="table-wrap" style={{ margin: '12px 16px 16px' }}><div className="table-scroll">
+                <DepSecHead bar icon="report" title="รายการเช็ค" sub="ระบุเช็คที่นำมาฝากแต่ละฉบับ"
+                  right={<button className="btn primary sm" disabled={locked} onClick={addChq}><Icon name="plus" /> เพิ่มรายการเช็ค</button>} />
+                <div className="table-wrap" style={{ margin: '16px' }}><div className="table-scroll">
                   <table className="tbl" style={{ minWidth: 900 }}>
                     <thead>
                       <tr>
-                        <th className="center" style={{ width: 48 }}>ลำดับ</th>
-                        <th style={{ width: 150 }}>เลขที่เช็ค</th>
-                        <th style={{ width: 190 }}>ธนาคาร</th>
-                        <th style={{ width: 150 }}>สาขา</th>
-                        <th className="center" style={{ width: 130 }}>วันที่บนเช็ค</th>
-                        <th className="num" style={{ width: 130 }}>จำนวนเงิน</th>
-                        <th className="center" style={{ width: 70 }}>จัดการ</th>
+                        <th style={{ width: 130 }}>เลขที่เช็ค</th>
+                        <th style={{ width: 140 }}>วันที่หน้าเช็ค</th>
+                        <th style={{ minWidth: 150 }}>ธนาคาร</th>
+                        <th style={{ minWidth: 120 }}>สาขา</th>
+                        <th className="center" style={{ width: 96 }}>วันรอเรียกเก็บ</th>
+                        <th className="right" style={{ width: 120 }}>จำนวนเงิน</th>
+                        <th className="center" style={{ width: 56 }}>Late</th>
+                        <th style={{ width: 40 }} />
                       </tr>
                     </thead>
                     <tbody>
-                      {chqRows.length === 0
-                        ? <tr><td colSpan="7" className="empty-state">ยังไม่มีรายการเช็ค — กด “เพิ่มเช็ค” เพื่อบันทึก</td></tr>
-                        : chqRows.map((r, i) => (
-                          <tr key={r.id}>
-                            <td className="center muted">{i + 1}</td>
-                            <td><input className="cfg-input mono" value={r.no} disabled={locked} placeholder="เลขที่เช็ค"
-                                       onChange={(e) => setChq(r.id, 'no', e.target.value)} /></td>
-                            <td><select className="cfg-input" value={r.bank} disabled={locked} onChange={(e) => setChq(r.id, 'bank', e.target.value)}>
-                                  <option value="">— เลือกธนาคาร —</option>
-                                  {window.DEP_BANKS.map(b => <option key={b} value={b}>{b}</option>)}
-                                </select></td>
-                            <td><input className="cfg-input" value={r.branch} disabled={locked} placeholder="สาขา"
-                                       onChange={(e) => setChq(r.id, 'branch', e.target.value)} /></td>
-                            <td><ThaiDateField value={r.date} onChange={(v) => setChq(r.id, 'date', v)} /></td>
-                            <td><input className="cfg-input mono num" inputMode="decimal" value={r.amount} disabled={locked} placeholder="0.00"
-                                       onChange={(e) => setChq(r.id, 'amount', e.target.value.replace(/[^0-9.]/g, ''))} /></td>
-                            <td className="center">
-                              <button className="btn sm tt-del-btn" disabled={locked} onClick={() => delChq(r.id)}>
-                                <Icon name="trash" size={13} /> ลบ
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
+                      {chqRows.length === 0 ? (
+                        <tr><td colSpan="8" className="center muted" style={{ padding: '18px 12px' }}>ไม่มีรายการเช็ค — กด “เพิ่มรายการเช็ค” เพื่อบันทึกเช็คที่นำมาฝาก</td></tr>
+                      ) : chqRows.map((r) => (
+                        <tr key={r.id}>
+                          <td><input className="vch-cell-input mono" value={r.no} disabled={locked} onChange={(e) => setChq(r.id, 'no', e.target.value)} placeholder="เลขที่เช็ค" /></td>
+                          <td><input className="vch-cell-input mono" type="date" value={r.date} disabled={locked} onChange={(e) => setChq(r.id, 'date', e.target.value)} /></td>
+                          <td>
+                            <select className="vch-cell-input" value={r.bank} disabled={locked} onChange={(e) => setChq(r.id, 'bank', e.target.value)}>
+                              <option value="">— เลือกธนาคาร —</option>
+                              {dpcChqBanks().map(b => <option key={b} value={b}>{b}</option>)}
+                            </select>
+                          </td>
+                          <td><input className="vch-cell-input" value={r.branch} disabled={locked} onChange={(e) => setChq(r.id, 'branch', e.target.value)} placeholder="สาขา" /></td>
+                          <td><input className="vch-cell-input num" type="number" min="0" value={r.float} disabled={locked} title="จำนวนวันรอเรียกเก็บ" onChange={(e) => setChq(r.id, 'float', e.target.value)} /></td>
+                          <td><input className="vch-cell-input num" type="number" value={r.amount} disabled={locked} onChange={(e) => setChq(r.id, 'amount', e.target.value)} placeholder="0.00" /></td>
+                          <td className="center"><input type="checkbox" checked={!!r.late} disabled={locked} onChange={(e) => setChq(r.id, 'late', e.target.checked)} style={{ width: 15, height: 15, accentColor: 'var(--primary)' }} /></td>
+                          <td className="center"><button className="btn sm ex-row-btn del" title="ลบแถว" disabled={locked} onClick={() => delChq(r.id)}><Icon name="trash" size={13} /></button></td>
+                        </tr>
+                      ))}
                     </tbody>
+                    {chqRows.length > 0 && (
+                      <tfoot>
+                        <tr className="vch-foot">
+                          <td colSpan="5" className="right">รวมเช็ค {chqRows.length} ใบ</td>
+                          <td className="right mono" style={{ fontWeight: 700 }}>{fmt.money(chqTotal, 2)}</td>
+                          <td colSpan="2" />
+                        </tr>
+                      </tfoot>
+                    )}
                   </table>
                 </div></div>
               </div>
@@ -897,9 +1202,11 @@ function DepCounterPage({ onToast }) {
               <div className="dep-sum-row"><span>ยอดคงเหลือ</span><span className="mono">{fmt.money(cur.balance, 2)}</span></div>
               <div className="dep-sum-row"><span>ถอนได้</span><span className="mono">{fmt.money(withdrawable, 2)}</span></div>
               {type === 'close' && <div className="dep-sum-row"><span>ดอกเบี้ยถึงวันปิด</span><span className="mono" style={{ color: 'var(--success)' }}>+ {fmt.money(accrued, 2)}</span></div>}
-              {wht > 0 && <div className="dep-sum-row"><span>ภาษีหัก ณ ที่จ่าย 15%</span><span className="mono" style={{ color: 'var(--danger)' }}>− {fmt.money(wht, 2)}</span></div>}
+              {wht > 0 && <div className="dep-sum-row"><span>ภาษีหัก ณ ที่จ่าย {fmt.money(taxRate, 2).replace(/\.00$/, '')}%</span><span className="mono" style={{ color: 'var(--danger)' }}>− {fmt.money(wht, 2)}</span></div>}
               {type !== 'close' && <div className="dep-sum-row"><span>ยอดทำรายการ</span><span className="mono" style={{ color: type === 'deposit' ? 'var(--success)' : 'var(--danger)' }}>{type === 'deposit' ? '+' : '−'} {fmt.money(amtNum, 2)}</span></div>}
               {penalty > 0 && <div className="dep-sum-row"><span>ค่าปรับก่อนครบกำหนด</span><span className="mono" style={{ color: 'var(--danger)' }}>− {fmt.money(penalty, 2)}</span></div>}
+              {overFee > 0 && <div className="dep-sum-row"><span>ค่าปรับถอนเกินจำนวนครั้ง</span><span className="mono" style={{ color: 'var(--danger)' }}>− {fmt.money(overFee, 2)}</span></div>}
+              {closeFee > 0 && <div className="dep-sum-row"><span>ค่าธรรมเนียมปิดบัญชี</span><span className="mono" style={{ color: 'var(--danger)' }}>− {fmt.money(closeFee, 2)}</span></div>}
               {feeNum > 0 && <div className="dep-sum-row"><span>ค่าธรรมเนียม</span><span className="mono" style={{ color: 'var(--danger)' }}>− {fmt.money(feeNum, 2)}</span></div>}
               <div className="dep-sum-row total"><span>{type === 'close' ? 'ยอดจ่ายสุทธิ' : 'ยอดคงเหลือใหม่'}</span><span className="mono">{fmt.money(type === 'close' ? net : newBal, 2)}</span></div>
               {type === 'transfer' && <div className="dep-sum-row" style={{ marginTop: 6 }}><span>ปลายทางคงเหลือใหม่</span><span className="mono" style={{ color: 'var(--success)' }}>{curDst ? fmt.money(curDst.balance + amtNum, 2) : '—'}</span></div>}

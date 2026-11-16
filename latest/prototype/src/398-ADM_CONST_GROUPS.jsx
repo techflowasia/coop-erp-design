@@ -10,6 +10,8 @@
 
 // ── เมนู “อัตราดอกเบี้ยเงินกู้” อยู่ในไซด์บาร์ ต่อจากโครงการเงินกู้ ──
 
+// ค่าเพดาน "ไม่จำกัด" ของช่วงมูลค่าเงินกู้ (มากกว่าค่าสูงสุดที่กรอกได้ 9,999,999,999.99)
+var LP_AMT_INF = 99999999999;
 window.lpRateCode = (rec) => 'LT' + (rec && rec.code ? rec.code : '');
 window.lpIsOwnRateCode = (code) => typeof code === 'string' && code.slice(0, 2) === 'LT';
 
@@ -214,7 +216,13 @@ function LpTabInterest({ record, editing, onSettings, onTable }) {
   // ── กำหนดการคิดดอกเบี้ยตามเงินกู้ (ช่วงมูลค่าเงินกู้) ──
   const aRows = record.amountInterestTiers || [];
   const setARow = (i, k, v) => onTable('amountInterestTiers', aRows.map((r, idx) => idx === i ? { ...r, [k]: v } : r));
-  const addARow = () => onTable('amountInterestTiers', [...aRows, { memberType: 'none', dueType: 'day', amountFrom: 0, amountTo: 0, form: 'fixed', rate: '', adjust: 0 }]);
+  const addARow = () => onTable('amountInterestTiers', [...aRows, { memberType: 'none', dueType: 'day', amountFrom: 0, amountTo: LP_AMT_INF, form: 'fixed', rate: '', adjust: 0 }]);
+  // ช่องเพิ่ม/ลด % — รับค่าติดลบได้ (−100.00 ถึง 100.00 · ทศนิยม 2 ตำแหน่ง)
+  const adjCell = (v, onSet) => (editing
+    ? <input className="sh-grid-input" type="number" min="-100" max="100" step="0.01" style={{ maxWidth: 'none', width: '100%' }}
+             value={v ?? ''}
+             onChange={(e) => { let x = e.target.value; if (x !== '' && x !== '-') { x = Math.min(100, Math.max(-100, Number(x))); x = Math.round(x * 100) / 100; } onSet(x); }} />
+    : <span className="sh-grid-num">{fmt.money(Number(v || 0), 2)}</span>);
   const delARow = (i) => onTable('amountInterestTiers', aRows.filter((_, idx) => idx !== i));
 
   const saveRates = (list) => {
@@ -319,7 +327,7 @@ function LpTabInterest({ record, editing, onSettings, onTable }) {
       </div>
 
       <LpTableShell title="กำหนดการคิดดอกเบี้ยตามช่วงเวลา" count={rows.length} editing={editing} onAdd={addRow} minWidth={1000}
-        sub="คิดดอกเบี้ยแบบขั้นบันไดตามช่วงเวลา — แถวรูปแบบ “คงที่” กรอกอัตราดอกเบี้ย (%) ของแถวเอง · แถวลอยตัว/ขั้นบันไดใช้ “ตารางอัตราที่ใช้” · อัตราที่ใช้จริง = อัตราของแถว + เพิ่ม/ลด % (ไม่ต่ำกว่า 0)">
+        sub="คิดดอกเบี้ยแบบขั้นบันไดตามช่วงเวลา — แถวรูปแบบ “คงที่” กรอกอัตราดอกเบี้ย (%) ของแถวเอง · แถวลอยตัว/ขั้นบันไดใช้ “ตารางอัตราที่ใช้” · อัตราที่ใช้จริง = อัตราของแถว + เพิ่ม/ลด % ของตารางนี้ + เพิ่ม/ลด % ตามเงินกู้ (ไม่ต่ำกว่า 0)">
         <thead>
           <tr>
             <th rowSpan={2} className="center" style={{ width: 190 }}>ประเภทสมาชิก</th>
@@ -334,7 +342,7 @@ function LpTabInterest({ record, editing, onSettings, onTable }) {
           </tr>
         </thead>
         <tbody>
-          {rows.length === 0 && <tr><td colSpan={editing ? 8 : 7} className="center muted" style={{ padding: '24px' }}>ยังไม่มีช่วงเวลา — กด “เพิ่มแถว”</td></tr>}
+          {rows.length === 0 && <tr><td colSpan={editing ? 8 : 7} className="center muted" style={{ padding: '24px' }}>{editing ? 'ยังไม่มีช่วงเวลา — กด “เพิ่มแถว”' : 'ยังไม่มีช่วงเวลา'}</td></tr>}
           {rows.map((r, i) => (
             <tr key={i} style={editing ? { verticalAlign: 'top' } : undefined}>
               <td className="num-cell" style={{ textAlign: 'center' }}><LpSelCell editing={editing} group="memberTypeRight" v={(r.memberType && r.memberType !== 'regular' ? r.memberType : 'none')} onChange={(v) => setRow(i, 'memberType', v)} /></td>
@@ -349,7 +357,7 @@ function LpTabInterest({ record, editing, onSettings, onTable }) {
                              onChange={(e) => { let v = e.target.value; if (v !== '') { v = Math.min(100, Math.max(0, Number(v))); v = Math.round(v * 100) / 100; } setRow(i, 'rate', v); }} />
                     : <span className="sh-grid-num">{fmt.money(Number(r.rate ?? r.fixedRate ?? 0), 2)}</span>)
                 : <span className="sh-grid-num muted" title="แถวลอยตัว/ขั้นบันได ใช้ “ตารางอัตราที่ใช้” ที่หัวแท็บ">–</span>}</td>
-              <td className="num-cell"><LpNumCell editing={editing} v={r.adjust} decimals={2} onChange={(v) => setRow(i, 'adjust', v)} /></td>
+              <td className="num-cell">{adjCell(r.adjust, (v) => setRow(i, 'adjust', v))}</td>
               <LpDelCell editing={editing} onDel={() => delRow(i)} />
             </tr>
           ))}
@@ -372,13 +380,13 @@ function LpTabInterest({ record, editing, onSettings, onTable }) {
           </tr>
         </thead>
         <tbody>
-          {aRows.length === 0 && <tr><td colSpan={editing ? 8 : 7} className="center muted" style={{ padding: '24px' }}>ยังไม่มีช่วงมูลค่าเงินกู้ — กด “เพิ่มแถว”</td></tr>}
+          {aRows.length === 0 && <tr><td colSpan={editing ? 8 : 7} className="center muted" style={{ padding: '24px' }}>{editing ? 'ยังไม่มีช่วงมูลค่าเงินกู้ — กด “เพิ่มแถว”' : 'ยังไม่มีช่วงมูลค่าเงินกู้'}</td></tr>}
           {aRows.map((r, i) => (
             <tr key={i} style={editing ? { verticalAlign: 'top' } : undefined}>
               <td className="num-cell" style={{ textAlign: 'center' }}><LpSelCell editing={editing} group="memberTypeRight" v={(r.memberType && r.memberType !== 'regular' ? r.memberType : 'none')} onChange={(v) => setARow(i, 'memberType', v)} /></td>
               <td><LpSelCell editing={editing} group="dueType" v={(r.dueType === 'day' || r.dueType === 'month') ? r.dueType : 'day'} onChange={(v) => setARow(i, 'dueType', v)} /></td>
               <td className="num-cell"><LpNumCell editing={editing} v={r.amountFrom} decimals={2} onChange={(v) => setARow(i, 'amountFrom', v)} /></td>
-              <td className="num-cell"><LpUnlCell editing={editing} v={r.amountTo} inf={999999999} decimals={2} onChange={(v) => setARow(i, 'amountTo', v)} /></td>
+              <td className="num-cell"><LpUnlCell editing={editing} v={r.amountTo} inf={LP_AMT_INF} decimals={2} onChange={(v) => setARow(i, 'amountTo', v)} /></td>
               <td className="num-cell" style={{ textAlign: 'center' }}><LpSelCell editing={editing} group="interestStepForm" v={r.form} onChange={(v) => setARow(i, 'form', v)} /></td>
               <td className="num-cell">{r.form === 'fixed'
                 ? (editing
@@ -387,7 +395,7 @@ function LpTabInterest({ record, editing, onSettings, onTable }) {
                              onChange={(e) => { let v = e.target.value; if (v !== '') { v = Math.min(100, Math.max(0, Number(v))); v = Math.round(v * 100) / 100; } setARow(i, 'rate', v); }} />
                     : <span className="sh-grid-num">{fmt.money(Number(r.rate ?? 0), 2)}</span>)
                 : <span className="sh-grid-num muted" title="แถวลอยตัว/ขั้นบันได ใช้ “ตารางอัตราที่ใช้” ที่หัวแท็บ">–</span>}</td>
-              <td className="num-cell"><LpNumCell editing={editing} v={r.adjust} decimals={2} onChange={(v) => setARow(i, 'adjust', v)} /></td>
+              <td className="num-cell">{adjCell(r.adjust, (v) => setARow(i, 'adjust', v))}</td>
               <LpDelCell editing={editing} onDel={() => delARow(i)} />
             </tr>
           ))}
@@ -401,6 +409,53 @@ function LpTabInterest({ record, editing, onSettings, onTable }) {
     </>
   );
 }
+
+// ════════════════════════════════════════════════════════════════════
+//  ตรวจตารางดอกเบี้ย (แท็บดอกเบี้ย) ก่อนบันทึกผลิตภัณฑ์
+//  คืนรายการข้อความแจ้ง — ว่าง = บันทึกได้
+// ════════════════════════════════════════════════════════════════════
+var LP_AMT_MAX = 9999999999.99;
+window.LP_AMT_INF = LP_AMT_INF;
+window.lpInterestErrors = function (rec) {
+  const errs = [];
+  const blank = (v) => v === '' || v == null;
+  const dec2 = (v) => !blank(v) && /\.\d{3,}$/.test(String(v));
+  const checkCommon = (r, push) => {
+    if (r.form === 'fixed' && blank(r.rate)) push('กรุณาระบุอัตราดอกเบี้ยของแถวรูปแบบคงที่');
+    const a = Number(r.adjust || 0);
+    if (!isFinite(a) || a < -100 || a > 100) push('อัตราเพิ่ม/ลดต้องอยู่ระหว่าง −100 ถึง 100');
+  };
+  (rec.interestTiers || []).forEach((r, i) => {
+    const push = (m) => errs.push('ตามช่วงเวลา · แถวที่ ' + (i + 1) + ': ' + m);
+    checkCommon(r, push);
+  });
+  const aRows = rec.amountInterestTiers || [];
+  const isUnl = (r) => !blank(r.amountTo) && Number(r.amountTo) >= LP_AMT_INF;
+  aRows.forEach((r, i) => {
+    const push = (m) => errs.push('ตามเงินกู้ · แถวที่ ' + (i + 1) + ': ' + m);
+    const from = Number(r.amountFrom), to = Number(r.amountTo);
+    if (blank(r.amountFrom)) push('กรุณาระบุช่วงมูลค่าเงินกู้ ตั้งแต่');
+    else if (from < 0) push('ช่วงมูลค่าเงินกู้ ตั้งแต่ ต้องไม่ติดลบ');
+    else if (from > LP_AMT_MAX) push('ต้องไม่เกิน 9,999,999,999.99');
+    if (!isUnl(r)) {
+      if (blank(r.amountTo)) push('กรุณาระบุช่วงมูลค่าเงินกู้ ถึง หรือเลือก ไม่จำกัด');
+      else if (to === 0) push('ช่วงมูลค่าเงินกู้ ถึง ต้องมากกว่า 0');
+      else if (to > LP_AMT_MAX) push('ต้องไม่เกิน 9,999,999,999.99');
+      else if (!blank(r.amountFrom) && to < from) push('ช่วงมูลค่าเงินกู้ ถึง ต้องไม่น้อยกว่า ตั้งแต่');
+    }
+    if (dec2(r.amountFrom) || (!isUnl(r) && dec2(r.amountTo))) push('ระบุทศนิยมได้ไม่เกิน 2 ตำแหน่ง');
+    // ช่วงซ้อน — เทียบกับแถวก่อนหน้าที่ประเภทสมาชิก/การครบกำหนดเดียวกัน
+    const key = (x) => (x.memberType || 'none') + '|' + (x.dueType || 'day');
+    const hi = (x) => (isUnl(x) ? Infinity : Number(x.amountTo));
+    for (let j = 0; j < i; j++) {
+      const o = aRows[j];
+      if (key(o) !== key(r) || blank(o.amountFrom) || blank(r.amountFrom)) continue;
+      if (from <= hi(o) && Number(o.amountFrom) <= hi(r)) { push('ช่วงมูลค่าเงินกู้ซ้อนกับแถวที่ ' + (j + 1)); break; }
+    }
+    checkCommon(r, push);
+  });
+  return errs;
+};
 
 Object.assign(window, { LpTabInterest, LpRateTableModal, LpRateSelCell });
 

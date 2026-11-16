@@ -4,6 +4,9 @@
 //  ลงมาอยู่ในแถบติดขอบล่าง (ปุ่มเดิมถูกซ่อน แต่ยังทำงานเดิม)
 // ════════════════════════════════════════════════════════════════════
 (function () {
+  // ติดตั้งครั้งเดียว — กัน 458-bottom_action_bar.js (รุ่นเก่า รายการ NO_BAR ไม่ครบ) ทำงานซ้อนจนปุ่มหาย/หน้ากระตุก
+  if (window.__appActionBarInstalled) return;
+  window.__appActionBarInstalled = true;
   const MATCH = [/^บันทึก/, /^แก้(ไข|ข้อมูล)/, /^ยกเลิก/, /^พิมพ์(ปกสมุด| BOOK)/, /^ส่งอนุมัติ/];
   const ROWS = '.page-actions > button, .lrq-topbar button, .lrq-topbtns button,' +
                ' .page-actions > span > button';

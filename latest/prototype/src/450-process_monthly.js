@@ -245,30 +245,30 @@ function MemberPayoutPage({
     onToast && onToast(`บันทึกใบสำคัญจ่าย ${no} เรียบร้อยแล้ว`);
   };
   return /*#__PURE__*/React.createElement("div", {
-    "data-screen-label": "\u0E08\u0E48\u0E32\u0E22\u0E40\u0E07\u0E34\u0E19\u0E43\u0E2B\u0E49\u0E2A\u0E21\u0E32\u0E0A\u0E34\u0E01"
+    "data-screen-label": "จ่ายเงินให้สมาชิก"
   }, /*#__PURE__*/React.createElement(MoHead, {
     icon: "money",
-    title: "\u0E08\u0E48\u0E32\u0E22\u0E40\u0E07\u0E34\u0E19\u0E43\u0E2B\u0E49\u0E2A\u0E21\u0E32\u0E0A\u0E34\u0E01",
-    subtitle: "\u0E1B\u0E23\u0E30\u0E21\u0E27\u0E25\u0E1C\u0E25\u0E41\u0E25\u0E30\u0E08\u0E31\u0E14\u0E40\u0E01\u0E47\u0E1A \xB7 \u0E23\u0E32\u0E22\u0E40\u0E14\u0E37\u0E2D\u0E19 \u2014 \u0E01\u0E32\u0E23\u0E08\u0E48\u0E32\u0E22\u0E40\u0E07\u0E34\u0E19\u0E43\u0E2B\u0E49\u0E2A\u0E21\u0E32\u0E0A\u0E34\u0E01",
+    title: "จ่ายเงินให้สมาชิก",
+    subtitle: "ประมวลผลและจัดเก็บ \xB7 รายเดือน \u2014 การจ่ายเงินให้สมาชิก",
     actions: /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("button", {
       className: "btn primary sm",
       onClick: doSave
     }, /*#__PURE__*/React.createElement(Icon, {
       name: "check",
       size: 13
-    }), " \u0E1A\u0E31\u0E19\u0E17\u0E36\u0E01"), /*#__PURE__*/React.createElement("button", {
+    }), " บันทึก"), /*#__PURE__*/React.createElement("button", {
       className: "btn sm",
       onClick: addRow
     }, /*#__PURE__*/React.createElement(Icon, {
       name: "plus",
       size: 13
-    }), " \u0E40\u0E1E\u0E34\u0E48\u0E21\u0E23\u0E32\u0E22\u0E01\u0E32\u0E23"), /*#__PURE__*/React.createElement("button", {
+    }), " เพิ่มรายการ"), /*#__PURE__*/React.createElement("button", {
       className: "btn sm",
       onClick: clear
     }, /*#__PURE__*/React.createElement(Icon, {
       name: "refresh",
       size: 13
-    }), " \u0E25\u0E49\u0E32\u0E07\u0E02\u0E49\u0E2D\u0E21\u0E39\u0E25"), /*#__PURE__*/React.createElement("button", {
+    }), " ล้างข้อมูล"), /*#__PURE__*/React.createElement("button", {
       className: "btn sm",
       onClick: () => {
         onToast && onToast('กำลังเตรียมพิมพ์ใบสำคัญจ่าย…');
@@ -277,7 +277,7 @@ function MemberPayoutPage({
     }, /*#__PURE__*/React.createElement(Icon, {
       name: "print",
       size: 13
-    }), " \u0E1E\u0E34\u0E21\u0E1E\u0E4C"))
+    }), " พิมพ์เอกสาร"))
   }), error && /*#__PURE__*/React.createElement("div", {
     className: "sr-error",
     style: {
@@ -287,18 +287,19 @@ function MemberPayoutPage({
     name: "info",
     size: 14
   }), " ", error), /*#__PURE__*/React.createElement(MoSec, {
-    title: "\u0E01\u0E32\u0E23\u0E08\u0E48\u0E32\u0E22\u0E40\u0E07\u0E34\u0E19\u0E43\u0E2B\u0E49\u0E2A\u0E21\u0E32\u0E0A\u0E34\u0E01"
+    title: "การจ่ายเงินให้สมาชิก"
   }, /*#__PURE__*/React.createElement("div", {
     className: "icr-strip"
   }, /*#__PURE__*/React.createElement(MoFld, {
-    label: "\u0E40\u0E25\u0E02\u0E17\u0E35\u0E48\u0E43\u0E1A\u0E2A\u0E33\u0E04\u0E31\u0E0D",
+    label: "เลขที่ใบสำคัญ",
     w: 150
-  }, /*#__PURE__*/React.createElement(MoRO, {
+  }, (savedNo ? /*#__PURE__*/React.createElement(MoRO, {
     value: savedNo,
-    mono: true,
-    placeholder: "Auto"
-  })), /*#__PURE__*/React.createElement(MoFld, {
-    label: "\u0E27\u0E31\u0E19\u0E17\u0E35\u0E48\u0E43\u0E1A\u0E08\u0E48\u0E32\u0E22",
+    mono: true
+  }) : /*#__PURE__*/React.createElement("div", {
+    className: "icr-ro icr-auto"
+  }, "AUTO"))), /*#__PURE__*/React.createElement(MoFld, {
+    label: "วันที่ใบจ่าย",
     w: 150
   }, /*#__PURE__*/React.createElement("input", {
     className: "cfg-input",
@@ -306,7 +307,7 @@ function MemberPayoutPage({
     value: payDate,
     onChange: e => setPayDate(e.target.value)
   })), /*#__PURE__*/React.createElement(MoFld, {
-    label: "\u0E27\u0E31\u0E19\u0E17\u0E35\u0E48\u0E23\u0E32\u0E22\u0E01\u0E32\u0E23",
+    label: "วันที่รายการ",
     w: 150
   }, /*#__PURE__*/React.createElement("input", {
     className: "cfg-input",
@@ -314,7 +315,7 @@ function MemberPayoutPage({
     value: txnDate,
     onChange: e => setTxnDate(e.target.value)
   })), /*#__PURE__*/React.createElement(MoFld, {
-    label: "\u0E23\u0E2B\u0E31\u0E2A\u0E01\u0E32\u0E23\u0E08\u0E48\u0E32\u0E22",
+    label: "รหัสการจ่าย",
     w: 150
   }, /*#__PURE__*/React.createElement("select", {
     className: "cfg-input",
@@ -334,36 +335,36 @@ function MemberPayoutPage({
       marginTop: 10
     }
   }, /*#__PURE__*/React.createElement(MoFld, {
-    label: "\u0E40\u0E25\u0E02\u0E2A\u0E21\u0E32\u0E0A\u0E34\u0E01",
+    label: "เลขสมาชิก",
     w: 260,
     required: true
   }, /*#__PURE__*/React.createElement(MemberSearchField, {
     member: member,
     onPick: pickMember,
     source: window.DN_MEMBERS,
-    title: "\u0E04\u0E49\u0E19\u0E2B\u0E32\u0E2A\u0E21\u0E32\u0E0A\u0E34\u0E01 \u2014 \u0E08\u0E48\u0E32\u0E22\u0E40\u0E07\u0E34\u0E19\u0E43\u0E2B\u0E49\u0E2A\u0E21\u0E32\u0E0A\u0E34\u0E01"
+    title: "ค้นหาสมาชิก \u2014 จ่ายเงินให้สมาชิก"
   })), /*#__PURE__*/React.createElement(MoFld, {
-    label: "\u0E0A\u0E37\u0E48\u0E2D-\u0E0A\u0E37\u0E48\u0E2D\u0E2A\u0E01\u0E38\u0E25",
+    label: "ชื่อ-ชื่อสกุล",
     grow: true,
     w: 220
   }, /*#__PURE__*/React.createElement(MoRO, {
     value: member ? member.name : '',
-    placeholder: "(\u0E40\u0E25\u0E37\u0E2D\u0E01\u0E2A\u0E21\u0E32\u0E0A\u0E34\u0E01)"
+    placeholder: "(เลือกสมาชิก)"
   })), /*#__PURE__*/React.createElement(MoFld, {
-    label: "\u0E2A\u0E31\u0E07\u0E01\u0E31\u0E14",
+    label: "สังกัด",
     grow: true,
     w: 200
   }, /*#__PURE__*/React.createElement(MoRO, {
     value: member ? `${member.departmentCode || ''} - ${member.department || ''}`.trim() : ''
   })))), /*#__PURE__*/React.createElement(MoSec, {
-    title: "\u0E1B\u0E23\u0E30\u0E40\u0E20\u0E17\u0E40\u0E07\u0E34\u0E19\u0E17\u0E33\u0E23\u0E32\u0E22\u0E01\u0E32\u0E23",
+    title: "ประเภทเงินทำรายการ",
     style: {
       marginTop: 12
     }
   }, /*#__PURE__*/React.createElement("div", {
     className: "icr-strip"
   }, /*#__PURE__*/React.createElement(MoFld, {
-    label: "\u0E1B\u0E23\u0E30\u0E40\u0E20\u0E17\u0E40\u0E07\u0E34\u0E19",
+    label: "ประเภทเงิน",
     w: 130
   }, /*#__PURE__*/React.createElement("select", {
     className: "cfg-input",
@@ -376,7 +377,7 @@ function MemberPayoutPage({
   }, "CHQ"), /*#__PURE__*/React.createElement("option", {
     value: "TRF"
   }, "TRF"))), /*#__PURE__*/React.createElement(MoFld, {
-    label: "\u0E18\u0E19\u0E32\u0E04\u0E32\u0E23",
+    label: "ธนาคาร",
     grow: true,
     w: 160
   }, /*#__PURE__*/React.createElement("input", {
@@ -385,7 +386,7 @@ function MemberPayoutPage({
     disabled: isCash,
     onChange: e => setBank(e.target.value)
   })), /*#__PURE__*/React.createElement(MoFld, {
-    label: "\u0E2A\u0E32\u0E02\u0E32",
+    label: "สาขา",
     grow: true,
     w: 140
   }, /*#__PURE__*/React.createElement("input", {
@@ -394,7 +395,7 @@ function MemberPayoutPage({
     disabled: isCash,
     onChange: e => setBranch(e.target.value)
   })), /*#__PURE__*/React.createElement(MoFld, {
-    label: "\u0E40\u0E25\u0E02\u0E17\u0E35\u0E48\u0E1A\u0E31\u0E0D\u0E0A\u0E35",
+    label: "เลขที่บัญชี",
     grow: true,
     w: 160
   }, /*#__PURE__*/React.createElement("input", {
@@ -403,7 +404,7 @@ function MemberPayoutPage({
     disabled: isCash,
     onChange: e => setAccountNo(e.target.value)
   })), /*#__PURE__*/React.createElement(MoFld, {
-    label: "\u0E04\u0E39\u0E48\u0E1A\u0E31\u0E0D\u0E0A\u0E35",
+    label: "คู่บัญชี",
     grow: true,
     w: 160
   }, /*#__PURE__*/React.createElement("input", {
@@ -411,14 +412,14 @@ function MemberPayoutPage({
     value: pairAccount,
     onChange: e => setPairAccount(e.target.value)
   })), /*#__PURE__*/React.createElement(MoFld, {
-    label: "\u0E40\u0E07\u0E34\u0E19\u0E23\u0E31\u0E1A\u0E2A\u0E38\u0E17\u0E18\u0E34",
+    label: "เงินรับสุทธิ",
     w: 200
   }, /*#__PURE__*/React.createElement(MoRO, {
     value: moMoney(net),
     num: true,
     mono: true
   })))), /*#__PURE__*/React.createElement(MoSec, {
-    title: "\u0E23\u0E32\u0E22\u0E01\u0E32\u0E23\u0E08\u0E48\u0E32\u0E22\u0E04\u0E37\u0E19",
+    title: "รายการจ่ายคืน",
     style: {
       marginTop: 12
     }
@@ -437,22 +438,22 @@ function MemberPayoutPage({
     style: {
       width: 44
     }
-  }), /*#__PURE__*/React.createElement("th", null, "\u0E23\u0E32\u0E22\u0E25\u0E30\u0E40\u0E2D\u0E35\u0E22\u0E14\u0E40\u0E07\u0E34\u0E19\u0E04\u0E37\u0E19"), /*#__PURE__*/React.createElement("th", {
+  }), /*#__PURE__*/React.createElement("th", null, "รายละเอียดเงินคืน"), /*#__PURE__*/React.createElement("th", {
     style: {
       width: 160,
       textAlign: 'right'
     }
-  }, "\u0E15\u0E49\u0E19\u0E40\u0E07\u0E34\u0E19"), /*#__PURE__*/React.createElement("th", {
+  }, "ต้นเงิน"), /*#__PURE__*/React.createElement("th", {
     style: {
       width: 160,
       textAlign: 'right'
     }
-  }, "\u0E14\u0E2D\u0E01\u0E40\u0E1A\u0E35\u0E49\u0E22"), /*#__PURE__*/React.createElement("th", {
+  }, "ดอกเบี้ย"), /*#__PURE__*/React.createElement("th", {
     style: {
       width: 160,
       textAlign: 'right'
     }
-  }, "\u0E08\u0E33\u0E19\u0E27\u0E19\u0E40\u0E07\u0E34\u0E19"), /*#__PURE__*/React.createElement("th", {
+  }, "จำนวนเงิน"), /*#__PURE__*/React.createElement("th", {
     style: {
       width: 70
     }
@@ -466,7 +467,7 @@ function MemberPayoutPage({
     onChange: e => updateRow(i, {
       detail: e.target.value
     }),
-    placeholder: "\u0E23\u0E32\u0E22\u0E25\u0E30\u0E40\u0E2D\u0E35\u0E22\u0E14\u0E40\u0E07\u0E34\u0E19\u0E04\u0E37\u0E19"
+    placeholder: "รายละเอียดเงินคืน"
   })), /*#__PURE__*/React.createElement("td", null, /*#__PURE__*/React.createElement("input", {
     className: "cfg-input sm",
     type: "number",
@@ -495,25 +496,28 @@ function MemberPayoutPage({
       textAlign: 'right'
     }
   }, moMoney(r.amount)), /*#__PURE__*/React.createElement("td", null, /*#__PURE__*/React.createElement("button", {
-    className: "btn sm danger",
+    type: "button",
+    className: "act-del",
+    title: "ลบ",
+    "aria-label": "ลบ",
     onClick: () => removeRow(i)
   }, /*#__PURE__*/React.createElement(Icon, {
-    name: "close",
-    size: 12
-  }), " \u0E25\u0E1A")))), !rows.length && /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("td", {
+    name: "trash",
+    size: 13
+  }))))), !rows.length && /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("td", {
     colSpan: 6,
     className: "muted",
     style: {
       textAlign: 'center',
       padding: '26px 0'
     }
-  }, "\u0E40\u0E25\u0E37\u0E2D\u0E01\u0E2A\u0E21\u0E32\u0E0A\u0E34\u0E01\u0E40\u0E1E\u0E37\u0E48\u0E2D\u0E40\u0E23\u0E34\u0E48\u0E21\u0E1A\u0E31\u0E19\u0E17\u0E36\u0E01\u0E23\u0E32\u0E22\u0E01\u0E32\u0E23\u0E08\u0E48\u0E32\u0E22\u0E04\u0E37\u0E19"))), !!rows.length && /*#__PURE__*/React.createElement("tfoot", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("td", {
+  }, "เลือกสมาชิกเพื่อเริ่มบันทึกรายการจ่ายคืน"))), !!rows.length && /*#__PURE__*/React.createElement("tfoot", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("td", {
     colSpan: 4,
     style: {
       textAlign: 'right',
       fontWeight: 600
     }
-  }, "\u0E40\u0E07\u0E34\u0E19\u0E23\u0E31\u0E1A\u0E2A\u0E38\u0E17\u0E18\u0E34"), /*#__PURE__*/React.createElement("td", {
+  }, "เงินรับสุทธิ"), /*#__PURE__*/React.createElement("td", {
     className: "mono",
     style: {
       textAlign: 'right',
@@ -567,18 +571,18 @@ function MonthlyCollectPage({
     onToast && onToast(`ประมวลผลเรียกเก็บประจำเดือน ${month} ${year} เรียบร้อยแล้ว`);
   };
   return /*#__PURE__*/React.createElement("div", {
-    "data-screen-label": "\u0E1B\u0E23\u0E30\u0E21\u0E27\u0E25\u0E1C\u0E25\u0E40\u0E23\u0E35\u0E22\u0E01\u0E40\u0E01\u0E47\u0E1A"
+    "data-screen-label": "ประมวลผลเรียกเก็บ"
   }, /*#__PURE__*/React.createElement(MoHead, {
     icon: "cog",
-    title: "\u0E1B\u0E23\u0E30\u0E21\u0E27\u0E25\u0E1C\u0E25\u0E40\u0E23\u0E35\u0E22\u0E01\u0E40\u0E01\u0E47\u0E1A",
-    subtitle: "\u0E1B\u0E23\u0E30\u0E21\u0E27\u0E25\u0E1C\u0E25\u0E41\u0E25\u0E30\u0E08\u0E31\u0E14\u0E40\u0E01\u0E47\u0E1A \xB7 \u0E23\u0E32\u0E22\u0E40\u0E14\u0E37\u0E2D\u0E19 \u2014 \u0E1B\u0E23\u0E30\u0E21\u0E27\u0E25\u0E1C\u0E25\u0E23\u0E32\u0E22\u0E01\u0E32\u0E23\u0E40\u0E23\u0E35\u0E22\u0E01\u0E40\u0E01\u0E47\u0E1A\u0E1B\u0E23\u0E30\u0E08\u0E33\u0E40\u0E14\u0E37\u0E2D\u0E19",
+    title: "ประมวลผลเรียกเก็บ",
+    subtitle: "ประมวลผลและจัดเก็บ \xB7 รายเดือน \u2014 ประมวลผลรายการเรียกเก็บประจำเดือน",
     actions: /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("button", {
       className: "btn primary sm",
       onClick: run
     }, /*#__PURE__*/React.createElement(Icon, {
-      name: "cog",
+      name: "check",
       size: 13
-    }), " \u0E1B\u0E23\u0E30\u0E21\u0E27\u0E25"), /*#__PURE__*/React.createElement("button", {
+    }), " ประมวล"), /*#__PURE__*/React.createElement("button", {
       className: "btn sm",
       onClick: () => {
         setSystems([]);
@@ -587,7 +591,7 @@ function MonthlyCollectPage({
     }, /*#__PURE__*/React.createElement(Icon, {
       name: "refresh",
       size: 13
-    }), " \u0E25\u0E49\u0E32\u0E07\u0E02\u0E49\u0E2D\u0E21\u0E39\u0E25"))
+    }), " ล้างข้อมูล"))
   }), result && /*#__PURE__*/React.createElement("div", {
     className: "search-card",
     style: {
@@ -604,19 +608,19 @@ function MonthlyCollectPage({
     style: {
       fontSize: 13
     }
-  }, "\u0E1B\u0E23\u0E30\u0E21\u0E27\u0E25\u0E1C\u0E25\u0E40\u0E23\u0E35\u0E22\u0E01\u0E40\u0E01\u0E47\u0E1A\u0E07\u0E27\u0E14 ", /*#__PURE__*/React.createElement("b", null, month, " ", year), " \u0E08\u0E33\u0E19\u0E27\u0E19 ", /*#__PURE__*/React.createElement("b", null, result.count), " \u0E23\u0E30\u0E1A\u0E1A\u0E07\u0E32\u0E19 \u0E40\u0E27\u0E25\u0E32 ", result.at, " \u0E19.")), /*#__PURE__*/React.createElement(MoSec, {
-    title: "\u0E1B\u0E23\u0E30\u0E21\u0E27\u0E25\u0E1C\u0E25\u0E1B\u0E23\u0E30\u0E08\u0E33\u0E40\u0E14\u0E37\u0E2D\u0E19"
+  }, "ประมวลผลเรียกเก็บงวด ", /*#__PURE__*/React.createElement("b", null, month, " ", year), " จำนวน ", /*#__PURE__*/React.createElement("b", null, result.count), " ระบบงาน เวลา ", result.at, " น.")), /*#__PURE__*/React.createElement(MoSec, {
+    title: "ประมวลผลประจำเดือน"
   }, /*#__PURE__*/React.createElement("div", {
     className: "icr-strip"
   }, /*#__PURE__*/React.createElement(MoFld, {
-    label: "\u0E1B\u0E23\u0E30\u0E08\u0E33\u0E1B\u0E35",
+    label: "ประจำปี",
     w: 140
   }, /*#__PURE__*/React.createElement("input", {
     className: "cfg-input",
     value: year,
     onChange: e => setYear(e.target.value)
   })), /*#__PURE__*/React.createElement(MoFld, {
-    label: "\u0E1B\u0E23\u0E30\u0E08\u0E33\u0E40\u0E14\u0E37\u0E2D\u0E19",
+    label: "ประจำเดือน",
     w: 170
   }, /*#__PURE__*/React.createElement("select", {
     className: "cfg-input",
@@ -626,7 +630,7 @@ function MonthlyCollectPage({
     key: m,
     value: m
   }, m)))), /*#__PURE__*/React.createElement(MoFld, {
-    label: "\u0E43\u0E1A\u0E40\u0E2A\u0E23\u0E47\u0E08\u0E25\u0E07\u0E27\u0E31\u0E19\u0E17\u0E35\u0E48",
+    label: "ใบเสร็จลงวันที่",
     w: 170
   }, /*#__PURE__*/React.createElement("input", {
     className: "cfg-input",
@@ -634,7 +638,7 @@ function MonthlyCollectPage({
     value: receiptDate,
     onChange: e => setReceiptDate(e.target.value)
   })), /*#__PURE__*/React.createElement(MoFld, {
-    label: "\u0E14/\u0E1A \u0E16\u0E36\u0E07\u0E27\u0E31\u0E19\u0E17\u0E35\u0E48",
+    label: "ด/บ ถึงวันที่",
     w: 170
   }, /*#__PURE__*/React.createElement("input", {
     className: "cfg-input",
@@ -642,33 +646,33 @@ function MonthlyCollectPage({
     value: interestDate,
     onChange: e => setInterestDate(e.target.value)
   })))), /*#__PURE__*/React.createElement(MoSec, {
-    title: "\u0E0A\u0E48\u0E27\u0E07\u0E02\u0E49\u0E2D\u0E21\u0E39\u0E25\u0E17\u0E35\u0E48\u0E15\u0E49\u0E2D\u0E07\u0E01\u0E32\u0E23\u0E1B\u0E23\u0E30\u0E21\u0E27\u0E25\u0E1C\u0E25",
+    title: "ช่วงข้อมูลที่ต้องการประมวลผล",
     style: {
       marginTop: 12
     },
-    hint: "\u0E43\u0E2A\u0E48\u0E02\u0E49\u0E2D\u0E21\u0E39\u0E25\u0E2B\u0E23\u0E37\u0E2D\u0E0A\u0E48\u0E27\u0E07\u0E02\u0E49\u0E2D\u0E21\u0E39\u0E25\u0E17\u0E35\u0E48\u0E15\u0E49\u0E2D\u0E07\u0E01\u0E32\u0E23\u0E1B\u0E23\u0E30\u0E21\u0E27\u0E25\u0E1C\u0E25\u0E41\u0E25\u0E30\u0E04\u0E31\u0E48\u0E19\u0E14\u0E49\u0E27\u0E22\u0E40\u0E04\u0E23\u0E37\u0E48\u0E2D\u0E07\u0E2B\u0E21\u0E32\u0E22 - \u0E2B\u0E23\u0E37\u0E2D , \u0E40\u0E0A\u0E48\u0E19 11010, 11020, 11000 - 11020"
+    hint: "ใส่ข้อมูลหรือช่วงข้อมูลที่ต้องการประมวลผลและคั่นด้วยเครื่องหมาย - หรือ , เช่น 11010, 11020, 11000 - 11020"
   }, /*#__PURE__*/React.createElement("div", {
     className: "icr-strip"
   }, /*#__PURE__*/React.createElement(MoFld, {
-    label: "\u0E0A\u0E48\u0E27\u0E07\u0E02\u0E49\u0E2D\u0E21\u0E39\u0E25",
+    label: "ช่วงข้อมูล",
     w: 240
   }, /*#__PURE__*/React.createElement("select", {
     className: "cfg-input",
     value: range,
     onChange: e => setRange(e.target.value)
   }, /*#__PURE__*/React.createElement("option", {
-    value: "\u0E17\u0E31\u0E49\u0E07\u0E2B\u0E21\u0E14"
-  }, "\u0E17\u0E31\u0E49\u0E07\u0E2B\u0E21\u0E14"), /*#__PURE__*/React.createElement("option", {
-    value: "\u0E15\u0E32\u0E21\u0E2A\u0E31\u0E07\u0E01\u0E31\u0E14"
-  }, "\u0E15\u0E32\u0E21\u0E2A\u0E31\u0E07\u0E01\u0E31\u0E14"), /*#__PURE__*/React.createElement("option", {
-    value: "\u0E15\u0E32\u0E21\u0E40\u0E25\u0E02\u0E2A\u0E21\u0E32\u0E0A\u0E34\u0E01"
-  }, "\u0E15\u0E32\u0E21\u0E40\u0E25\u0E02\u0E2A\u0E21\u0E32\u0E0A\u0E34\u0E01")))), /*#__PURE__*/React.createElement("div", {
+    value: "ทั้งหมด"
+  }, "ทั้งหมด"), /*#__PURE__*/React.createElement("option", {
+    value: "ตามสังกัด"
+  }, "ตามสังกัด"), /*#__PURE__*/React.createElement("option", {
+    value: "ตามเลขสมาชิก"
+  }, "ตามเลขสมาชิก")))), /*#__PURE__*/React.createElement("div", {
     className: "icr-strip",
     style: {
       marginTop: 10
     }
   }, /*#__PURE__*/React.createElement(MoFld, {
-    label: "\u0E15\u0E32\u0E21\u0E2A\u0E31\u0E07\u0E01\u0E31\u0E14",
+    label: "ตามสังกัด",
     grow: true,
     w: 260
   }, /*#__PURE__*/React.createElement("input", {
@@ -682,7 +686,7 @@ function MonthlyCollectPage({
       marginTop: 10
     }
   }, /*#__PURE__*/React.createElement(MoFld, {
-    label: "\u0E15\u0E32\u0E21\u0E40\u0E25\u0E02\u0E2A\u0E21\u0E32\u0E0A\u0E34\u0E01",
+    label: "ตามเลขสมาชิก",
     grow: true,
     w: 260
   }, /*#__PURE__*/React.createElement("input", {
@@ -691,7 +695,7 @@ function MonthlyCollectPage({
     disabled: range !== 'ตามเลขสมาชิก',
     onChange: e => setByMember(e.target.value)
   })))), /*#__PURE__*/React.createElement(MoSec, {
-    title: "\u0E23\u0E30\u0E1A\u0E1A\u0E07\u0E32\u0E19\u0E17\u0E35\u0E48\u0E08\u0E30\u0E1B\u0E23\u0E30\u0E21\u0E27\u0E25\u0E1C\u0E25",
+    title: "ระบบงานที่จะประมวลผล",
     style: {
       marginTop: 12
     }
@@ -700,7 +704,7 @@ function MonthlyCollectPage({
     value: systems,
     onToggle: toggle,
     extra: /*#__PURE__*/React.createElement(MoCheck, {
-      label: "\u0E43\u0E2A\u0E48\u0E40\u0E25\u0E02\u0E17\u0E35\u0E48\u0E43\u0E1A\u0E40\u0E2A\u0E23\u0E47\u0E08 \u0E40\u0E23\u0E34\u0E48\u0E21\u0E17\u0E35\u0E48",
+      label: "ใส่เลขที่ใบเสร็จ เริ่มที่",
       checked: useReceiptNo,
       onChange: setUseReceiptNo
     }, /*#__PURE__*/React.createElement("input", {
@@ -713,14 +717,14 @@ function MonthlyCollectPage({
       onChange: e => setReceiptStart(e.target.value)
     }))
   })), /*#__PURE__*/React.createElement(MoSec, {
-    title: "\u0E01\u0E32\u0E23\u0E25\u0E49\u0E32\u0E07\u0E02\u0E49\u0E2D\u0E21\u0E39\u0E25\u0E40\u0E14\u0E34\u0E21",
+    title: "การล้างข้อมูลเดิม",
     style: {
       marginTop: 12
     }
   }, /*#__PURE__*/React.createElement("div", {
     className: "icr-strip"
   }, /*#__PURE__*/React.createElement(MoFld, {
-    label: "\u0E23\u0E39\u0E1B\u0E41\u0E1A\u0E1A",
+    label: "รูปแบบ",
     grow: true,
     w: 320
   }, /*#__PURE__*/React.createElement("select", {
@@ -728,22 +732,10 @@ function MonthlyCollectPage({
     value: clearMode,
     onChange: e => setClearMode(e.target.value)
   }, /*#__PURE__*/React.createElement("option", {
-    value: "\u0E25\u0E49\u0E32\u0E07\u0E02\u0E49\u0E2D\u0E21\u0E39\u0E25\u0E40\u0E14\u0E34\u0E21\u0E17\u0E31\u0E49\u0E07\u0E17\u0E31\u0E49\u0E07\u0E2B\u0E21\u0E14"
-  }, "\u0E25\u0E49\u0E32\u0E07\u0E02\u0E49\u0E2D\u0E21\u0E39\u0E25\u0E40\u0E14\u0E34\u0E21\u0E17\u0E31\u0E49\u0E07\u0E17\u0E31\u0E49\u0E07\u0E2B\u0E21\u0E14"), /*#__PURE__*/React.createElement("option", {
-    value: "\u0E25\u0E49\u0E32\u0E07\u0E02\u0E49\u0E2D\u0E21\u0E39\u0E25\u0E15\u0E32\u0E21\u0E1B\u0E23\u0E30\u0E40\u0E20\u0E17\u0E23\u0E32\u0E22\u0E01\u0E32\u0E23\u0E17\u0E35\u0E48\u0E08\u0E30\u0E1B\u0E23\u0E30\u0E21\u0E27\u0E25"
-  }, "\u0E25\u0E49\u0E32\u0E07\u0E02\u0E49\u0E2D\u0E21\u0E39\u0E25\u0E15\u0E32\u0E21\u0E1B\u0E23\u0E30\u0E40\u0E20\u0E17\u0E23\u0E32\u0E22\u0E01\u0E32\u0E23\u0E17\u0E35\u0E48\u0E08\u0E30\u0E1B\u0E23\u0E30\u0E21\u0E27\u0E25"))))), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      justifyContent: 'center',
-      marginTop: 16
-    }
-  }, /*#__PURE__*/React.createElement("button", {
-    className: "btn primary",
-    onClick: run
-  }, /*#__PURE__*/React.createElement(Icon, {
-    name: "cog",
-    size: 14
-  }), " \u0E1B\u0E23\u0E30\u0E21\u0E27\u0E25")));
+    value: "ล้างข้อมูลเดิมทั้งทั้งหมด"
+  }, "ล้างข้อมูลเดิมทั้งทั้งหมด"), /*#__PURE__*/React.createElement("option", {
+    value: "ล้างข้อมูลตามประเภทรายการที่จะประมวล"
+  }, "ล้างข้อมูลตามประเภทรายการที่จะประมวล"))))));
 }
 
 // ════════════════════════════════════════════════════════════════════
@@ -786,18 +778,18 @@ function MonthlyCutoffPage({
     onToast && onToast(`ประมวลผลตัดยอดประจำเดือน ${month} ${year} เรียบร้อยแล้ว`);
   };
   return /*#__PURE__*/React.createElement("div", {
-    "data-screen-label": "\u0E1B\u0E23\u0E30\u0E21\u0E27\u0E25\u0E1C\u0E25\u0E15\u0E31\u0E14\u0E22\u0E2D\u0E14"
+    "data-screen-label": "ประมวลผลตัดยอด"
   }, /*#__PURE__*/React.createElement(MoHead, {
     icon: "cog",
-    title: "\u0E1B\u0E23\u0E30\u0E21\u0E27\u0E25\u0E1C\u0E25\u0E15\u0E31\u0E14\u0E22\u0E2D\u0E14",
-    subtitle: "\u0E1B\u0E23\u0E30\u0E21\u0E27\u0E25\u0E1C\u0E25\u0E41\u0E25\u0E30\u0E08\u0E31\u0E14\u0E40\u0E01\u0E47\u0E1A \xB7 \u0E23\u0E32\u0E22\u0E40\u0E14\u0E37\u0E2D\u0E19 \u2014 \u0E15\u0E31\u0E14\u0E22\u0E2D\u0E14\u0E23\u0E32\u0E22\u0E01\u0E32\u0E23\u0E40\u0E23\u0E35\u0E22\u0E01\u0E40\u0E01\u0E47\u0E1A\u0E1B\u0E23\u0E30\u0E08\u0E33\u0E40\u0E14\u0E37\u0E2D\u0E19",
+    title: "ประมวลผลตัดยอด",
+    subtitle: "ประมวลผลและจัดเก็บ \xB7 รายเดือน \u2014 ตัดยอดรายการเรียกเก็บประจำเดือน",
     actions: /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("button", {
       className: "btn primary sm",
       onClick: run
     }, /*#__PURE__*/React.createElement(Icon, {
-      name: "cog",
+      name: "check",
       size: 13
-    }), " \u0E1B\u0E23\u0E30\u0E21\u0E27\u0E25"), /*#__PURE__*/React.createElement("button", {
+    }), " ประมวล"), /*#__PURE__*/React.createElement("button", {
       className: "btn sm",
       onClick: () => {
         setSystems([]);
@@ -806,7 +798,7 @@ function MonthlyCutoffPage({
     }, /*#__PURE__*/React.createElement(Icon, {
       name: "refresh",
       size: 13
-    }), " \u0E25\u0E49\u0E32\u0E07\u0E02\u0E49\u0E2D\u0E21\u0E39\u0E25"))
+    }), " ล้างข้อมูล"))
   }), result && /*#__PURE__*/React.createElement("div", {
     className: "search-card",
     style: {
@@ -823,19 +815,19 @@ function MonthlyCutoffPage({
     style: {
       fontSize: 13
     }
-  }, "\u0E15\u0E31\u0E14\u0E22\u0E2D\u0E14\u0E07\u0E27\u0E14 ", /*#__PURE__*/React.createElement("b", null, month, " ", year), " \u0E08\u0E33\u0E19\u0E27\u0E19 ", /*#__PURE__*/React.createElement("b", null, result.count), " \u0E23\u0E30\u0E1A\u0E1A\u0E07\u0E32\u0E19 \u0E40\u0E27\u0E25\u0E32 ", result.at, " \u0E19.")), /*#__PURE__*/React.createElement(MoSec, {
-    title: "\u0E15\u0E31\u0E14\u0E22\u0E2D\u0E14\u0E1B\u0E23\u0E30\u0E08\u0E33\u0E40\u0E14\u0E37\u0E2D\u0E19"
+  }, "ตัดยอดงวด ", /*#__PURE__*/React.createElement("b", null, month, " ", year), " จำนวน ", /*#__PURE__*/React.createElement("b", null, result.count), " ระบบงาน เวลา ", result.at, " น.")), /*#__PURE__*/React.createElement(MoSec, {
+    title: "ตัดยอดประจำเดือน"
   }, /*#__PURE__*/React.createElement("div", {
     className: "icr-strip"
   }, /*#__PURE__*/React.createElement(MoFld, {
-    label: "\u0E1B\u0E23\u0E30\u0E08\u0E33\u0E1B\u0E35",
+    label: "ประจำปี",
     w: 180
   }, /*#__PURE__*/React.createElement("input", {
     className: "cfg-input",
     value: year,
     onChange: e => setYear(e.target.value)
   })), /*#__PURE__*/React.createElement(MoFld, {
-    label: "\u0E1B\u0E23\u0E30\u0E08\u0E33\u0E40\u0E14\u0E37\u0E2D\u0E19",
+    label: "ประจำเดือน",
     w: 200
   }, /*#__PURE__*/React.createElement("select", {
     className: "cfg-input",
@@ -845,33 +837,33 @@ function MonthlyCutoffPage({
     key: m,
     value: m
   }, m)))))), /*#__PURE__*/React.createElement(MoSec, {
-    title: "\u0E0A\u0E48\u0E27\u0E07\u0E02\u0E49\u0E2D\u0E21\u0E39\u0E25\u0E17\u0E35\u0E48\u0E15\u0E49\u0E2D\u0E07\u0E01\u0E32\u0E23\u0E15\u0E31\u0E14\u0E22\u0E2D\u0E14",
+    title: "ช่วงข้อมูลที่ต้องการตัดยอด",
     style: {
       marginTop: 12
     },
-    hint: "\u0E43\u0E2A\u0E48\u0E02\u0E49\u0E2D\u0E21\u0E39\u0E25\u0E2B\u0E23\u0E37\u0E2D\u0E0A\u0E48\u0E27\u0E07\u0E02\u0E49\u0E2D\u0E21\u0E39\u0E25\u0E17\u0E35\u0E48\u0E15\u0E49\u0E2D\u0E07\u0E01\u0E32\u0E23\u0E1B\u0E23\u0E30\u0E21\u0E27\u0E25\u0E1C\u0E25\u0E41\u0E25\u0E30\u0E04\u0E31\u0E48\u0E19\u0E14\u0E49\u0E27\u0E22\u0E40\u0E04\u0E23\u0E37\u0E48\u0E2D\u0E07\u0E2B\u0E21\u0E32\u0E22 - \u0E2B\u0E23\u0E37\u0E2D , \u0E40\u0E0A\u0E48\u0E19 11010, 11020, 11000 - 11020"
+    hint: "ใส่ข้อมูลหรือช่วงข้อมูลที่ต้องการประมวลผลและคั่นด้วยเครื่องหมาย - หรือ , เช่น 11010, 11020, 11000 - 11020"
   }, /*#__PURE__*/React.createElement("div", {
     className: "icr-strip"
   }, /*#__PURE__*/React.createElement(MoFld, {
-    label: "\u0E0A\u0E48\u0E27\u0E07\u0E02\u0E49\u0E2D\u0E21\u0E39\u0E25",
+    label: "ช่วงข้อมูล",
     w: 240
   }, /*#__PURE__*/React.createElement("select", {
     className: "cfg-input",
     value: range,
     onChange: e => setRange(e.target.value)
   }, /*#__PURE__*/React.createElement("option", {
-    value: "\u0E17\u0E31\u0E49\u0E07\u0E2B\u0E21\u0E14"
-  }, "\u0E17\u0E31\u0E49\u0E07\u0E2B\u0E21\u0E14"), /*#__PURE__*/React.createElement("option", {
-    value: "\u0E15\u0E32\u0E21\u0E2A\u0E31\u0E07\u0E01\u0E31\u0E14"
-  }, "\u0E15\u0E32\u0E21\u0E2A\u0E31\u0E07\u0E01\u0E31\u0E14"), /*#__PURE__*/React.createElement("option", {
-    value: "\u0E15\u0E32\u0E21\u0E40\u0E25\u0E02\u0E2A\u0E21\u0E32\u0E0A\u0E34\u0E01"
-  }, "\u0E15\u0E32\u0E21\u0E40\u0E25\u0E02\u0E2A\u0E21\u0E32\u0E0A\u0E34\u0E01")))), /*#__PURE__*/React.createElement("div", {
+    value: "ทั้งหมด"
+  }, "ทั้งหมด"), /*#__PURE__*/React.createElement("option", {
+    value: "ตามสังกัด"
+  }, "ตามสังกัด"), /*#__PURE__*/React.createElement("option", {
+    value: "ตามเลขสมาชิก"
+  }, "ตามเลขสมาชิก")))), /*#__PURE__*/React.createElement("div", {
     className: "icr-strip",
     style: {
       marginTop: 10
     }
   }, /*#__PURE__*/React.createElement(MoFld, {
-    label: "\u0E15\u0E32\u0E21\u0E2A\u0E31\u0E07\u0E01\u0E31\u0E14",
+    label: "ตามสังกัด",
     grow: true,
     w: 260
   }, /*#__PURE__*/React.createElement("input", {
@@ -885,7 +877,7 @@ function MonthlyCutoffPage({
       marginTop: 10
     }
   }, /*#__PURE__*/React.createElement(MoFld, {
-    label: "\u0E15\u0E32\u0E21\u0E40\u0E25\u0E02\u0E2A\u0E21\u0E32\u0E0A\u0E34\u0E01",
+    label: "ตามเลขสมาชิก",
     grow: true,
     w: 260
   }, /*#__PURE__*/React.createElement("input", {
@@ -894,7 +886,7 @@ function MonthlyCutoffPage({
     disabled: range !== 'ตามเลขสมาชิก',
     onChange: e => setByMember(e.target.value)
   })))), /*#__PURE__*/React.createElement(MoSec, {
-    title: "\u0E23\u0E30\u0E1A\u0E1A\u0E07\u0E32\u0E19\u0E17\u0E35\u0E48\u0E08\u0E30\u0E15\u0E31\u0E14\u0E22\u0E2D\u0E14",
+    title: "ระบบงานที่จะตัดยอด",
     style: {
       marginTop: 12
     }
@@ -902,19 +894,7 @@ function MonthlyCutoffPage({
     items: MO_CUTOFF_SYSTEMS,
     value: systems,
     onToggle: toggle
-  })), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      justifyContent: 'center',
-      marginTop: 16
-    }
-  }, /*#__PURE__*/React.createElement("button", {
-    className: "btn primary",
-    onClick: run
-  }, /*#__PURE__*/React.createElement(Icon, {
-    name: "cog",
-    size: 14
-  }), " \u0E1B\u0E23\u0E30\u0E21\u0E27\u0E25")));
+  })));
 }
 
 // ════════════════════════════════════════════════════════════════════
@@ -997,11 +977,9 @@ function CollectDiskPage({
   const [groupCode, setGroupCode] = useState('');
   const [format, setFormat] = useState('');
   const [result, setResult] = useState(null); // { rows, share, loan, other, total, data }
-  const [prog, setProg] = useState(null); // { done, total } ระหว่างประมวลผล
-  const [stopped, setStopped] = useState(null); // { done, total } เมื่อผู้ใช้กดหยุด
   const [error, setError] = useState('');
-  const timerRef = React.useRef(null);
-  React.useEffect(() => () => clearInterval(timerRef.current), []);
+  // แถบสถานะการประมวลผลแบบเดียวกับ ปันผล–เฉลี่ยคืน (DvJobBanner / useDvJob ใน 443-dividend.js)
+  const dvJob = useDvJob(null);
   const TOTAL = 1284;
   const finish = () => {
     const data = moDiskData(TOTAL);
@@ -1020,7 +998,6 @@ function CollectDiskPage({
       total: sum.share + sum.loan + sum.other,
       data
     };
-    setProg(null);
     setResult(res);
     audit && audit.log && audit.log({
       action: 'process',
@@ -1039,39 +1016,14 @@ function CollectDiskPage({
       setError('กรุณาเลือกรูปแบบรายการ');
       return;
     }
-    if (prog) return;
+    if (dvJob.busy) return;
     setError('');
     setResult(null);
-    setStopped(null);
-    setProg({
-      done: 0,
-      total: TOTAL
-    });
-    clearInterval(timerRef.current);
-    timerRef.current = setInterval(() => {
-      setProg(p => {
-        if (!p) return p;
-        const done = Math.min(p.total, p.done + Math.ceil(p.total / 45));
-        if (done >= p.total) {
-          clearInterval(timerRef.current);
-          setTimeout(finish, 250);
-        }
-        return {
-          ...p,
-          done
-        };
-      });
-    }, 110);
+    // จำลอง: รูปแบบ "เรียกเก็บแบบแยก" ใช้เวลานานจนหมดเวลา (แสดงสถานะ Timeout)
+    dvJob.start(finish, format !== MO_DISK_FORMATS[0], TOTAL);
   };
   const stop = () => {
-    clearInterval(timerRef.current);
-    setProg(p => {
-      if (p) setStopped({
-        done: p.done,
-        total: p.total
-      });
-      return null;
-    });
+    dvJob.stop();
     audit && audit.log && audit.log({
       action: 'process',
       module: 'ประมวลผลและจัดเก็บ — ขึ้นแผ่นจัดเก็บ',
@@ -1080,7 +1032,7 @@ function CollectDiskPage({
     });
     onToast && onToast('หยุดการประมวลผลแล้ว — ยังไม่ได้สร้างแผ่นจัดเก็บ');
   };
-  const fileBase = `CLT${period}_${groupCode}`.replace(/[^\w\u0E00-\u0E7F.-]/g, '');
+  const fileBase = `CLT${period}_${groupCode}`.replace(/[^\w฀-๿.-]/g, '');
   const download = (name, content, type) => {
     const blob = new Blob(['\ufeff' + content], {
       type
@@ -1124,13 +1076,20 @@ function CollectDiskPage({
     setTimeout(() => URL.revokeObjectURL(el.href), 1000);
     onToast && onToast('บันทึกลงแผ่น ' + fileBase + '.xlsx เรียบร้อยแล้ว');
   };
-  const pct = prog ? Math.round(prog.done / prog.total * 100) : 0;
   return /*#__PURE__*/React.createElement("div", {
-    "data-screen-label": "\u0E02\u0E36\u0E49\u0E19\u0E41\u0E1C\u0E48\u0E19\u0E08\u0E31\u0E14\u0E40\u0E01\u0E47\u0E1A"
+    "data-screen-label": "ขึ้นแผ่นจัดเก็บ"
   }, /*#__PURE__*/React.createElement(MoHead, {
     icon: "database",
-    title: "\u0E02\u0E36\u0E49\u0E19\u0E41\u0E1C\u0E48\u0E19\u0E08\u0E31\u0E14\u0E40\u0E01\u0E47\u0E1A",
-    subtitle: "\u0E1B\u0E23\u0E30\u0E21\u0E27\u0E25\u0E1C\u0E25\u0E41\u0E25\u0E30\u0E08\u0E31\u0E14\u0E40\u0E01\u0E47\u0E1A \xB7 \u0E23\u0E32\u0E22\u0E40\u0E14\u0E37\u0E2D\u0E19 \u2014 \u0E2A\u0E23\u0E49\u0E32\u0E07\u0E41\u0E1C\u0E48\u0E19\u0E08\u0E31\u0E14\u0E40\u0E01\u0E47\u0E1A\u0E23\u0E32\u0E22\u0E01\u0E32\u0E23\u0E40\u0E23\u0E35\u0E22\u0E01\u0E40\u0E01\u0E47\u0E1A\u0E2A\u0E48\u0E07\u0E2B\u0E19\u0E48\u0E27\u0E22\u0E07\u0E32\u0E19"
+    title: "ขึ้นแผ่นจัดเก็บ",
+    subtitle: "ประมวลผลและจัดเก็บ \xB7 รายเดือน \u2014 สร้างแผ่นจัดเก็บรายการเรียกเก็บส่งหน่วยงาน",
+    actions: /*#__PURE__*/React.createElement("button", {
+      className: "btn primary sm",
+      onClick: run,
+      disabled: dvJob.busy
+    }, /*#__PURE__*/React.createElement(Icon, {
+      name: "check",
+      size: 13
+    }), " ประมวล")
   }), error && /*#__PURE__*/React.createElement("div", {
     className: "sr-error",
     style: {
@@ -1140,18 +1099,18 @@ function CollectDiskPage({
     name: "info",
     size: 14
   }), " ", error), /*#__PURE__*/React.createElement(MoSec, {
-    title: "\u0E02\u0E36\u0E49\u0E19\u0E41\u0E1C\u0E48\u0E19\u0E08\u0E31\u0E14\u0E40\u0E01\u0E47\u0E1A"
+    title: "ขึ้นแผ่นจัดเก็บ"
   }, /*#__PURE__*/React.createElement("div", {
     className: "icr-strip"
   }, /*#__PURE__*/React.createElement(MoFld, {
-    label: "\u0E07\u0E27\u0E14",
+    label: "งวด",
     w: 180
   }, /*#__PURE__*/React.createElement("input", {
     className: "cfg-input",
     value: period,
     onChange: e => setPeriod(e.target.value)
   })), /*#__PURE__*/React.createElement(MoFld, {
-    label: "\u0E27\u0E31\u0E19\u0E17\u0E35\u0E48\u0E43\u0E1A\u0E40\u0E2A\u0E23\u0E47\u0E08",
+    label: "วันที่ใบเสร็จ",
     w: 180
   }, /*#__PURE__*/React.createElement("input", {
     className: "cfg-input",
@@ -1159,7 +1118,7 @@ function CollectDiskPage({
     value: receiptDate,
     onChange: e => setReceiptDate(e.target.value)
   })), /*#__PURE__*/React.createElement(MoFld, {
-    label: "\u0E23\u0E2B\u0E31\u0E2A\u0E01\u0E25\u0E38\u0E48\u0E21\u0E01\u0E32\u0E23\u0E02\u0E36\u0E49\u0E19\u0E41\u0E1C\u0E48\u0E19",
+    label: "รหัสกลุ่มการขึ้นแผ่น",
     w: 220
   }, /*#__PURE__*/React.createElement("select", {
     className: "cfg-input",
@@ -1170,11 +1129,11 @@ function CollectDiskPage({
     }
   }, /*#__PURE__*/React.createElement("option", {
     value: ""
-  }, "\u2014 \u0E40\u0E25\u0E37\u0E2D\u0E01 \u2014"), MO_DISK_GROUPS.map(g => /*#__PURE__*/React.createElement("option", {
+  }, "\u2014 เลือก \u2014"), MO_DISK_GROUPS.map(g => /*#__PURE__*/React.createElement("option", {
     key: g,
     value: g
   }, g)))), /*#__PURE__*/React.createElement(MoFld, {
-    label: "\u0E23\u0E39\u0E1B\u0E41\u0E1A\u0E1A\u0E23\u0E32\u0E22\u0E01\u0E32\u0E23",
+    label: "รูปแบบรายการ",
     w: 260
   }, /*#__PURE__*/React.createElement("select", {
     className: "cfg-input",
@@ -1185,33 +1144,11 @@ function CollectDiskPage({
     }
   }, /*#__PURE__*/React.createElement("option", {
     value: ""
-  }, "\u2014 \u0E40\u0E25\u0E37\u0E2D\u0E01 \u2014"), MO_DISK_FORMATS.map(x => /*#__PURE__*/React.createElement("option", {
+  }, "\u2014 เลือก \u2014"), MO_DISK_FORMATS.map(x => /*#__PURE__*/React.createElement("option", {
     key: x,
     value: x
-  }, x)))), /*#__PURE__*/React.createElement("div", {
-    className: "icr-fld",
-    style: {
-      width: 'auto'
-    }
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "icr-fld-l"
-  }, "\xA0"), /*#__PURE__*/React.createElement("button", {
-    className: "btn primary",
-    onClick: run,
-    disabled: !!prog
-  }, /*#__PURE__*/React.createElement(Icon, {
-    name: "cog",
-    size: 13
-  }), " \u0E17\u0E33\u0E23\u0E32\u0E22\u0E01\u0E32\u0E23")))), stopped && /*#__PURE__*/React.createElement("div", {
-    className: "dn-status-alert warn",
-    style: {
-      marginTop: 12
-    }
-  }, /*#__PURE__*/React.createElement(Icon, {
-    name: "info",
-    size: 15
-  }), /*#__PURE__*/React.createElement("span", null, "\u0E2B\u0E22\u0E38\u0E14\u0E01\u0E32\u0E23\u0E1B\u0E23\u0E30\u0E21\u0E27\u0E25\u0E1C\u0E25\u0E41\u0E25\u0E49\u0E27 \u2014 \u0E1B\u0E23\u0E30\u0E21\u0E27\u0E25\u0E1C\u0E25\u0E44\u0E1B ", window.fmt.money(stopped.done, 0), " / ", window.fmt.money(stopped.total, 0), " \u0E23\u0E2B\u0E31\u0E2A \u0E22\u0E31\u0E07\u0E44\u0E21\u0E48\u0E44\u0E14\u0E49\u0E2A\u0E23\u0E49\u0E32\u0E07\u0E41\u0E1C\u0E48\u0E19\u0E08\u0E31\u0E14\u0E40\u0E01\u0E47\u0E1A \u0E01\u0E14 ", /*#__PURE__*/React.createElement("b", null, "\u0E17\u0E33\u0E23\u0E32\u0E22\u0E01\u0E32\u0E23"), " \u0E40\u0E1E\u0E37\u0E48\u0E2D\u0E40\u0E23\u0E34\u0E48\u0E21\u0E43\u0E2B\u0E21\u0E48")), result && /*#__PURE__*/React.createElement(MoSec, {
-    title: "\u0E2A\u0E23\u0E38\u0E1B\u0E1C\u0E25\u0E01\u0E32\u0E23\u0E02\u0E36\u0E49\u0E19\u0E41\u0E1C\u0E48\u0E19\u0E08\u0E31\u0E14\u0E40\u0E01\u0E47\u0E1A",
+  }, x)))))), React.createElement(DvJobBanner, { job: dvJob.job, onStop: stop, onRetry: run }), result && /*#__PURE__*/React.createElement(MoSec, {
+    title: "สรุปผลการขึ้นแผ่นจัดเก็บ",
     style: {
       marginTop: 12
     },
@@ -1222,154 +1159,55 @@ function CollectDiskPage({
     }, /*#__PURE__*/React.createElement(Icon, {
       name: "download",
       size: 13
-    }), " \u0E1A\u0E31\u0E19\u0E17\u0E36\u0E01\u0E25\u0E07\u0E41\u0E1C\u0E48\u0E19 Text (.txt)"), /*#__PURE__*/React.createElement("button", {
+    }), " บันทึกลงแผ่น Text (.txt)"), /*#__PURE__*/React.createElement("button", {
       className: "btn sm",
       onClick: saveXls
     }, /*#__PURE__*/React.createElement(Icon, {
       name: "download",
       size: 13
-    }), " \u0E1A\u0E31\u0E19\u0E17\u0E36\u0E01\u0E25\u0E07\u0E41\u0E1C\u0E48\u0E19 Excel (.xlsx)"))
+    }), " บันทึกลงแผ่น Excel (.xlsx)"))
   }, /*#__PURE__*/React.createElement("div", {
     className: "icr-strip",
     style: {
       marginTop: 10
     }
   }, /*#__PURE__*/React.createElement(MoFld, {
-    label: "\u0E08\u0E33\u0E19\u0E27\u0E19\u0E23\u0E2B\u0E31\u0E2A",
+    label: "จำนวนรหัส",
     w: 150
   }, /*#__PURE__*/React.createElement(MoRO, {
     value: window.fmt.money(result.rows, 0),
     num: true,
     mono: true
   })), /*#__PURE__*/React.createElement(MoFld, {
-    label: "\u0E2B\u0E38\u0E49\u0E19\u0E23\u0E32\u0E22\u0E40\u0E14\u0E37\u0E2D\u0E19",
+    label: "หุ้นรายเดือน",
     w: 170
   }, /*#__PURE__*/React.createElement(MoRO, {
     value: moMoney(result.share),
     num: true,
     mono: true
   })), /*#__PURE__*/React.createElement(MoFld, {
-    label: "\u0E2B\u0E19\u0E35\u0E49\u0E40\u0E07\u0E34\u0E19\u0E01\u0E39\u0E49",
+    label: "หนี้เงินกู้",
     w: 170
   }, /*#__PURE__*/React.createElement(MoRO, {
     value: moMoney(result.loan),
     num: true,
     mono: true
   })), /*#__PURE__*/React.createElement(MoFld, {
-    label: "\u0E40\u0E23\u0E35\u0E22\u0E01\u0E40\u0E01\u0E47\u0E1A\u0E2D\u0E37\u0E48\u0E19\u0E46",
+    label: "เรียกเก็บอื่นๆ",
     w: 160
   }, /*#__PURE__*/React.createElement(MoRO, {
     value: moMoney(result.other),
     num: true,
     mono: true
   })), /*#__PURE__*/React.createElement(MoFld, {
-    label: "\u0E23\u0E27\u0E21\u0E40\u0E23\u0E35\u0E22\u0E01\u0E40\u0E01\u0E47\u0E1A",
+    label: "รวมเรียกเก็บ",
     grow: true,
     w: 180
   }, /*#__PURE__*/React.createElement(MoRO, {
     value: moMoney(result.total),
     num: true,
     mono: true
-  })))), prog && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
-    className: "modal-backdrop"
-  }), /*#__PURE__*/React.createElement("div", {
-    className: "modal-card",
-    role: "dialog",
-    "aria-modal": "true",
-    style: {
-      width: 480,
-      maxWidth: '95vw'
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "modal-head"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "gc-modal-ico"
-  }, /*#__PURE__*/React.createElement(Icon, {
-    name: "cog"
-  })), /*#__PURE__*/React.createElement("div", {
-    style: {
-      minWidth: 0
-    }
-  }, /*#__PURE__*/React.createElement("h2", null, "\u0E01\u0E33\u0E25\u0E31\u0E07\u0E1B\u0E23\u0E30\u0E21\u0E27\u0E25\u0E1C\u0E25\u0E02\u0E36\u0E49\u0E19\u0E41\u0E1C\u0E48\u0E19\u0E08\u0E31\u0E14\u0E40\u0E01\u0E47\u0E1A"), /*#__PURE__*/React.createElement("div", {
-    className: "muted",
-    style: {
-      fontSize: 11.5,
-      marginTop: 1
-    }
-  }, "\u0E07\u0E27\u0E14 ", period, " \xB7 \u0E01\u0E25\u0E38\u0E48\u0E21 ", groupCode, " \xB7 ", format))), /*#__PURE__*/React.createElement("div", {
-    className: "modal-body",
-    role: "status",
-    "aria-live": "polite"
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      alignItems: 'baseline',
-      gap: 8,
-      marginBottom: 8
-    }
-  }, /*#__PURE__*/React.createElement("span", {
-    style: {
-      fontSize: 13.5
-    }
-  }, "\u0E1B\u0E23\u0E30\u0E21\u0E27\u0E25\u0E1C\u0E25\u0E41\u0E25\u0E49\u0E27"), /*#__PURE__*/React.createElement("span", {
-    className: "mono",
-    style: {
-      fontSize: 18,
-      fontWeight: 700
-    }
-  }, window.fmt.money(prog.done, 0)), /*#__PURE__*/React.createElement("span", {
-    className: "mono muted",
-    style: {
-      fontSize: 13
-    }
-  }, "/ ", window.fmt.money(prog.total, 0), " \u0E23\u0E2B\u0E31\u0E2A"), /*#__PURE__*/React.createElement("span", {
-    className: "spacer",
-    style: {
-      flex: 1
-    }
-  }), /*#__PURE__*/React.createElement("span", {
-    className: "mono",
-    style: {
-      fontSize: 13,
-      fontWeight: 600
-    }
-  }, pct, "%")), /*#__PURE__*/React.createElement("div", {
-    role: "progressbar",
-    "aria-valuemin": "0",
-    "aria-valuemax": "100",
-    "aria-valuenow": pct,
-    style: {
-      height: 10,
-      borderRadius: 5,
-      background: '#E8EBEE',
-      overflow: 'hidden'
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      width: pct + '%',
-      height: '100%',
-      background: 'var(--primary, #237450)',
-      borderRadius: 5,
-      transition: 'width .1s linear'
-    }
-  })), /*#__PURE__*/React.createElement("div", {
-    className: "muted",
-    style: {
-      fontSize: 12,
-      marginTop: 10
-    }
-  }, "\u0E01\u0E23\u0E38\u0E13\u0E32\u0E2D\u0E22\u0E48\u0E32\u0E1B\u0E34\u0E14\u0E2B\u0E19\u0E49\u0E32\u0E19\u0E35\u0E49\u0E23\u0E30\u0E2B\u0E27\u0E48\u0E32\u0E07\u0E1B\u0E23\u0E30\u0E21\u0E27\u0E25\u0E1C\u0E25")), /*#__PURE__*/React.createElement("div", {
-    className: "dba-drawer-foot",
-    style: {
-      position: 'static'
-    }
-  }, /*#__PURE__*/React.createElement("button", {
-    className: "btn danger",
-    onClick: stop
-  }, /*#__PURE__*/React.createElement(Icon, {
-    name: "close",
-    size: 13
-  }), " \u0E2B\u0E22\u0E38\u0E14\u0E1B\u0E23\u0E30\u0E21\u0E27\u0E25\u0E1C\u0E25")))));
+  })))));
 }
 
 // ════════════════════════════════════════════════════════════════════
@@ -1435,24 +1273,24 @@ function CollectOtherPage({
     onToast && onToast('บันทึกรายการเรียกเก็บอื่นๆ เรียบร้อยแล้ว');
   };
   return /*#__PURE__*/React.createElement("div", {
-    "data-screen-label": "\u0E23\u0E32\u0E22\u0E01\u0E32\u0E23\u0E40\u0E23\u0E35\u0E22\u0E01\u0E40\u0E01\u0E47\u0E1A\u0E2D\u0E37\u0E48\u0E19\u0E46"
+    "data-screen-label": "รายการเรียกเก็บอื่นๆ"
   }, /*#__PURE__*/React.createElement(MoHead, {
     icon: "receipt",
-    title: "\u0E23\u0E32\u0E22\u0E01\u0E32\u0E23\u0E40\u0E23\u0E35\u0E22\u0E01\u0E40\u0E01\u0E47\u0E1A\u0E2D\u0E37\u0E48\u0E19\u0E46",
-    subtitle: "\u0E1B\u0E23\u0E30\u0E21\u0E27\u0E25\u0E1C\u0E25\u0E41\u0E25\u0E30\u0E08\u0E31\u0E14\u0E40\u0E01\u0E47\u0E1A \xB7 \u0E23\u0E32\u0E22\u0E40\u0E14\u0E37\u0E2D\u0E19 \u2014 \u0E1A\u0E31\u0E19\u0E17\u0E36\u0E01\u0E23\u0E32\u0E22\u0E01\u0E32\u0E23\u0E40\u0E23\u0E35\u0E22\u0E01\u0E40\u0E01\u0E47\u0E1A\u0E2D\u0E37\u0E48\u0E19\u0E46 \u0E23\u0E32\u0E22\u0E2A\u0E21\u0E32\u0E0A\u0E34\u0E01",
+    title: "รายการเรียกเก็บอื่นๆ",
+    subtitle: "ประมวลผลและจัดเก็บ \xB7 รายเดือน \u2014 บันทึกรายการเรียกเก็บอื่นๆ รายสมาชิก",
     actions: /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("button", {
       className: "btn primary sm",
       onClick: doSave
     }, /*#__PURE__*/React.createElement(Icon, {
       name: "check",
       size: 13
-    }), " \u0E1A\u0E31\u0E19\u0E17\u0E36\u0E01"), /*#__PURE__*/React.createElement("button", {
+    }), " บันทึก"), /*#__PURE__*/React.createElement("button", {
       className: "btn sm",
       onClick: addRow
     }, /*#__PURE__*/React.createElement(Icon, {
       name: "plus",
       size: 13
-    }), " \u0E40\u0E1E\u0E34\u0E48\u0E21\u0E41\u0E16\u0E27"), /*#__PURE__*/React.createElement("button", {
+    }), " เพิ่มแถว"), /*#__PURE__*/React.createElement("button", {
       className: "btn sm",
       onClick: () => {
         setMember(null);
@@ -1462,7 +1300,7 @@ function CollectOtherPage({
     }, /*#__PURE__*/React.createElement(Icon, {
       name: "refresh",
       size: 13
-    }), " \u0E25\u0E49\u0E32\u0E07\u0E02\u0E49\u0E2D\u0E21\u0E39\u0E25"))
+    }), " ล้างข้อมูล"))
   }), error && /*#__PURE__*/React.createElement("div", {
     className: "sr-error",
     style: {
@@ -1472,32 +1310,32 @@ function CollectOtherPage({
     name: "info",
     size: 14
   }), " ", error), /*#__PURE__*/React.createElement(MoSec, {
-    title: "\u0E23\u0E32\u0E22\u0E01\u0E32\u0E23\u0E40\u0E23\u0E35\u0E22\u0E01\u0E40\u0E01\u0E47\u0E1A\u0E2D\u0E37\u0E48\u0E19\u0E46"
+    title: "รายการเรียกเก็บอื่นๆ"
   }, /*#__PURE__*/React.createElement("div", {
     className: "icr-strip"
   }, /*#__PURE__*/React.createElement(MoFld, {
-    label: "\u0E40\u0E25\u0E02\u0E2A\u0E21\u0E32\u0E0A\u0E34\u0E01",
+    label: "เลขสมาชิก",
     w: 260,
     required: true
   }, /*#__PURE__*/React.createElement(MemberSearchField, {
     member: member,
     onPick: pickMember,
     source: window.DN_MEMBERS,
-    title: "\u0E04\u0E49\u0E19\u0E2B\u0E32\u0E2A\u0E21\u0E32\u0E0A\u0E34\u0E01 \u2014 \u0E23\u0E32\u0E22\u0E01\u0E32\u0E23\u0E40\u0E23\u0E35\u0E22\u0E01\u0E40\u0E01\u0E47\u0E1A\u0E2D\u0E37\u0E48\u0E19\u0E46"
+    title: "ค้นหาสมาชิก \u2014 รายการเรียกเก็บอื่นๆ"
   })), /*#__PURE__*/React.createElement(MoFld, {
-    label: "\u0E0A\u0E37\u0E48\u0E2D\u0E2A\u0E21\u0E32\u0E0A\u0E34\u0E01",
+    label: "ชื่อสมาชิก",
     grow: true,
     w: 220
   }, /*#__PURE__*/React.createElement(MoRO, {
     value: member ? member.name : '',
-    placeholder: "(\u0E40\u0E25\u0E37\u0E2D\u0E01\u0E2A\u0E21\u0E32\u0E0A\u0E34\u0E01)"
+    placeholder: "(เลือกสมาชิก)"
   })), /*#__PURE__*/React.createElement(MoFld, {
-    label: "\u0E1B\u0E23\u0E30\u0E40\u0E20\u0E17\u0E2A\u0E21\u0E32\u0E0A\u0E34\u0E01",
+    label: "ประเภทสมาชิก",
     w: 160
   }, /*#__PURE__*/React.createElement(MoRO, {
     value: member ? member.memberType : ''
   })), /*#__PURE__*/React.createElement(MoFld, {
-    label: "\u0E2B\u0E19\u0E48\u0E27\u0E22\u0E2A\u0E21\u0E32\u0E0A\u0E34\u0E01",
+    label: "หน่วยสมาชิก",
     grow: true,
     w: 220
   }, /*#__PURE__*/React.createElement(MoRO, {
@@ -1517,24 +1355,24 @@ function CollectOtherPage({
     style: {
       width: 54
     }
-  }, "\u0E25\u0E33\u0E14\u0E31\u0E1A"), /*#__PURE__*/React.createElement("th", {
+  }, "ลำดับ"), /*#__PURE__*/React.createElement("th", {
     style: {
       width: 190
     }
-  }, "\u0E1B\u0E23\u0E30\u0E40\u0E20\u0E17\u0E01\u0E32\u0E23\u0E40\u0E01\u0E47\u0E1A"), /*#__PURE__*/React.createElement("th", {
+  }, "ประเภทการเก็บ"), /*#__PURE__*/React.createElement("th", {
     style: {
       width: 230
     }
-  }, "\u0E23\u0E2B\u0E31\u0E2A\u0E40\u0E23\u0E35\u0E22\u0E01\u0E40\u0E01\u0E47\u0E1A"), /*#__PURE__*/React.createElement("th", {
+  }, "รหัสเรียกเก็บ"), /*#__PURE__*/React.createElement("th", {
     style: {
       width: 130
     }
-  }, "\u0E1B\u0E35/\u0E40\u0E14\u0E37\u0E2D\u0E19 \u0E17\u0E35\u0E48\u0E40\u0E23\u0E34\u0E48\u0E21\u0E40\u0E01\u0E47\u0E1A"), /*#__PURE__*/React.createElement("th", null, "\u0E23\u0E32\u0E22\u0E25\u0E30\u0E40\u0E2D\u0E35\u0E22\u0E14"), /*#__PURE__*/React.createElement("th", {
+  }, "ปี/เดือน ที่เริ่มเก็บ"), /*#__PURE__*/React.createElement("th", null, "รายละเอียด"), /*#__PURE__*/React.createElement("th", {
     style: {
       width: 150,
       textAlign: 'right'
     }
-  }, "\u0E22\u0E2D\u0E14\u0E40\u0E07\u0E34\u0E19\u0E17\u0E35\u0E48\u0E40\u0E23\u0E35\u0E22\u0E01\u0E40\u0E01\u0E47\u0E1A"), /*#__PURE__*/React.createElement("th", {
+  }, "ยอดเงินที่เรียกเก็บ"), /*#__PURE__*/React.createElement("th", {
     style: {
       width: 70
     }
@@ -1549,10 +1387,10 @@ function CollectOtherPage({
       mode: e.target.value
     })
   }, /*#__PURE__*/React.createElement("option", {
-    value: "\u0E40\u0E01\u0E47\u0E1A\u0E04\u0E23\u0E31\u0E49\u0E07\u0E40\u0E14\u0E35\u0E22\u0E27"
-  }, "\u0E40\u0E01\u0E47\u0E1A\u0E04\u0E23\u0E31\u0E49\u0E07\u0E40\u0E14\u0E35\u0E22\u0E27"), /*#__PURE__*/React.createElement("option", {
-    value: "\u0E40\u0E01\u0E47\u0E1A\u0E17\u0E38\u0E01\u0E04\u0E23\u0E31\u0E49\u0E07\u0E17\u0E35\u0E48\u0E21\u0E35\u0E01\u0E32\u0E23\u0E40\u0E23\u0E35\u0E22\u0E01\u0E40\u0E01\u0E47\u0E1A"
-  }, "\u0E40\u0E01\u0E47\u0E1A\u0E17\u0E38\u0E01\u0E04\u0E23\u0E31\u0E49\u0E07\u0E17\u0E35\u0E48\u0E21\u0E35\u0E01\u0E32\u0E23\u0E40\u0E23\u0E35\u0E22\u0E01\u0E40\u0E01\u0E47\u0E1A"))), /*#__PURE__*/React.createElement("td", null, /*#__PURE__*/React.createElement("select", {
+    value: "เก็บครั้งเดียว"
+  }, "เก็บครั้งเดียว"), /*#__PURE__*/React.createElement("option", {
+    value: "เก็บทุกครั้งที่มีการเรียกเก็บ"
+  }, "เก็บทุกครั้งที่มีการเรียกเก็บ"))), /*#__PURE__*/React.createElement("td", null, /*#__PURE__*/React.createElement("select", {
     className: "cfg-input sm",
     value: r.code,
     onChange: e => updateRow(i, {
@@ -1586,25 +1424,28 @@ function CollectOtherPage({
       amount: e.target.value
     })
   })), /*#__PURE__*/React.createElement("td", null, /*#__PURE__*/React.createElement("button", {
-    className: "btn sm danger",
+    type: "button",
+    className: "act-del",
+    title: "ลบ",
+    "aria-label": "ลบ",
     onClick: () => removeRow(i)
   }, /*#__PURE__*/React.createElement(Icon, {
-    name: "close",
-    size: 12
-  }), " \u0E25\u0E1A")))), !rows.length && /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("td", {
+    name: "trash",
+    size: 13
+  }))))), !rows.length && /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("td", {
     colSpan: 7,
     className: "muted",
     style: {
       textAlign: 'center',
       padding: '26px 0'
     }
-  }, "\u0E40\u0E25\u0E37\u0E2D\u0E01\u0E2A\u0E21\u0E32\u0E0A\u0E34\u0E01\u0E40\u0E1E\u0E37\u0E48\u0E2D\u0E40\u0E23\u0E34\u0E48\u0E21\u0E1A\u0E31\u0E19\u0E17\u0E36\u0E01\u0E23\u0E32\u0E22\u0E01\u0E32\u0E23\u0E40\u0E23\u0E35\u0E22\u0E01\u0E40\u0E01\u0E47\u0E1A"))), !!rows.length && /*#__PURE__*/React.createElement("tfoot", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("td", {
+  }, "เลือกสมาชิกเพื่อเริ่มบันทึกรายการเรียกเก็บ"))), !!rows.length && /*#__PURE__*/React.createElement("tfoot", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("td", {
     colSpan: 5,
     style: {
       textAlign: 'right',
       fontWeight: 600
     }
-  }, "\u0E23\u0E27\u0E21\u0E22\u0E2D\u0E14\u0E40\u0E23\u0E35\u0E22\u0E01\u0E40\u0E01\u0E47\u0E1A"), /*#__PURE__*/React.createElement("td", {
+  }, "รวมยอดเรียกเก็บ"), /*#__PURE__*/React.createElement("td", {
     className: "mono",
     style: {
       textAlign: 'right',
@@ -1620,7 +1461,7 @@ function CollectOtherPage({
   }, /*#__PURE__*/React.createElement(Icon, {
     name: "plus",
     size: 13
-  }), " \u0E40\u0E1E\u0E34\u0E48\u0E21\u0E41\u0E16\u0E27"))));
+  }), " เพิ่มแถว"))));
 }
 
 // ════════════════════════════════════════════════════════════════════
@@ -1725,24 +1566,24 @@ function CollectCutoffDiskPage({
     onToast && onToast('ตัดยอดเรียกเก็บจากแผ่นเรียบร้อยแล้ว');
   };
   return /*#__PURE__*/React.createElement("div", {
-    "data-screen-label": "\u0E15\u0E31\u0E14\u0E22\u0E2D\u0E14\u0E40\u0E23\u0E35\u0E22\u0E01\u0E40\u0E01\u0E47\u0E1A\u0E08\u0E32\u0E01\u0E41\u0E1C\u0E48\u0E19"
+    "data-screen-label": "ตัดยอดเรียกเก็บจากแผ่น"
   }, /*#__PURE__*/React.createElement(MoHead, {
     icon: "database",
-    title: "\u0E15\u0E31\u0E14\u0E22\u0E2D\u0E14\u0E40\u0E23\u0E35\u0E22\u0E01\u0E40\u0E01\u0E47\u0E1A\u0E08\u0E32\u0E01\u0E41\u0E1C\u0E48\u0E19",
-    subtitle: "\u0E1B\u0E23\u0E30\u0E21\u0E27\u0E25\u0E1C\u0E25\u0E41\u0E25\u0E30\u0E08\u0E31\u0E14\u0E40\u0E01\u0E47\u0E1A \xB7 \u0E23\u0E32\u0E22\u0E40\u0E14\u0E37\u0E2D\u0E19 \u2014 \u0E19\u0E33\u0E44\u0E1F\u0E25\u0E4C\u0E01\u0E25\u0E31\u0E1A\u0E08\u0E32\u0E01\u0E41\u0E1C\u0E48\u0E19 Disk \u0E21\u0E32\u0E15\u0E31\u0E14\u0E22\u0E2D\u0E14\u0E40\u0E23\u0E35\u0E22\u0E01\u0E40\u0E01\u0E47\u0E1A",
+    title: "ตัดยอดเรียกเก็บจากแผ่น",
+    subtitle: "ประมวลผลและจัดเก็บ \xB7 รายเดือน \u2014 นำไฟล์กลับจากแผ่น Disk มาตัดยอดเรียกเก็บ",
     actions: /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("button", {
       className: "btn sm",
       onClick: doCheck
     }, /*#__PURE__*/React.createElement(Icon, {
       name: "search",
       size: 13
-    }), " \u0E15\u0E23\u0E27\u0E08\u0E2A\u0E2D\u0E1A"), /*#__PURE__*/React.createElement("button", {
+    }), " ตรวจสอบ"), /*#__PURE__*/React.createElement("button", {
       className: "btn primary sm",
       onClick: doCutoff
     }, /*#__PURE__*/React.createElement(Icon, {
       name: "check",
       size: 13
-    }), " \u0E15\u0E31\u0E14\u0E22\u0E2D\u0E14"))
+    }), " ตัดยอด"))
   }), done && /*#__PURE__*/React.createElement("div", {
     className: "search-card",
     style: {
@@ -1759,19 +1600,19 @@ function CollectCutoffDiskPage({
     style: {
       fontSize: 13
     }
-  }, "\u0E15\u0E31\u0E14\u0E22\u0E2D\u0E14\u0E07\u0E27\u0E14 ", /*#__PURE__*/React.createElement("b", null, period), " \u0E08\u0E33\u0E19\u0E27\u0E19 ", /*#__PURE__*/React.createElement("b", null, window.fmt.money(totals.rows, 0)), " \u0E23\u0E32\u0E22\u0E01\u0E32\u0E23 \xB7 \u0E2B\u0E31\u0E01\u0E44\u0E14\u0E49 ", /*#__PURE__*/React.createElement("b", null, moMoney(totals.deduct)), " \u0E1A\u0E32\u0E17")), /*#__PURE__*/React.createElement(MoSec, {
-    title: "\u0E02\u0E49\u0E2D\u0E21\u0E39\u0E25\u0E17\u0E35\u0E48\u0E08\u0E30\u0E15\u0E31\u0E14\u0E22\u0E2D\u0E14"
+  }, "ตัดยอดงวด ", /*#__PURE__*/React.createElement("b", null, period), " จำนวน ", /*#__PURE__*/React.createElement("b", null, window.fmt.money(totals.rows, 0)), " รายการ \xB7 หักได้ ", /*#__PURE__*/React.createElement("b", null, moMoney(totals.deduct)), " บาท")), /*#__PURE__*/React.createElement(MoSec, {
+    title: "ข้อมูลที่จะตัดยอด"
   }, /*#__PURE__*/React.createElement("div", {
     className: "icr-strip"
   }, /*#__PURE__*/React.createElement(MoFld, {
-    label: "\u0E1B\u0E35",
+    label: "ปี",
     w: 180
   }, /*#__PURE__*/React.createElement("input", {
     className: "cfg-input",
     value: period,
     onChange: e => setPeriod(e.target.value)
   })), /*#__PURE__*/React.createElement(MoFld, {
-    label: "\u0E01\u0E25\u0E38\u0E48\u0E21\u0E02\u0E49\u0E2D\u0E21\u0E39\u0E25",
+    label: "กลุ่มข้อมูล",
     w: 240
   }, /*#__PURE__*/React.createElement("select", {
     className: "cfg-input",
@@ -1779,14 +1620,14 @@ function CollectCutoffDiskPage({
     onChange: e => setGroup(e.target.value)
   }, /*#__PURE__*/React.createElement("option", {
     value: ""
-  }, "\u2014 \u0E40\u0E25\u0E37\u0E2D\u0E01 \u2014"), /*#__PURE__*/React.createElement("option", {
-    value: "01 - \u0E2A\u0E48\u0E27\u0E19\u0E01\u0E25\u0E32\u0E07"
-  }, "01 - \u0E2A\u0E48\u0E27\u0E19\u0E01\u0E25\u0E32\u0E07"), /*#__PURE__*/React.createElement("option", {
-    value: "02 - \u0E20\u0E39\u0E21\u0E34\u0E20\u0E32\u0E04"
-  }, "02 - \u0E20\u0E39\u0E21\u0E34\u0E20\u0E32\u0E04"), /*#__PURE__*/React.createElement("option", {
-    value: "03 - \u0E25\u0E39\u0E01\u0E2B\u0E19\u0E35\u0E49\u0E15\u0E31\u0E27\u0E41\u0E17\u0E19"
-  }, "03 - \u0E25\u0E39\u0E01\u0E2B\u0E19\u0E35\u0E49\u0E15\u0E31\u0E27\u0E41\u0E17\u0E19"))), /*#__PURE__*/React.createElement(MoFld, {
-    label: "\u0E27\u0E31\u0E19\u0E17\u0E35\u0E48\u0E1C\u0E48\u0E32\u0E19\u0E23\u0E32\u0E22\u0E01\u0E32\u0E23",
+  }, "\u2014 เลือก \u2014"), /*#__PURE__*/React.createElement("option", {
+    value: "01 - ส่วนกลาง"
+  }, "01 - ส่วนกลาง"), /*#__PURE__*/React.createElement("option", {
+    value: "02 - ภูมิภาค"
+  }, "02 - ภูมิภาค"), /*#__PURE__*/React.createElement("option", {
+    value: "03 - ลูกหนี้ตัวแทน"
+  }, "03 - ลูกหนี้ตัวแทน"))), /*#__PURE__*/React.createElement(MoFld, {
+    label: "วันที่ผ่านรายการ",
     w: 180
   }, /*#__PURE__*/React.createElement("input", {
     className: "cfg-input",
@@ -1794,7 +1635,7 @@ function CollectCutoffDiskPage({
     value: postDate,
     onChange: e => setPostDate(e.target.value)
   })), /*#__PURE__*/React.createElement(MoFld, {
-    label: "\u0E40\u0E25\u0E37\u0E2D\u0E01\u0E44\u0E1F\u0E25\u0E4C .txt",
+    label: "เลือกไฟล์ .txt",
     grow: true,
     w: 240
   }, /*#__PURE__*/React.createElement("input", {
@@ -1814,36 +1655,36 @@ function CollectCutoffDiskPage({
       flexWrap: 'wrap'
     }
   }, /*#__PURE__*/React.createElement(MoCheck, {
-    label: "\u0E2A\u0E16\u0E32\u0E19\u0E30\u0E15\u0E34\u0E14\u0E25\u0E1A",
+    label: "สถานะติดลบ",
     checked: negative,
     onChange: setNegative
   }), /*#__PURE__*/React.createElement(MoCheck, {
-    label: "\u0E23\u0E31\u0E1A\u0E0A\u0E33\u0E23\u0E30\u0E25\u0E39\u0E01\u0E2B\u0E19\u0E35\u0E49\u0E15\u0E31\u0E27\u0E41\u0E17\u0E19",
+    label: "รับชำระลูกหนี้ตัวแทน",
     checked: agentPay,
     onChange: setAgentPay
   }))), /*#__PURE__*/React.createElement(MoSec, {
-    title: "\u0E22\u0E2D\u0E14\u0E15\u0E31\u0E49\u0E07\u0E08\u0E32\u0E01 \u0E2A\u0E2B\u0E01\u0E23\u0E13\u0E4C",
+    title: "ยอดตั้งจาก สหกรณ์",
     style: {
       marginTop: 12
     }
   }, /*#__PURE__*/React.createElement("div", {
     className: "icr-strip"
   }, /*#__PURE__*/React.createElement(MoFld, {
-    label: "\u0E08\u0E33\u0E19\u0E27\u0E19\u0E23\u0E32\u0E22\u0E01\u0E32\u0E23",
+    label: "จำนวนรายการ",
     w: 220
   }, /*#__PURE__*/React.createElement(MoRO, {
     value: checked ? window.fmt.money(totals.rows, 0) : '0',
     num: true,
     mono: true
   })), /*#__PURE__*/React.createElement(MoFld, {
-    label: "\u0E08\u0E33\u0E19\u0E27\u0E19\u0E40\u0E07\u0E34\u0E19\u0E2A\u0E48\u0E07\u0E2B\u0E31\u0E01",
+    label: "จำนวนเงินส่งหัก",
     w: 240
   }, /*#__PURE__*/React.createElement(MoRO, {
     value: moMoney(checked ? totals.collect : 0),
     num: true,
     mono: true
   })))), /*#__PURE__*/React.createElement(MoSec, {
-    title: "\u0E22\u0E2D\u0E14\u0E01\u0E25\u0E31\u0E1A\u0E08\u0E32\u0E01\u0E41\u0E1C\u0E48\u0E19 Disk",
+    title: "ยอดกลับจากแผ่น Disk",
     style: {
       marginTop: 12
     }
@@ -1858,22 +1699,22 @@ function CollectCutoffDiskPage({
     style: {
       fontSize: 12.5
     }
-  }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "\u0E1B\u0E23\u0E30\u0E40\u0E20\u0E17\u0E23\u0E32\u0E22\u0E01\u0E32\u0E23"), /*#__PURE__*/React.createElement("th", {
+  }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "ประเภทรายการ"), /*#__PURE__*/React.createElement("th", {
     style: {
       width: 150,
       textAlign: 'right'
     }
-  }, "\u0E08\u0E33\u0E19\u0E27\u0E19\u0E23\u0E32\u0E22\u0E01\u0E32\u0E23"), /*#__PURE__*/React.createElement("th", {
+  }, "จำนวนรายการ"), /*#__PURE__*/React.createElement("th", {
     style: {
       width: 180,
       textAlign: 'right'
     }
-  }, "\u0E08\u0E33\u0E19\u0E27\u0E19\u0E40\u0E07\u0E34\u0E19\u0E40\u0E23\u0E35\u0E22\u0E01\u0E40\u0E01\u0E47\u0E1A"), /*#__PURE__*/React.createElement("th", {
+  }, "จำนวนเงินเรียกเก็บ"), /*#__PURE__*/React.createElement("th", {
     style: {
       width: 180,
       textAlign: 'right'
     }
-  }, "\u0E08\u0E33\u0E19\u0E27\u0E19\u0E40\u0E07\u0E34\u0E19\u0E2B\u0E31\u0E01\u0E44\u0E14\u0E49"))), /*#__PURE__*/React.createElement("tbody", null, summary.map(r => /*#__PURE__*/React.createElement("tr", {
+  }, "จำนวนเงินหักได้"))), /*#__PURE__*/React.createElement("tbody", null, summary.map(r => /*#__PURE__*/React.createElement("tr", {
     key: r.label
   }, /*#__PURE__*/React.createElement("td", null, r.label), /*#__PURE__*/React.createElement("td", {
     className: "mono",
@@ -1894,7 +1735,7 @@ function CollectCutoffDiskPage({
     style: {
       fontWeight: 600
     }
-  }, "\u0E23\u0E27\u0E21\u0E22\u0E2D\u0E14\u0E01\u0E25\u0E31\u0E1A\u0E08\u0E32\u0E01 Disk"), /*#__PURE__*/React.createElement("td", {
+  }, "รวมยอดกลับจาก Disk"), /*#__PURE__*/React.createElement("td", {
     className: "mono",
     style: {
       textAlign: 'right',
@@ -1913,7 +1754,7 @@ function CollectCutoffDiskPage({
       fontWeight: 600
     }
   }, moMoney(totals.deduct))))))), /*#__PURE__*/React.createElement(MoSec, {
-    title: "\u0E23\u0E32\u0E22\u0E25\u0E30\u0E40\u0E2D\u0E35\u0E22\u0E14\u0E23\u0E32\u0E22\u0E01\u0E32\u0E23",
+    title: "รายละเอียดรายการ",
     style: {
       marginTop: 12
     }
@@ -1932,25 +1773,25 @@ function CollectCutoffDiskPage({
     style: {
       width: 54
     }
-  }, "\u0E25\u0E33\u0E14\u0E31\u0E1A"), /*#__PURE__*/React.createElement("th", {
+  }, "ลำดับ"), /*#__PURE__*/React.createElement("th", {
     style: {
       width: 120
     }
-  }, "\u0E40\u0E25\u0E02\u0E2A\u0E21\u0E32\u0E0A\u0E34\u0E01"), /*#__PURE__*/React.createElement("th", null, "\u0E0A\u0E37\u0E48\u0E2D\u0E2A\u0E21\u0E32\u0E0A\u0E34\u0E01"), /*#__PURE__*/React.createElement("th", {
+  }, "เลขสมาชิก"), /*#__PURE__*/React.createElement("th", null, "ชื่อสมาชิก"), /*#__PURE__*/React.createElement("th", {
     style: {
       width: 160,
       textAlign: 'right'
     }
-  }, "\u0E22\u0E2D\u0E14\u0E40\u0E23\u0E35\u0E22\u0E01\u0E40\u0E01\u0E47\u0E1A DB"), /*#__PURE__*/React.createElement("th", {
+  }, "ยอดเรียกเก็บ DB"), /*#__PURE__*/React.createElement("th", {
     style: {
       width: 160,
       textAlign: 'right'
     }
-  }, "\u0E22\u0E2D\u0E14\u0E40\u0E23\u0E35\u0E22\u0E01\u0E40\u0E01\u0E47\u0E1A Disk"), /*#__PURE__*/React.createElement("th", {
+  }, "ยอดเรียกเก็บ Disk"), /*#__PURE__*/React.createElement("th", {
     style: {
       width: 150
     }
-  }, "\u0E1B\u0E23\u0E30\u0E40\u0E20\u0E17\u0E15\u0E48\u0E32\u0E07"))), /*#__PURE__*/React.createElement("tbody", null, detail.map((r, i) => /*#__PURE__*/React.createElement("tr", {
+  }, "ประเภทต่าง"))), /*#__PURE__*/React.createElement("tbody", null, detail.map((r, i) => /*#__PURE__*/React.createElement("tr", {
     key: r.code
   }, /*#__PURE__*/React.createElement("td", {
     className: "muted mono"
@@ -1973,7 +1814,7 @@ function CollectCutoffDiskPage({
       textAlign: 'center',
       padding: '26px 0'
     }
-  }, "\u0E40\u0E25\u0E37\u0E2D\u0E01\u0E44\u0E1F\u0E25\u0E4C .txt \u0E41\u0E25\u0E49\u0E27\u0E01\u0E14\u0E15\u0E23\u0E27\u0E08\u0E2A\u0E2D\u0E1A\u0E40\u0E1E\u0E37\u0E48\u0E2D\u0E41\u0E2A\u0E14\u0E07\u0E23\u0E32\u0E22\u0E01\u0E32\u0E23")))))));
+  }, "เลือกไฟล์ .txt แล้วกดตรวจสอบเพื่อแสดงรายการ")))))));
 }
 
 // ════════════════════════════════════════════════════════════════════
@@ -2091,24 +1932,24 @@ function ReceiptReturnPage({
     onToast && onToast(`บันทึกใบคืนใบเสร็จ ${no} เรียบร้อยแล้ว`);
   };
   return /*#__PURE__*/React.createElement("div", {
-    "data-screen-label": "\u0E04\u0E37\u0E19\u0E43\u0E1A\u0E40\u0E2A\u0E23\u0E47\u0E08"
+    "data-screen-label": "คืนใบเสร็จ"
   }, /*#__PURE__*/React.createElement(MoHead, {
     icon: "receipt",
-    title: "\u0E04\u0E37\u0E19\u0E43\u0E1A\u0E40\u0E2A\u0E23\u0E47\u0E08",
-    subtitle: "\u0E1B\u0E23\u0E30\u0E21\u0E27\u0E25\u0E1C\u0E25\u0E41\u0E25\u0E30\u0E08\u0E31\u0E14\u0E40\u0E01\u0E47\u0E1A \xB7 \u0E23\u0E32\u0E22\u0E40\u0E14\u0E37\u0E2D\u0E19 \u2014 \u0E1B\u0E23\u0E31\u0E1A\u0E1B\u0E23\u0E38\u0E07\u0E04\u0E37\u0E19\u0E43\u0E1A\u0E40\u0E2A\u0E23\u0E47\u0E08\u0E23\u0E32\u0E22\u0E01\u0E32\u0E23\u0E40\u0E23\u0E35\u0E22\u0E01\u0E40\u0E01\u0E47\u0E1A\u0E23\u0E32\u0E22\u0E2A\u0E21\u0E32\u0E0A\u0E34\u0E01",
+    title: "คืนใบเสร็จ",
+    subtitle: "ประมวลผลและจัดเก็บ \xB7 รายเดือน \u2014 ปรับปรุงคืนใบเสร็จรายการเรียกเก็บรายสมาชิก",
     actions: /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("button", {
       className: "btn primary sm",
       onClick: doSave
     }, /*#__PURE__*/React.createElement(Icon, {
       name: "check",
       size: 13
-    }), " \u0E1A\u0E31\u0E19\u0E17\u0E36\u0E01"), /*#__PURE__*/React.createElement("button", {
+    }), " บันทึก"), /*#__PURE__*/React.createElement("button", {
       className: "btn sm",
       onClick: clear
     }, /*#__PURE__*/React.createElement(Icon, {
       name: "refresh",
       size: 13
-    }), " \u0E25\u0E49\u0E32\u0E07\u0E02\u0E49\u0E2D\u0E21\u0E39\u0E25"), /*#__PURE__*/React.createElement("button", {
+    }), " ล้างข้อมูล"), /*#__PURE__*/React.createElement("button", {
       className: "btn sm",
       onClick: () => {
         onToast && onToast('กำลังเตรียมพิมพ์รายงานรายละเอียดสมาชิก…');
@@ -2117,7 +1958,7 @@ function ReceiptReturnPage({
     }, /*#__PURE__*/React.createElement(Icon, {
       name: "print",
       size: 13
-    }), " \u0E1E\u0E34\u0E21\u0E1E\u0E4C\u0E23\u0E32\u0E22\u0E07\u0E32\u0E19\u0E23\u0E32\u0E22\u0E25\u0E30\u0E40\u0E2D\u0E35\u0E22\u0E14\u0E2A\u0E21\u0E32\u0E0A\u0E34\u0E01"))
+    }), " พิมพ์รายงานรายละเอียดสมาชิก"))
   }), error && /*#__PURE__*/React.createElement("div", {
     className: "sr-error",
     style: {
@@ -2127,18 +1968,19 @@ function ReceiptReturnPage({
     name: "info",
     size: 14
   }), " ", error), /*#__PURE__*/React.createElement(MoSec, {
-    title: "\u0E02\u0E49\u0E2D\u0E21\u0E39\u0E25\u0E43\u0E1A\u0E1B\u0E23\u0E31\u0E1A\u0E1B\u0E23\u0E38\u0E07"
+    title: "ข้อมูลใบปรับปรุง"
   }, /*#__PURE__*/React.createElement("div", {
     className: "icr-strip"
   }, /*#__PURE__*/React.createElement(MoFld, {
-    label: "\u0E40\u0E25\u0E02\u0E17\u0E35\u0E48\u0E43\u0E1A\u0E1B\u0E23\u0E31\u0E1A\u0E1B\u0E23\u0E38\u0E07",
+    label: "เลขที่ใบปรับปรุง",
     w: 150
-  }, /*#__PURE__*/React.createElement(MoRO, {
+  }, (savedNo ? /*#__PURE__*/React.createElement(MoRO, {
     value: savedNo,
-    mono: true,
-    placeholder: "Auto"
-  })), /*#__PURE__*/React.createElement(MoFld, {
-    label: "\u0E27\u0E31\u0E19\u0E17\u0E35\u0E48\u0E43\u0E1A\u0E1B\u0E23\u0E31\u0E1A\u0E1B\u0E23\u0E38\u0E07",
+    mono: true
+  }) : /*#__PURE__*/React.createElement("div", {
+    className: "icr-ro icr-auto"
+  }, "AUTO"))), /*#__PURE__*/React.createElement(MoFld, {
+    label: "วันที่ใบปรับปรุง",
     w: 150
   }, /*#__PURE__*/React.createElement("input", {
     className: "cfg-input",
@@ -2146,7 +1988,7 @@ function ReceiptReturnPage({
     value: docDate,
     onChange: e => setDocDate(e.target.value)
   })), /*#__PURE__*/React.createElement(MoFld, {
-    label: "\u0E27\u0E31\u0E19\u0E17\u0E35\u0E48\u0E23\u0E32\u0E22\u0E01\u0E32\u0E23",
+    label: "วันที่รายการ",
     w: 150
   }, /*#__PURE__*/React.createElement("input", {
     className: "cfg-input",
@@ -2154,7 +1996,7 @@ function ReceiptReturnPage({
     value: txnDate,
     onChange: e => setTxnDate(e.target.value)
   })), /*#__PURE__*/React.createElement(MoFld, {
-    label: "\u0E1B\u0E23\u0E30\u0E40\u0E20\u0E17\u0E1B\u0E23\u0E31\u0E1A\u0E1B\u0E23\u0E38\u0E07",
+    label: "ประเภทปรับปรุง",
     w: 140
   }, /*#__PURE__*/React.createElement("select", {
     className: "cfg-input",
@@ -2172,23 +2014,23 @@ function ReceiptReturnPage({
       marginTop: 10
     }
   }, /*#__PURE__*/React.createElement(MoFld, {
-    label: "\u0E17\u0E30\u0E40\u0E1A\u0E35\u0E22\u0E19\u0E2A\u0E21\u0E32\u0E0A\u0E34\u0E01",
+    label: "ทะเบียนสมาชิก",
     w: 260,
     required: true
   }, /*#__PURE__*/React.createElement(MemberSearchField, {
     member: member,
     onPick: pickMember,
     source: window.DN_MEMBERS,
-    title: "\u0E04\u0E49\u0E19\u0E2B\u0E32\u0E2A\u0E21\u0E32\u0E0A\u0E34\u0E01 \u2014 \u0E04\u0E37\u0E19\u0E43\u0E1A\u0E40\u0E2A\u0E23\u0E47\u0E08"
+    title: "ค้นหาสมาชิก \u2014 คืนใบเสร็จ"
   })), /*#__PURE__*/React.createElement(MoFld, {
-    label: "\u0E0A\u0E37\u0E48\u0E2D-\u0E0A\u0E37\u0E48\u0E2D\u0E2A\u0E01\u0E38\u0E25",
+    label: "ชื่อ-ชื่อสกุล",
     grow: true,
     w: 220
   }, /*#__PURE__*/React.createElement(MoRO, {
     value: member ? member.name : '',
-    placeholder: "(\u0E40\u0E25\u0E37\u0E2D\u0E01\u0E2A\u0E21\u0E32\u0E0A\u0E34\u0E01)"
+    placeholder: "(เลือกสมาชิก)"
   })), /*#__PURE__*/React.createElement(MoFld, {
-    label: "\u0E1B\u0E23\u0E30\u0E08\u0E33\u0E40\u0E14\u0E37\u0E2D\u0E19",
+    label: "ประจำเดือน",
     w: 200
   }, /*#__PURE__*/React.createElement(MoRO, {
     value: month
@@ -2198,7 +2040,7 @@ function ReceiptReturnPage({
       marginTop: 10
     }
   }, /*#__PURE__*/React.createElement(MoFld, {
-    label: "\u0E40\u0E2B\u0E15\u0E38\u0E1C\u0E25\u0E17\u0E35\u0E48\u0E1B\u0E23\u0E31\u0E1A\u0E1B\u0E23\u0E38\u0E07",
+    label: "เหตุผลที่ปรับปรุง",
     w: 200
   }, /*#__PURE__*/React.createElement("select", {
     className: "cfg-input",
@@ -2208,7 +2050,7 @@ function ReceiptReturnPage({
     key: r,
     value: r
   }, r)))), /*#__PURE__*/React.createElement(MoFld, {
-    label: "\u0E23\u0E32\u0E22\u0E25\u0E30\u0E40\u0E2D\u0E35\u0E22\u0E14\u0E40\u0E1E\u0E34\u0E48\u0E21\u0E40\u0E15\u0E34\u0E21",
+    label: "รายละเอียดเพิ่มเติม",
     grow: true,
     w: 260
   }, /*#__PURE__*/React.createElement("input", {
@@ -2217,7 +2059,7 @@ function ReceiptReturnPage({
     disabled: !member,
     onChange: e => setReasonNote(e.target.value)
   })), /*#__PURE__*/React.createElement(MoFld, {
-    label: "\u0E04\u0E37\u0E19\u0E17\u0E31\u0E49\u0E07\u0E43\u0E1A",
+    label: "คืนทั้งใบ",
     w: 120
   }, /*#__PURE__*/React.createElement("div", {
     style: {
@@ -2231,14 +2073,14 @@ function ReceiptReturnPage({
     disabled: !member,
     onChange: e => fillAll(e.target.checked)
   }))), /*#__PURE__*/React.createElement(MoFld, {
-    label: "\u0E22\u0E2D\u0E14\u0E04\u0E37\u0E19\u0E43\u0E1A\u0E40\u0E2A\u0E23\u0E47\u0E08",
+    label: "ยอดคืนใบเสร็จ",
     w: 200
   }, /*#__PURE__*/React.createElement(MoRO, {
     value: moMoney(total),
     num: true,
     mono: true
   })))), /*#__PURE__*/React.createElement(MoSec, {
-    title: "\u0E23\u0E32\u0E22\u0E01\u0E32\u0E23\u0E04\u0E37\u0E19\u0E43\u0E1A\u0E40\u0E2A\u0E23\u0E47\u0E08",
+    title: "รายการคืนใบเสร็จ",
     style: {
       marginTop: 12
     }
@@ -2258,59 +2100,59 @@ function ReceiptReturnPage({
     style: {
       width: 70
     }
-  }, "\u0E23\u0E2B\u0E31\u0E2A"), /*#__PURE__*/React.createElement("th", {
+  }, "รหัส"), /*#__PURE__*/React.createElement("th", {
     rowSpan: 2
-  }, "\u0E23\u0E32\u0E22\u0E01\u0E32\u0E23"), /*#__PURE__*/React.createElement("th", {
+  }, "รายการ"), /*#__PURE__*/React.createElement("th", {
     colSpan: 2,
     style: {
       textAlign: 'center'
     }
-  }, "\u0E22\u0E2D\u0E14\u0E04\u0E37\u0E19\u0E41\u0E25\u0E49\u0E27"), /*#__PURE__*/React.createElement("th", {
+  }, "ยอดคืนแล้ว"), /*#__PURE__*/React.createElement("th", {
     colSpan: 2,
     style: {
       textAlign: 'center'
     }
-  }, "\u0E22\u0E2D\u0E14\u0E04\u0E37\u0E19\u0E44\u0E14\u0E49\u0E2D\u0E35\u0E01"), /*#__PURE__*/React.createElement("th", {
+  }, "ยอดคืนได้อีก"), /*#__PURE__*/React.createElement("th", {
     colSpan: 3,
     style: {
       textAlign: 'center'
     }
-  }, "\u0E22\u0E2D\u0E14\u0E04\u0E37\u0E19\u0E04\u0E23\u0E31\u0E49\u0E07\u0E19\u0E35\u0E49")), /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", {
+  }, "ยอดคืนครั้งนี้")), /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", {
     style: {
       width: 110,
       textAlign: 'right'
     }
-  }, "\u0E40\u0E07\u0E34\u0E19\u0E15\u0E49\u0E19"), /*#__PURE__*/React.createElement("th", {
+  }, "เงินต้น"), /*#__PURE__*/React.createElement("th", {
     style: {
       width: 110,
       textAlign: 'right'
     }
-  }, "\u0E14\u0E2D\u0E01\u0E40\u0E1A\u0E35\u0E49\u0E22"), /*#__PURE__*/React.createElement("th", {
+  }, "ดอกเบี้ย"), /*#__PURE__*/React.createElement("th", {
     style: {
       width: 110,
       textAlign: 'right'
     }
-  }, "\u0E40\u0E07\u0E34\u0E19\u0E15\u0E49\u0E19"), /*#__PURE__*/React.createElement("th", {
+  }, "เงินต้น"), /*#__PURE__*/React.createElement("th", {
     style: {
       width: 110,
       textAlign: 'right'
     }
-  }, "\u0E14\u0E2D\u0E01\u0E40\u0E1A\u0E35\u0E49\u0E22"), /*#__PURE__*/React.createElement("th", {
+  }, "ดอกเบี้ย"), /*#__PURE__*/React.createElement("th", {
     style: {
       width: 120,
       textAlign: 'right'
     }
-  }, "\u0E40\u0E07\u0E34\u0E19\u0E15\u0E49\u0E19"), /*#__PURE__*/React.createElement("th", {
+  }, "เงินต้น"), /*#__PURE__*/React.createElement("th", {
     style: {
       width: 120,
       textAlign: 'right'
     }
-  }, "\u0E14\u0E2D\u0E01\u0E40\u0E1A\u0E35\u0E49\u0E22"), /*#__PURE__*/React.createElement("th", {
+  }, "ดอกเบี้ย"), /*#__PURE__*/React.createElement("th", {
     style: {
       width: 130,
       textAlign: 'right'
     }
-  }, "\u0E23\u0E27\u0E21\u0E1B\u0E23\u0E31\u0E1A\u0E1B\u0E23\u0E38\u0E07"))), /*#__PURE__*/React.createElement("tbody", null, rows.map((r, i) => /*#__PURE__*/React.createElement("tr", {
+  }, "รวมปรับปรุง"))), /*#__PURE__*/React.createElement("tbody", null, rows.map((r, i) => /*#__PURE__*/React.createElement("tr", {
     key: r.code
   }, /*#__PURE__*/React.createElement("td", {
     className: "mono"
@@ -2374,13 +2216,13 @@ function ReceiptReturnPage({
       textAlign: 'center',
       padding: '26px 0'
     }
-  }, "\u0E40\u0E25\u0E37\u0E2D\u0E01\u0E2A\u0E21\u0E32\u0E0A\u0E34\u0E01\u0E40\u0E1E\u0E37\u0E48\u0E2D\u0E41\u0E2A\u0E14\u0E07\u0E23\u0E32\u0E22\u0E01\u0E32\u0E23\u0E17\u0E35\u0E48\u0E04\u0E37\u0E19\u0E43\u0E1A\u0E40\u0E2A\u0E23\u0E47\u0E08\u0E44\u0E14\u0E49"))), !!rows.length && /*#__PURE__*/React.createElement("tfoot", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("td", {
+  }, "เลือกสมาชิกเพื่อแสดงรายการที่คืนใบเสร็จได้"))), !!rows.length && /*#__PURE__*/React.createElement("tfoot", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("td", {
     colSpan: 8,
     style: {
       textAlign: 'right',
       fontWeight: 600
     }
-  }, "\u0E22\u0E2D\u0E14\u0E04\u0E37\u0E19\u0E43\u0E1A\u0E40\u0E2A\u0E23\u0E47\u0E08\u0E23\u0E27\u0E21"), /*#__PURE__*/React.createElement("td", {
+  }, "ยอดคืนใบเสร็จรวม"), /*#__PURE__*/React.createElement("td", {
     className: "mono",
     style: {
       textAlign: 'right',

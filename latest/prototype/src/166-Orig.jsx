@@ -48,6 +48,60 @@
   const NEW_ROW = { memberType: 'none', memberFrom: '0', memberTo: '', useNormal: true, normalCount: 0, insurance1: 0, insurance2: 0, extraFund: 0 };
   const mtNorm = (v) => (window.LP_OPTS.memberTypeRight.some(o => o.v === v) ? v : 'none');
   const mtLabel = (v) => (window.LP_OPTS.memberTypeRight.find(o => o.v === mtNorm(v)) || {}).l || 'ไม่ระบุ';
+  // เลขสมาชิก — ตัวเลขล้วน ไม่เกิน 6 หลัก แสดงเต็ม 6 หลักไม่มีจุลภาค (เช่น 063225)
+  const MEM_INF = 999999;
+  const memDigits = (v) => String(v == null ? '' : v).replace(/\D/g, '').slice(0, 6);
+  const memShow = (v) => { const d = memDigits(v); return d === '' ? '—' : d.padStart(6, '0'); };
+  const memNum = (v) => { const d = memDigits(v); return d === '' ? null : Number(d); };
+  // ตรวจช่วงสมาชิก: ประเภทเดียวกันห้ามซ้อน · แถว "ไม่ระบุ" ห้ามซ้อนกับแถวใด ๆ → 1 คนตรงได้แถวเดียว
+  const gccRangeErrors = (rows) => {
+    const errs = {}; const msgs = [];
+    const rg = (rows || []).map((r) => {
+      const unl = r.memberTo !== '' && r.memberTo != null && Number(r.memberTo) >= MEM_INF;
+      return { t: mtNorm(r.memberType), f: memNum(r.memberFrom) == null ? 0 : memNum(r.memberFrom), to: unl ? MEM_INF : memNum(r.memberTo) };
+    });
+    rg.forEach((x, i) => {
+      if (x.to == null) { errs[i] = 1; msgs.push('แถว ' + (i + 1) + ': กรุณาระบุช่วงสมาชิกสิ้นสุด (≤) หรือเลือก “ไม่จำกัด”'); }
+      else if (x.f > x.to) { errs[i] = 1; msgs.push('แถว ' + (i + 1) + ': เลขสมาชิกเริ่มต้นต้องไม่มากกว่าเลขสิ้นสุด'); }
+    });
+    rg.forEach((a, i) => rg.forEach((b, j) => {
+      if (j <= i || a.to == null || b.to == null || a.f > a.to || b.f > b.to) return;
+      const sameScope = a.t === b.t || a.t === 'none' || b.t === 'none';
+      if (sameScope && a.f <= b.to && b.f <= a.to) {
+        errs[i] = 1; errs[j] = 1;
+        msgs.push('แถว ' + (i + 1) + ' และแถว ' + (j + 1) + ': ช่วงสมาชิกซ้อนกัน'
+          + (a.t === b.t ? ' (ประเภทสมาชิกเดียวกัน)' : ' (แถว “ไม่ระบุ” ห้ามซ้อนกับแถวที่ระบุประเภท)'));
+      }
+    }));
+    return { errs, msgs };
+  };
+  // ไอคอน (i) + คำอธิบายเมื่อชี้
+  function GccInfo({ text }) {
+    // tooltip แสดงลอยเหนือหัวตาราง (portal ไป body · position fixed) — ไม่ถูกตาราง/หัวคอลัมน์ตัดหรือทับ
+    const [pos, setPos] = React.useState(null);
+    const show = (e) => {
+      const r = e.currentTarget.getBoundingClientRect();
+      const W = 260;
+      const left = Math.min(Math.max(8, r.left + r.width / 2 - W / 2), window.innerWidth - W - 8);
+      setPos({ left, bottom: window.innerHeight - r.top + 8, W });
+    };
+    const tip = pos ? (
+      <span role="tooltip" style={{ position: 'fixed', left: pos.left, bottom: pos.bottom, zIndex: 2000, width: pos.W,
+                                    padding: '8px 10px', background: 'rgba(0,0,0,.88)', color: '#fff', borderRadius: 6, pointerEvents: 'none',
+                                    fontSize: 11.5, fontWeight: 400, lineHeight: 1.55, textAlign: 'left', whiteSpace: 'normal',
+                                    boxShadow: '0 4px 12px rgba(0,0,0,.18)' }}>{text}</span>
+    ) : null;
+    return (
+      <span style={{ display: 'inline-flex', verticalAlign: 'middle', marginLeft: 4 }}
+            onMouseEnter={show} onMouseLeave={() => setPos(null)}>
+        <span aria-label={text} style={{ width: 14, height: 14, borderRadius: '50%', border: '1px solid currentColor', fontSize: 10, lineHeight: '12px',
+                                          fontStyle: 'italic', fontWeight: 700, fontFamily: 'Georgia, serif', textAlign: 'center', cursor: 'help', opacity: .75 }}>i</span>
+        {tip && (window.ReactDOM && window.ReactDOM.createPortal ? window.ReactDOM.createPortal(tip, document.body) : tip)}
+      </span>
+    );
+  }
+  const INFO_INS1 = 'ใช้เมื่อผู้ค้ำมีประกันกับสหกรณ์ 1 ประเภท (ประกันชีวิต หรือ ประกันหนี้ อย่างใดอย่างหนึ่ง) — ค้ำประกันได้เพิ่มจากสิทธิปกติตามจำนวนสัญญาที่กำหนด';
+  const INFO_INS2 = 'ใช้เมื่อผู้ค้ำมีประกันกับสหกรณ์ครบ 2 ประเภท (ทั้งประกันชีวิต และ ประกันหนี้) — ค้ำประกันได้เพิ่มจากสิทธิปกติตามจำนวนสัญญาที่กำหนด (ใช้แทนคอลัมน์ 1 ประเภท ไม่นับซ้ำ)';
 
   // ── ประวัติการแก้ไข ─────────────────────────────────────────────
   const GC_USER = 'นางสาวสุภาพร วงศ์สกุล';
@@ -255,9 +309,13 @@
     const addRow = () => setDraft({ ...draft, rows: [...draft.rows, { ...NEW_ROW }] });
     const delRow = (i) => setDraft({ ...draft, rows: draft.rows.filter((_, idx) => idx !== i) });
     const [histOpen, setHistOpen] = React.useState(false);
-    const startEdit = () => { setDraft(JSON.parse(JSON.stringify(group))); setEditing(true); };
-    const cancelEdit = () => { setDraft(null); setEditing(false); };
+    const [rangeErr, setRangeErr] = React.useState(null);
+    const startEdit = () => { setDraft(JSON.parse(JSON.stringify(group))); setEditing(true); setRangeErr(null); };
+    const cancelEdit = () => { setDraft(null); setEditing(false); setRangeErr(null); };
     const save = () => {
+      const chk = gccRangeErrors(draft.rows);
+      if (chk.msgs.length) { setRangeErr(chk); return; }
+      setRangeErr(null);
       const changes = diffGroups(group, draft);
       const entry = { action: 'edit', ts: nowStamp(), user: GC_USER,
         summary: 'แก้ไขจำนวนคนค้ำประกัน', changes };
@@ -321,23 +379,34 @@
           </div>
         </div>
 
-        <div className="search-card gcc-tblcard" style={{ marginTop: 12 }}>
-          <div className="section-head">
-            <span>จำนวนคนค้ำประกัน</span>
-            <span className="muted">{view.rows.length} เงื่อนไข</span>
-            <span className="spacer" style={{ flex: 1 }} />
-            {editing && <button className="btn primary sm" style={{ marginLeft: 'auto' }} onClick={addRow}><Icon name="plus" size={13} /> เพิ่มแถว</button>}
+        <div className="search-card gcc-tblcard" style={{ marginTop: 12, padding: 0, overflow: 'hidden' }}>
+          {/* หัวการ์ดรูปแบบเดียวกับตาราง "เงื่อนไขวงเงินการค้ำประกัน" — ชื่อ · จำนวน + คำอธิบายใต้ชื่อ / ปุ่มเพิ่มแถวขวา */}
+          <div className="sh-grid-head">
+            <div>
+              <div className="sh-grid-title">จำนวนคนค้ำประกัน<span className="muted" style={{ fontWeight: 400 }}> · {view.rows.length} เงื่อนไข</span></div>
+              <div className="muted" style={{ fontSize: 11.5, marginTop: 2 }}>
+                ช่วงสมาชิกในประเภทเดียวกันห้ามซ้อนกัน · แถว “ไม่ระบุ” ห้ามซ้อนกับแถวที่ระบุประเภท (สมาชิก 1 คนตรงกับเงื่อนไขเพียงแถวเดียว) · เลขสมาชิกไม่เกิน 6 หลัก
+              </div>
+            </div>
+            {editing && <button className="btn primary sm" onClick={addRow}><Icon name="plus" /> เพิ่มแถว</button>}
           </div>
+          {editing && rangeErr && rangeErr.msgs.length > 0 && (
+            <div role="alert" style={{ margin: '10px 16px', padding: '8px 12px', border: '1px solid #ffccc7', background: '#fff2f0',
+                                       borderRadius: 6, fontSize: 12.5, color: '#cf1322' }}>
+              <div style={{ fontWeight: 600, marginBottom: 2 }}>บันทึกไม่ได้ — ตรวจสอบช่วงสมาชิก</div>
+              {rangeErr.msgs.map((m, k) => <div key={k}>• {m}</div>)}
+            </div>
+          )}
           <div className="table-wrap" style={{ border: 0, borderRadius: 0, overflowX: 'auto' }}>
-            <table className="tbl sh-grid gcc-tbl" style={{ minWidth: 940 }}>
+            <table className="tbl sh-grid gcc-tbl" style={{ minWidth: 960 }}>
               <thead>
                 <tr>
                   <th rowSpan="2" className="center" style={{ width: 56 }}>ลำดับ</th>
                   <th rowSpan="2" className="center" style={{ width: 150 }}>ประเภทสมาชิก</th>
                   <th colSpan="2" className="center group-col">ช่วงสมาชิก</th>
                   <th rowSpan="2" className="center group-col" style={{ width: 110 }}>สิทธิปกติ<br />จำนวนสัญญา</th>
-                  <th rowSpan="2" className="center group-col" style={{ width: 120 }}>สิทธิเพิ่มจากประกัน<br /><span className="gcc-th-sub">(ชีวิต/หนี้) 1 ประเภท</span></th>
-                  <th rowSpan="2" className="center group-col" style={{ width: 120 }}>สิทธิเพิ่มจากประกัน<br /><span className="gcc-th-sub">(ชีวิต/หนี้) 2 ประเภท</span></th>
+                  <th rowSpan="2" className="center group-col" style={{ width: 130 }}>สิทธิเพิ่มจากประกัน<GccInfo text={INFO_INS1} /><br /><span className="gcc-th-sub">(ชีวิต/หนี้) 1 ประเภท</span></th>
+                  <th rowSpan="2" className="center group-col" style={{ width: 130 }}>สิทธิเพิ่มจากประกัน<GccInfo text={INFO_INS2} /><br /><span className="gcc-th-sub">(ชีวิต/หนี้) 2 ประเภท</span></th>
                   <th rowSpan="2" className="center group-col" style={{ width: 120 }}>สิทธิเพิ่มจาก<br />สสอร+ชสอ</th>
                   {editing && <th rowSpan="2" className="center" style={{ width: 46 }} />}
                 </tr>
@@ -345,7 +414,7 @@
               </thead>
               <tbody>
                 {view.rows.map((r, i) => (
-                  <tr key={i} style={editing ? { verticalAlign: 'top' } : undefined}>
+                  <tr key={i} style={editing ? { verticalAlign: 'top', background: rangeErr && rangeErr.errs[i] ? '#fff2f0' : undefined } : undefined}>
                     <td className="center mono">{i + 1}</td>
                     <td>
                       {editing
@@ -356,11 +425,29 @@
                     </td>
                     <td className="center">
                       {editing
-                        ? <input className="sh-grid-input mono center" style={{ width: '100%', maxWidth: 'none' }} value={/^0*$/.test(String(r.memberFrom ?? '')) ? '0' : r.memberFrom} onChange={(e) => setRow(i, 'memberFrom', e.target.value)} />
-                        : <span className="mono">{/^0*$/.test(String(r.memberFrom ?? '')) ? '0' : r.memberFrom}</span>}
+                        ? <input className="sh-grid-input mono center" inputMode="numeric" maxLength={6} placeholder="000000" style={{ width: '100%', maxWidth: 'none' }}
+                                 value={memDigits(r.memberFrom)} onChange={(e) => { setRow(i, 'memberFrom', memDigits(e.target.value)); setRangeErr(null); }}
+                                 onBlur={() => { const d = memDigits(r.memberFrom); if (d) setRow(i, 'memberFrom', d.padStart(6, '0')); }} />
+                        : <span className="mono">{memShow(r.memberFrom === '' || r.memberFrom == null ? '0' : r.memberFrom)}</span>}
                     </td>
                     <td className="center">
-                      <window.LpUnlCell editing={editing} text center v={r.memberTo || ''} inf="999999" onChange={(v) => setRow(i, 'memberTo', v)} />
+                      {(() => {
+                        const unl = r.memberTo !== '' && r.memberTo != null && Number(r.memberTo) >= MEM_INF;
+                        if (!editing) return <span className="mono">{unl ? 'ไม่จำกัด' : memShow(r.memberTo)}</span>;
+                        return (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            <input className="sh-grid-input mono center" inputMode="numeric" maxLength={6} placeholder={unl ? 'ไม่จำกัด' : '000000'} disabled={unl}
+                                   style={{ width: '100%', maxWidth: 'none', background: unl ? '#FAFAFA' : undefined }}
+                                   value={unl ? '' : memDigits(r.memberTo)} onChange={(e) => { setRow(i, 'memberTo', memDigits(e.target.value)); setRangeErr(null); }}
+                                   onBlur={() => { const d = memDigits(r.memberTo); if (d && !unl) setRow(i, 'memberTo', d.padStart(6, '0')); }} />
+                            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'rgba(0,0,0,.65)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                              <input type="checkbox" checked={unl} style={{ accentColor: 'var(--brand, #237450)', margin: 0 }}
+                                     onChange={(e) => { setRow(i, 'memberTo', e.target.checked ? String(MEM_INF) : ''); setRangeErr(null); }} />
+                              ไม่จำกัด
+                            </label>
+                          </div>
+                        );
+                      })()}
                     </td>
                     <td className="center">
                       <div className="gcc-normal">
@@ -390,6 +477,22 @@
             </table>
           </div>
         </div>
+
+        {(() => {
+          // เงื่อนไขตามประกาศ (ข้อมูลจากกลุ่มเอง หรือค่าตั้งต้นของกลุ่มรหัสเดียวกัน)
+          const seed = (window.GC_GROUP_SEED || []).find(s => s.id === group.id || s.code === group.code) || {};
+          const nt = group.refNotice || seed.refNotice;
+          if (!nt || !Array.isArray(nt.items) || !nt.items.length) return null;
+          return (
+            <div className="muted" style={{ display: 'flex', alignItems: 'flex-start', gap: 6, marginTop: 10, padding: '0 4px', fontSize: 12, lineHeight: 1.65 }}>
+              <span style={{ flexShrink: 0, marginTop: 2 }}><Icon name="info" size={13} /></span>
+              <div style={{ minWidth: 0 }}>
+                <div>เงื่อนไขช่วงสมาชิกตาม{nt.title}{nt.date ? ' (' + nt.date + ')' : ''}</div>
+                {nt.items.map((it, k) => <div key={k}>• {it.text}</div>)}
+              </div>
+            </div>
+          );
+        })()}
       </div>
     );
   }

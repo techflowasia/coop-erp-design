@@ -132,10 +132,14 @@ const SC_DEFAULTS = {
   pbWithdrawNeed: true, pbDepositNeed: false, pbBalanceNeed: false,
   // ── การลงบัญชีและ Slip ──
   counterPosting: 'transfer', slipMode: 'none', cashGl: '110110',
+  // ── ค่าธรรมเนียมอายัด/ปลดอายัด (ค่ากลาง ทุกประเภทบัญชี) ──
+  freezeFeeOn: false, freezeFee: 200, freezeFeeGl: '',
   voucherPrint: 'none', transferPosting: 'bymove',
   maintOrder: 'bod',
   // ── เลขที่บัญชีและการพิมพ์ ──
   acctStoreFormat: 'BTTrrrrrrr', acctDisplayFormat: 'X-XX-XXXXXXX',
+  // ── เลขที่สมุดคู่ฝาก: TT = ประเภทเงินฝาก · YY/YYYY = ปี พ.ศ. · N = ลำดับ · C = หลักตรวจสอบ (ไม่ใส่ = ไม่มี) ──
+  bookFormat: 'TTYYNNNNNN',
   progPrintCommand: '', progControlCode: '', progTemplate: '', progMapping: '',
 };
 
@@ -156,9 +160,9 @@ const SC_TABS = [
       { k: 'accrueCut', label: 'การตัดดอกเบี้ยค้างจ่าย', type: 'sel', opts: 'accrueCut' },
       { k: 'holidayMode', label: 'ข้อมูลวันหยุดไปบัญชี', type: 'sel', opts: 'holidayMode' },
     ] },
-    { title: 'การปิดบัญชี', fields: [
+    { title: 'การปิดบัญชี', sub: 'จ่ายดอกเบี้ยเมื่อยอดดอกเบี้ยถึงขั้นต่ำที่กำหนด — ตั้งเป็น 0.00 จ่ายทุกกรณี', fields: [
       { k: 'closeIntDays', label: 'วันคิดดอกเบี้ยกรณีปิดบัญชี', type: 'num', suffix: 'วัน', max: 130 },
-      { k: 'payIntOnCloseMin', label: 'จ่ายดอกเบี้ยเมื่อปิดบัญชี เมื่อมากกว่า', type: 'num', decimals: 2, suffix: 'บาท', max: 130 },
+      { k: 'payIntOnCloseMin', label: 'จ่ายดอกเบี้ยขั้นต่ำเมื่อปิดบัญชี', type: 'num', decimals: 2, suffix: 'บาท', max: 130 },
     ] },
   ] },
   { id: 'rounding', label: 'การปัดเศษ', groups: [
@@ -177,9 +181,6 @@ const SC_TABS = [
       { k: 'checkInterest', label: 'การคิดดอกเบี้ยรายการเช็ค', type: 'sel', opts: 'checkInterest' },
       { k: 'checkClearDays', label: 'จำนวนวันผ่านเช็ค', type: 'num', suffix: 'วัน', max: 90 },
       { k: 'checkLateTime', label: 'เวลาเช็ค Late / Cut-off', type: 'time' },
-    ] },
-    { title: 'การตรวจสอบรายการเงินสด', fields: [
-      { k: 'cashCheckMode', label: 'การตรวจสอบรายการเงินสด', type: 'sel', opts: 'cashCheckMode' },
     ] },
     { title: 'เงื่อนไขการใช้สมุดคู่ฝาก', sub: 'เมื่อเปิดใช้งาน ระบบจะตรวจสอบข้อมูลสมุดก่อนอนุญาตให้ทำรายการ', fields: [
       { k: 'pbWithdrawNeed', label: 'ถอนเงินต้องใช้สมุด', type: 'check' },
@@ -203,10 +204,13 @@ const SC_TABS = [
       { k: 'voucherPrint', label: 'การพิมพ์ใบสำคัญจ่ายดอกเบี้ย', type: 'sel', opts: 'voucherPrint' },
     ] },
   ] },
-  { id: 'format', label: 'เลขที่บัญชี', groups: [
-    { title: 'รูปแบบเลขที่บัญชี', sub: 'แยกเลขบัญชีจริงที่จัดเก็บออกจากรูปแบบที่ใช้แสดงผลในหน้าจอ/รายงาน/ใบเสร็จ/Slip/สมุด', fields: [
+  { id: 'format', label: 'เลขที่บัญชี/สมุด', groups: [
+    { title: 'รูปแบบเลขที่บัญชี', sub: 'แยกเลขบัญชีจริงที่จัดเก็บออกจากรูปแบบที่ใช้แสดงผลในหน้าจอ/รายงาน/ใบเสร็จ/Slip/สมุด · รหัสในรูปแบบจัดเก็บ: B = รหัสสาขา (ดึงจากค่าคงที่ระบบเงินฝาก › "สาขาสหกรณ์" อัตโนมัติ — ตอนนี้ใช้สำนักงานใหญ่) · TT = รหัสประเภทเงินฝาก (เมนูประเภทเงินฝาก) · r = เลขลำดับจากรหัสคุมเลขที่บัญชีของประเภทเงินฝากนั้น', fields: [
       { k: 'acctStoreFormat', label: 'รูปแบบจัดเก็บในฐานข้อมูล', type: 'txt', mono: true, placeholder: 'BTTrrrrrrr' },
       { k: 'acctDisplayFormat', label: 'รูปแบบการแสดงผล', type: 'txt', mono: true, placeholder: 'X-XX-XXXXXXX' },
+    ] },
+    { title: 'รูปแบบเลขที่สมุดคู่ฝาก', sub: 'เลขที่สมุดออกอัตโนมัติตอนเปิดบัญชี/ออกสมุดเล่มใหม่ เฉพาะประเภทเงินฝากที่กำหนดการถือสมุดเป็น \"มีสมุด\" · มีผลกับสมุดที่ออกหลังบันทึก เลขที่ออกไปแล้วไม่เปลี่ยน · รหัสในรูปแบบ: TT = รหัสประเภทเงินฝาก (เมนูประเภทเงินฝาก) · YY หรือ YYYY = ปี พ.ศ. ของวันที่ออกสมุด 2/4 หลัก (ไม่ใส่ = ลำดับต่อเนื่อง) · N = ลำดับรันอัตโนมัติ แยกตามประเภท+ปี เริ่ม 1 ใหม่ทุกปี (จำนวน N = จำนวนหลัก) · C = หลักตรวจสอบ (ไม่ใส่ = ไม่มี) · ใส่เครื่องหมายอื่นเป็นตัวคั่นได้ (ค่าตั้งต้นไม่มีตัวคั่น)', fields: [
+      { k: 'bookFormat', label: 'รูปแบบเลขที่สมุด', type: 'txt', mono: true, placeholder: 'TTYYNNNNNN' },
     ] },
   ] },
 ];
@@ -241,6 +245,7 @@ function scfgLoad() {
   try { const s = localStorage.getItem('dep_sysconfig'); if (s) v = { ...SC_DEFAULTS, ...JSON.parse(s) }; } catch (e) {}
   if (typeof v.cashTxnCheck === 'boolean') v.cashTxnCheck = v.cashTxnCheck ? 'yes' : 'no';
   if (v.taxGl && v.cashGl === '110101') v.cashGl = v.taxGl;
+  if (String(v.bookFormat || '').trim().toUpperCase() === 'T-YY-NNNNNN-C') v.bookFormat = SC_DEFAULTS.bookFormat; // รูปแบบเดิม (ประเภทสมุด 1 หลัก) → TT จากประเภทเงินฝาก
   // ค่าเดิมที่ไม่มีในตัวเลือกปัจจุบัน → ใช้ค่าตั้งต้น
   ['dayCountYear', 'dayCountMethod', 'compoundTiming', 'checkInterest', 'roundMethod', 'roundScope', 'intCalcBase', 'taxRound', 'counterPosting', 'slipMode', 'voucherPrint', 'maintOrder', 'transferPosting', 'accrueCut', 'accrueSet', 'holidayMode', 'compoundDayCount', 'accrueDayCount', 'cashTxnCheck'].forEach(k => { if (!SC_OPTS[k].some(o => o.v === v[k])) v[k] = SC_DEFAULTS[k]; });
   return v;
@@ -400,7 +405,8 @@ function ScField({ f, s, editing, set }) {
   if (f.type === 'wdtiers') return <ScWdTiers v={v} editing={editing} onChange={(x) => set(f.k, x)} />;
   if (f.type === 'check') return <ScCheck label={f.label} checked={v} editing={editing} indent={f.indent} onChange={(x) => set(f.k, x)} />;
   const ctrl =
-    f.type === 'num' ? <ScNum v={v} editing={editing} decimals={f.decimals} suffix={f.suffix} max={f.max} onChange={(x) => set(f.k, x)} />
+    f.type === 'gl' && window.DtGl ? <window.DtGl v={v} editing={editing} onChange={(x) => set(f.k, x)} />
+    : f.type === 'num' ? <ScNum v={v} editing={editing} decimals={f.decimals} suffix={f.suffix} max={f.max} onChange={(x) => set(f.k, x)} />
     : f.type === 'sel' ? <ScSel opts={f.opts} v={v} editing={editing} onChange={(x) => set(f.k, x)} />
     : f.type === 'time' ? <ScTime v={v} editing={editing} onChange={(x) => set(f.k, x)} />
     : f.type === 'area' ? <ScArea v={v} editing={editing} mono={f.mono} placeholder={f.placeholder} onChange={(x) => set(f.k, x)} />
@@ -455,6 +461,7 @@ function DepSystemConfigPage({ onToast }) {
   const requestSave = () => {
     const tierErr = scWdTierError(draft.wdTiers);
     if (tierErr) { setTab('wdlimit'); onToast && onToast(tierErr + ' — กรุณาแก้ไขก่อนบันทึก'); return; }
+    if (window.depBookFmtValid && !window.depBookFmtValid(draft.bookFormat)) { setTab('format'); onToast && onToast('รูปแบบเลขที่สมุดไม่ถูกต้อง — ต้องมี TT 2 ตัวติดกัน, N 3–9 ตัวติดกัน, ปี YY หรือ YYYY (ไม่ใส่ก็ได้), C ไม่เกิน 1 ตัว'); return; }
     setAskSave(scDiff(saved, draft));
   };
   const save = () => {
@@ -475,6 +482,7 @@ function DepSystemConfigPage({ onToast }) {
     const to = askTab;
     const tierErr = scWdTierError(draft.wdTiers);
     if (tierErr) { setAskTab(null); setTab('wdlimit'); onToast && onToast(tierErr + ' — กรุณาแก้ไขก่อนบันทึก'); return; }
+    if (window.depBookFmtValid && !window.depBookFmtValid(draft.bookFormat)) { setAskTab(null); setTab('format'); onToast && onToast('รูปแบบเลขที่สมุดไม่ถูกต้อง — ต้องมี TT 2 ตัวติดกัน, N 3–9 ตัวติดกัน, ปี YY หรือ YYYY (ไม่ใส่ก็ได้), C ไม่เกิน 1 ตัว'); return; }
     const changes = scDiff(saved, draft);
     scfgSaveLS(draft); setSaved(draft); setSavedAt(new Date());
     audit.log({ action: 'update', module: 'เงินฝาก — ข้อกำหนดระบบเงินฝาก', target: 'ค่าระดับระบบ (System Config)',
@@ -574,4 +582,5 @@ function DepSystemConfigPage({ onToast }) {
   );
 }
 
+window.depSysCfg = scfgLoad;
 Object.assign(window, { DepSystemConfigPage });

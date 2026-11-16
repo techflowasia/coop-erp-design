@@ -244,11 +244,10 @@ function ExternalPartyPage({ onToast }) {
                   {p.mobile && p.tel && <div className="muted">{p.tel}</div>}
                 </td>
                 <td className="center">
-                  <button className={'lt-switch' + (p.status === 'ใช้งาน' ? ' on' : '')} role="switch"
-                          aria-checked={p.status === 'ใช้งาน'} aria-label={p.status === 'ใช้งาน' ? 'ปิดใช้งาน' : 'เปิดใช้งาน'}
-                          onClick={() => { if (p.status === 'ใช้งาน') setConfirmOff(p); else toggle(p); }}>
-                    <span className="lt-switch-knob" />
-                  </button>
+                  <window.ConstSwitch on={p.status === 'ใช้งาน'}
+                          onClick={() => window.depConfirmOff(p.status === 'ใช้งาน', (p.code || '—') + ' · ' + (exFull(p) || ''), () => toggle(p),
+                            'บุคคลภายนอกนี้จะไม่แสดงเป็นตัวเลือกในการทำรายการการเงิน', 'ปิดการใช้งานบุคคลภายนอก',
+                            { effectOn: 'บุคคลภายนอกนี้จะแสดงเป็นตัวเลือกในการทำรายการการเงินอีกครั้ง' })} />
                 </td>
                 <td className="ex-act center">
                   <div className="ex-act-row">

@@ -19,9 +19,9 @@ function feeAcctOptions() {
 }
 
 // ─── Add/Edit modal ──────────────────────────────────────────────────
-function FeeEditModal({ rec, lockAcctType, onClose, onSubmit }) {
+function FeeEditModal({ rec, lockAcctType, acctOptions, onClose, onSubmit }) {
   const isNew = !rec.id;
-  const [f, setF] = useState(lockAcctType ? { ...rec, acctType: lockAcctType } : rec);
+  const [f, setF] = useState(lockAcctType ? { ...rec, acctType: lockAcctType } : (acctOptions && !acctOptions.includes(rec.acctType) ? { ...rec, acctType: acctOptions[0] } : rec));
   const [error, setError] = useState('');
   const set = (k, v) => setF(p => ({ ...p, [k]: v }));
   const FT = window.DEP_FEE_TYPES;
@@ -52,7 +52,7 @@ function FeeEditModal({ rec, lockAcctType, onClose, onSubmit }) {
                        title="กำหนดจากประเภทบัญชีที่เปิดอยู่" />
               ) : (
                 <select className="cfg-input" value={f.acctType} onChange={(e) => set('acctType', e.target.value)}>
-                  {feeAcctOptions().map(o => <option key={o} value={o}>{o}</option>)}
+                  {(acctOptions || feeAcctOptions()).map(o => <option key={o} value={o}>{o === 'ทุกประเภท' ? 'ทุกประเภท (กฎกลาง)' : o}</option>)}
                 </select>
               )}
             </div>

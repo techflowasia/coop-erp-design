@@ -26,7 +26,7 @@ function DepWithdrawPage({ onToast }) {
   const feeBase = accType?.withdraw?.feeOver || 0;
   const fee = overFree && !exempt ? feeBase : 0;
   // ค่าปรับ (ถอนฝากประจำก่อนครบกำหนด)
-  const isFixedEarly = cur && cur.typeCode.startsWith('F') && cur.maturityDate && cur.maturityDate > new Date().toISOString().slice(0, 10);
+  const isFixedEarly = cur && window.depIsFixedType(cur.typeCode) && cur.maturityDate && cur.maturityDate > new Date().toISOString().slice(0, 10);
   const penalty = isFixedEarly ? Math.round(amtNum * 0.005 * 100) / 100 : 0;
 
   const newBal = cur ? cur.balance - amtNum - fee - penalty : 0;

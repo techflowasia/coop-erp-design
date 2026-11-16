@@ -10,12 +10,18 @@ const SCH_DOCNO_DEFAULT = [
   { key: 'voucher', label: 'ใบสำคัญจ่าย',          prefix: 'PV', digits: 5, reset: 'year', sample: 'PV-2569-00001' },
   { key: 'notice',  label: 'หนังสือแจ้งชำระหนี้',   prefix: 'DN', digits: 4, reset: 'year', sample: 'DN-2569-0001' },
   { key: 'welfare', label: 'คำขอสวัสดิการ',         prefix: 'WS', digits: 4, reset: 'year', sample: 'WS-2569-0001' },
+  { key: 'approve', label: 'ใบอนุมัติทำรายการ (เงินฝาก)', prefix: 'APV', digits: 5, reset: 'year', sample: 'APV-2569-00001' },
+  { key: 'monthly', label: 'คำร้องเปลี่ยนแปลงฝากรายเดือน', prefix: 'DMC', digits: 4, reset: 'year', sample: 'DMC-2569-0001' },
 ];
+window.SCH_DOCNO_DEFAULT = SCH_DOCNO_DEFAULT;
 
 function SystemConstantsHubPage({ onToast, onNav }) {
   const audit = React.useContext(window.AuditContext || React.createContext({ log: () => {} }));
   const [docno, setDocno] = useState(() => {
-    try { const s = localStorage.getItem('admin_docno'); if (s) return JSON.parse(s); } catch (e) {}
+    try {
+      const s = localStorage.getItem('admin_docno');
+      if (s) { const saved = JSON.parse(s); return [...saved, ...SCH_DOCNO_DEFAULT.filter(d => !saved.some(x => x.key === d.key)).map(d => ({ ...d }))]; }
+    } catch (e) {}
     return SCH_DOCNO_DEFAULT.map(d => ({ ...d }));
   });
   const [editing, setEditing] = useState(false);

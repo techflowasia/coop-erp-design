@@ -6832,3 +6832,5 @@ html:where([data-sys="credit"]).lrq-printing .ly-sheet { font-size: 11.5px; brea
 :where(html[data-sys="credit"]) .lc-form-view .modal-card input,
 :where(html[data-sys="credit"]) .lc-form-view .modal-card select,
 :where(html[data-sys="credit"]) .lc-form-view .modal-card textarea { pointer-events: auto; background-color: rgb(255, 255, 255); color: var(--text); }
+
+:where(html[data-sys="credit"]) .tx-item { cursor: pointer; }

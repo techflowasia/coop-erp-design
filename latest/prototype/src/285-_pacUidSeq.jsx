@@ -224,10 +224,10 @@ function ExpenseCategoryConfigPage({ onToast }) {
                   <td><span className={'ec-group g' + Math.max(0, window.paCatGroups().indexOf(r.group))}>{r.group}</span></td>
                   <td className="center muted">{r.unit || '—'}</td>
                   <td className="center">
-                    <button className={"lt-switch" + (r.enabled ? ' on' : '')} role="switch" aria-checked={r.enabled}
-                            aria-label={r.enabled ? 'ปิดใช้งาน' : 'เปิดใช้งาน'} onClick={() => { if (r.enabled) setAskOff(r); else toggle(r); }}>
-                      <span className="lt-switch-knob" />
-                    </button>
+                    <window.ConstSwitch on={r.enabled}
+                            onClick={() => window.depConfirmOff(r.enabled, (r.code || '—') + ' · ' + r.name, () => toggle(r),
+                              'หมวดนี้จะไม่แสดงเป็นตัวเลือกในรายการประมาณการค่าใช้จ่าย', 'ปิดการใช้งานหมวดค่าใช้จ่าย',
+                              { effectOn: 'หมวดนี้จะแสดงเป็นตัวเลือกในรายการประมาณการค่าใช้จ่ายอีกครั้ง' })} />
                   </td>
                   <td className="center">
                     <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>

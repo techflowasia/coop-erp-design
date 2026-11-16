@@ -67,7 +67,6 @@ window.DAT_OPTS = {
   passbookHold: [
     { v: 'book',     l: 'สมุดคู่ฝาก' },
     { v: 'nobook',   l: 'ไม่มีสมุด (No Book)' },
-    { v: 'card',     l: 'บัตร ATM/สมาชิก' },
   ],
   // ── จ่าย Int./Div. / ค่ารักษาบัญชี ──
   depAgeRef: [
@@ -118,8 +117,8 @@ window.DAT_OPTS = {
     { v: 'keep',     l: 'คงเดิม' },
   ],
   intCalcFrom: [
-    { v: 'statement',l: 'S: Statement' },
-    { v: 'principal',l: 'P: ต้นเงิน' },
+    { v: 'statement',l: 'Statement' },
+    { v: 'principal',l: 'ต้นเงิน' },
   ],
   intCalcBase: [
     { v: 'balance',      l: 'จากยอดคงเหลือ' },
@@ -192,6 +191,17 @@ window.DEP_ACC_COUNTERS = {
   DPACCDOCNO10: { name: 'ออมทรัพย์',      last: 125, digits: 7, updated: '2026-11-04T14:20' },
   DPACCDOCNO11: { name: 'ออมทรัพย์พิเศษ', last: 48,  digits: 7, updated: '2026-11-01T09:05' },
   DPACCDOCNO12: { name: 'ฝากประจำ',       last: 310, digits: 7, updated: '2026-11-03T10:42' },
+  DPACCDOCNO13: { name: 'เงินฝากเพื่อรับเงินกู้พิเศษ', last: 86, digits: 7, updated: '2026-11-02T11:15' },
+  DPACCDOCNO14: { name: 'เงินฝากสำหรับหัก ฌปท / ฌาปนกิจ', last: 412, digits: 7, updated: '2026-10-31T16:30' },
+  DPACCDOCNO15: { name: 'บัญชีรับโอนจากระบบเงินกู้', last: 57, digits: 7, updated: '2026-11-04T09:40' },
+  DPACCDOCNO16: { name: 'บัญชีรับโอนจากตัวแทน', last: 0, digits: 7, updated: '2026-07-01T08:30' },
+};
+// รหัสคุมถัดไป — DPACCDOCNO + เลขต่อจากรหัสสูงสุดที่ใช้อยู่ (ใช้ตอนเพิ่มประเภทเงินฝากใหม่)
+window.depNextCounterCode = (list) => {
+  const used = [...Object.keys(window.depAccCounters ? window.depAccCounters() : window.DEP_ACC_COUNTERS),
+    ...(list || []).map(r => (r.settings && r.settings.docNo) || '')]
+    .map(c => /^DPACCDOCNO(\d+)$/.exec(String(c).toUpperCase())).filter(Boolean).map(m => Number(m[1]));
+  return 'DPACCDOCNO' + (used.length ? Math.max(...used) + 1 : 10);
 };
 window.DAT_SETTINGS_DEFAULTS = {
   // ข้อมูลหลัก
@@ -209,6 +219,8 @@ window.DAT_SETTINGS_DEFAULTS = {
   closeAfterN: 0, closeAfterUnit: 'day', closeIntRef: 'ตามอัตราถอนก่อนกำหนด',
   // สมุดหาย/ชำรุด
   lostBookPenaltyOn: false, lostBookFee: 100, lostBookGl: '',
+  // ค่าธรรมเนียมปิดบัญชี
+  closeFeeOn: false, closeFee: 0, closeFeeGl: '',
   // ถอนเกินจำนวนครั้ง
   overWdPenaltyOn: false, overWdBase: 'withdrawn', overWdPercent: 1, overWdMinFee: 200,
   overWdRangeCond: 9999999, overWdGl: '',
@@ -258,7 +270,7 @@ window.DAT_TABLE_DEFAULTS = () => ({
 
 // ─── override เฉพาะรหัส (ค่าที่โดดเด่น + ตารางตัวอย่าง) ───────────────
 const DAT_OVR = {
-  S01: {
+  '10': {
     settings: { depGroup: 'saving', personType: 'all', accGroupACC: 'DEP-SAV', accountOpenRule: 'many',
       intGiveOn: true, intGiveRef: 'fixed', intCalcMethod: 'day', compoundWhen: 'none',
       passbookProjectName: 'เงินฝากออมทรัพย์', docNo: 'DPACCDOCNO10' },
@@ -272,7 +284,7 @@ const DAT_OVR = {
       { balFrom: 0, balTo: 999999999, payDay: 31, payMonth: 12, calcToDay: 31 },
     ],
   },
-  S02: {
+  '11': {
     settings: { depGroup: 'special', accGroupACC: 'DEP-SAV', accountOpenRule: 'many',
       limitAccounts: true, maxAccounts: 3, wdCountLimit: true, wdCountMax: 1, wdCountWithin: 1, wdCountWithinUnit: 'month',
       overWdPenaltyOn: true, overWdBase: 'withdrawn', overWdPercent: 1, overWdMinFee: 200, overWdRangeCond: 9999999, overWdGl: '43010101',
@@ -289,7 +301,7 @@ const DAT_OVR = {
       { balFrom: 0, balTo: 999999999, payDay: 31, payMonth: 12, calcToDay: 31 },
     ],
   },
-  F12: {
+  '12': {
     settings: { depGroup: 'fixed', accGroupACC: 'DEP-FIX', accountOpenRule: 'many',
       hasTerm: true, depAgeRef: 'principal', fixedTerm: true, termMonths: 12,
       whtOn: true, taxRateMode: 'byterm', taxCalcMethod: 'full',
@@ -309,23 +321,23 @@ const DAT_OVR = {
       { ageLessThan: 12, unit: 'month', intCond: 'get',  rateMode: 'bytype', rateType: 'saving', rateTable: 'SAV', penalty: false, tax: true },
     ],
   },
-  L90: {
+  '13': {
     settings: { depGroup: 'internal', accGroupACC: 'DEP-INT', accountOpenRule: 'one',
       openCond: 'deny', limitAccounts: true, maxAccounts: 1, intGiveOn: true, intGiveRef: 'fixed',
-      passbookHold: 'nobook', passbookProjectName: 'เงินฝากเพื่อรับเงินกู้พิเศษ', docNo: '' },
+      passbookHold: 'nobook', passbookProjectName: 'เงินฝากเพื่อรับเงินกู้พิเศษ', docNo: 'DPACCDOCNO13' },
   },
-  W10: {
+  '14': {
     settings: { depGroup: 'internal', accGroupACC: 'DEP-INT', accountOpenRule: 'one',
       openCond: 'deny', limitAccounts: true, maxAccounts: 1, passbookHold: 'nobook',
-      passbookProjectName: 'เงินฝากสำหรับหัก ฌปท/ฌาปนกิจ', docNo: '' },
+      passbookProjectName: 'เงินฝากสำหรับหัก ฌปท/ฌาปนกิจ', docNo: 'DPACCDOCNO14' },
   },
-  T01: {
+  '15': {
     settings: { depGroup: 'internal', accGroupACC: 'DEP-INT', openCond: 'deny', intGiveOn: false,
-      passbookHold: 'nobook', passbookProjectName: 'บัญชีรับโอนจากระบบเงินกู้', docNo: '' },
+      passbookHold: 'nobook', passbookProjectName: 'บัญชีรับโอนจากระบบเงินกู้', docNo: 'DPACCDOCNO15' },
   },
-  T02: {
+  '16': {
     settings: { depGroup: 'internal', accGroupACC: 'DEP-INT', openCond: 'deny', intGiveOn: false,
-      passbookHold: 'nobook', passbookProjectName: 'บัญชีรับโอนจากตัวแทน', docNo: '' },
+      passbookHold: 'nobook', passbookProjectName: 'บัญชีรับโอนจากตัวแทน', docNo: 'DPACCDOCNO16' },
   },
 };
 

@@ -91,8 +91,83 @@ const DEP_PERIODIC = [
   { v: 'none',    l: 'ไม่ต้องการฝากรายเดือน' },
   { v: 'monthly', l: 'ฝากรายเดือน (ส่งทุกเดือน)' },
 ];
+// งวดเรียกเก็บ YYYYMM (พ.ศ.) — ใช้รูปแบบเดียวกับเมนูเปลี่ยนแปลงฝากรายเดือน
+const DEP_PER_TH = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+const depPerOf = (iso) => window.depPeriodOf ? window.depPeriodOf(iso) : (String(Number(String(iso).slice(0, 4)) + 543) + String(iso).slice(5, 7));
+const depPerAdd = (p, n) => { const y = Number(p.slice(0, 4)), m = Number(p.slice(4, 6)) - 1 + n; return String(y + Math.floor(m / 12)) + String((m % 12 + 12) % 12 + 1).padStart(2, '0'); };
+// ถึงงวด = เริ่มงวด + จำนวนงวดที่ประเภทกำหนด − 1 · ไม่กำหนดจำนวนงวด = 9999999 (หักตลอดไป)
+const depPerUntil = (from, count) => (Number(count) > 0 && /^\d{6}$/.test(String(from)) ? depPerAdd(String(from), Number(count) - 1) : '9999999');
+const depPerFmt = (p) => { const s = String(p || '').trim(); if (/^9{6,7}$/.test(s)) return 'ตลอดไป'; if (!/^\d{6}$/.test(s)) return s || '—'; const m = Number(s.slice(4)); return (DEP_PER_TH[m - 1] || s.slice(4)) + ' ' + s.slice(0, 4); };
 const DEP_CHEQUE_TYPES = ['CL', 'BC', 'DAF'];
-const DEP_TERM_MONTHS = { F12: 12, F24: 24 };
+const DEP_TERM_MONTHS = { '12': 12, F12: 12, F24: 24 };
+
+// ════ ค่าคงที่ที่หน้าเปิดบัญชีอ้างอิง ════
+// ประเภทเงินฝาก — อ่านจากเมนูประเภทเงินฝาก (datLoad) รวมค่าเดิมจาก seed
+const depOpenTypes = () => {
+  let recs = []; try { recs = window.datLoad ? window.datLoad() : []; } catch (e) {}
+  const seed = window.DEP_ACCTYPE_SEED || [];
+  const src = recs.length ? recs : seed.map(r => (window.datBuildRecord ? window.datBuildRecord(JSON.parse(JSON.stringify(r))) : r));
+  return src.filter(r => r && r.enabled !== false).map(r => {
+    const b = seed.find(x => x.code === r.code) || {};
+    return { ...b, ...r, cond: r.cond || b.cond || {}, interest: r.interest || b.interest || { rate: 0 },
+      withdraw: r.withdraw || b.withdraw || {}, passbook: r.passbook || b.passbook || {}, control: r.control || b.control || {},
+      st: { ...(window.DAT_SETTINGS_DEFAULTS || {}), ...(r.settings || {}) } };
+  });
+};
+// ประเภทบุคคลที่ใช้ได้ (แท็บข้อมูลหลัก)
+const depMemberKind = (m) => /สมทบ/.test(String((m && (m.type || m.memberType)) || '')) ? 'assoc' : 'regular';
+const depPersonOk = (pt, openerType, member) => {
+  if (!pt || pt === 'all') return true;
+  if (pt === 'juristic') return openerType === 'juristic';
+  if (pt === 'nonmember') return openerType === 'person';
+  if (openerType !== 'member') return false;
+  return !member || depMemberKind(member) === pt;
+};
+// ตัวนับเลขที่บัญชี (รหัสคุมเลขที่บัญชี) + รูปแบบเลขบัญชี (ข้อกำหนดระบบเงินฝาก)
+window.depAccCounters = () => { let o = {}; try { o = JSON.parse(localStorage.getItem('dep_acc_counters_v1') || '{}'); } catch (e) {} return { ...(window.DEP_ACC_COUNTERS || {}), ...o }; };
+window.depBumpAccCounter = (code, n) => {
+  try { const o = JSON.parse(localStorage.getItem('dep_acc_counters_v1') || '{}'); const base = window.depAccCounters()[code] || {};
+    o[code] = { ...base, last: n, updated: new Date().toISOString().slice(0, 16) }; localStorage.setItem('dep_acc_counters_v1', JSON.stringify(o)); } catch (e) {}
+};
+const depAccFmt = () => { let v = {}; try { v = JSON.parse(localStorage.getItem('dep_sysconfig') || '{}'); } catch (e) {}
+  // B = รหัสสาขา — ดึงจากค่าคงที่ระบบเงินฝาก › "สาขาสหกรณ์" (สำนักงานใหญ่ รหัส 0 ถ้ามี ไม่มีใช้รายการแรก)
+  //     เมื่อมีหลายสาขาในอนาคต ให้เปลี่ยนเป็นสาขาของผู้ใช้/เคาน์เตอร์ที่ทำรายการ
+  let br = '0';
+  try { const l = window.depConstList ? window.depConstList('coopbranch') : []; const hq = l.find(r => String(r.code).trim() === '0'); br = hq ? hq.code : (l.length ? l[0].code : '0'); } catch (e) { br = '0'; }
+  return { store: v.acctStoreFormat || 'BTTrrrrrrr', display: v.acctDisplayFormat || 'X-XX-XXXXXXX', branch: String(br == null || br === '' ? '0' : br).trim() }; };
+const depFmtAcc = (store, display, branch, tt, run) => {
+  const cnt = (c) => (store.match(new RegExp(c, 'g')) || []).length;
+  const fit = (v, n) => String(v).padStart(n, '0').slice(-n);
+  const seg = { B: fit(branch, cnt('B')), T: fit(tt, cnt('T')), r: fit(run, cnt('r')) }, ix = { B: 0, T: 0, r: 0 };
+  let out = ''; for (const ch of store) out += seg[ch] != null ? seg[ch][ix[ch]++] : ch;
+  let d = '', k = 0; for (const ch of display) d += ch === 'X' ? (out[k++] || '') : ch;
+  return { store: out, display: k < out.length ? d + out.slice(k) : d };
+};
+window.depNextAccNo = (rec, accounts) => {
+  const code = String((rec && rec.st && rec.st.docNo) || '').trim().toUpperCase();
+  const ctr = code ? window.depAccCounters()[code] : null;
+  if (!ctr) return null;
+  const f = depAccFmt(); let n = Number(ctr.last || 0) + 1, x;
+  // TT = รหัสประเภทเงินฝาก (เมนูประเภทเงินฝาก) · r = เลขลำดับจากรหัสคุมเลขที่บัญชีของประเภทนั้น
+  const tt = String((rec && rec.code) || '').trim() || code.slice(-2);
+  do { x = depFmtAcc(f.store, f.display, f.branch, tt, n); } while ((accounts || []).some(a => a.accNo === x.display) && ++n);
+  return { code, next: n, ...x };
+};
+// อัตราดอกเบี้ย — แท็บอัตรา Int./Div. → เมนูอัตราดอกเบี้ยเงินฝาก (ตามวันที่มีผล + ช่วงยอดเงิน)
+const depOpenRate = (rec, openerType, amt, date) => {
+  const mt = openerType === 'member' ? 'regular' : 'ext-person';
+  const tiers = (rec && rec.rateTiers) || [];
+  const t = tiers.find(x => x.memberType === mt) || tiers[0];
+  const tb = t && (window.depIntTables ? window.depIntTables() : []).find(x => x.code === t.rateTable);
+  if (tb && tb.enabled !== false) {
+    const rows = (tb.rows || []).filter(r => (!r.effectiveDate || r.effectiveDate <= date) && (!r.endDate || r.endDate >= date));
+    const hit = rows.find(r => amt >= Number(r.balFrom || 0) && amt <= Number(r.balTo || 99999999)) || (tb.rows || []).find(r => r.id === t.rateRow);
+    if (hit) return { rate: Number(hit.rate) || 0, src: tb.code };
+  }
+  return { rate: Number((rec && rec.interest && rec.interest.rate) || 0), src: '' };
+};
+// ธนาคาร — เมนูค่าคงที่ธนาคาร
+const depBanks = () => { const l = window.depBankLoad ? window.depBankLoad().filter(b => b.enabled !== false).map(b => b.name) : []; return l.length ? l : (window.DEP_BANKS || []); };
 
 function depAddMonths(iso, months) {
   if (!iso || !months) return '';
@@ -147,7 +222,8 @@ function DepOpenAccountPage({ onToast }) {
   const [openDate, setOpenDate] = useState(new Date().toISOString().slice(0, 10));
   const [typeCode, setTypeCode] = useState('');
   const [certNo, setCertNo] = useState('');
-  const autoCert = React.useMemo(() => String(32187 + Math.floor(Math.random() * 900)).padStart(10, '0'), []);
+  // เลขที่สมุด (ตัวอย่างเลขถัดไป) — ออกจริงตอนบันทึก
+  const autoCertFor = (tc, pj) => window.depBookPeek ? window.depBookPeek({ typeCode: tc, projectCode: pj }, openDate) : '';
   const [noBook, setNoBook] = useState(false);
   const [printer, setPrinter] = useState(DEP_PRINTERS[0]);
   const [printBook, setPrintBook] = useState(true);
@@ -169,7 +245,8 @@ function DepOpenAccountPage({ onToast }) {
   const [holderType, setHolderType] = useState(defHolder);
   const [withdrawCond, setWithdrawCond] = useState('');
   const openByOpts = useMemo(() => (window.depOpenByOpts ? window.depOpenByOpts() : DEP_OPENED_BY), []);
-  const pairRows = useMemo(() => (window.depTxnPairLoad ? window.depTxnPairLoad() : []), []);
+  // ประเภทคู่บัญชี — เฉพาะที่เปิดใช้งาน
+  const pairRows = useMemo(() => (window.depTxnPairLoad ? window.depTxnPairLoad() : []).filter(r => r.enabled !== false), []);
   const drFor = (ob) => { const seen = new Set(); return pairRows.filter(r => r.openBy === ob && !seen.has(r.code) && seen.add(r.code)); };
   const defOpenBy = openByOpts.includes('เปิดบัญชีใหม่ด้วยเงินสด') ? 'เปิดบัญชีใหม่ด้วยเงินสด' : openByOpts[0];
   const [openedBy, setOpenedBy] = useState('');
@@ -205,7 +282,9 @@ function DepOpenAccountPage({ onToast }) {
   const [slip, setSlip] = useState(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
-  const accTypes = (window.DEP_ACCTYPE_SEED || []).filter(t => t.enabled);
+  const allTypes = useMemo(depOpenTypes, []);
+  // เงื่อนไขเปิดบัญชี: “ไม่อนุญาต” ไม่แสดงในรายการ · “เฉพาะบางกรณี” ต้องส่งอนุมัติ
+  const accTypes = allTypes.filter(t => t.st.openCond !== 'deny');
   const accType = accTypes.find(t => t.code === typeCode);
   const [projRoundId, setProjRoundId] = useState('');
   // รอบโครงการที่เปิดรับสมัครอยู่และตรงกับประเภทเงินฝากที่เลือก
@@ -214,24 +293,44 @@ function DepOpenAccountPage({ onToast }) {
     [typeCode, openDate]);
   const proj = projOptions.find(o => o.round.id === projRoundId);
   const projRound = proj ? proj.round : null;
-  const needApprove = !!accType?.control?.needApprove;
+  // เปิดบัญชีไม่ต้องผ่านการอนุมัติ — บันทึกแล้วบัญชีใช้งานได้ทันที (ทุกประเภทที่อนุญาตให้เปิด)
+  const needApprove = false;
+  // ส่งฝากรายงวด — ค่าตั้งต้น "ไม่ต้องการฝากรายเดือน" ทุกประเภท · เจ้าหน้าที่เลือกเองได้
+  //  ล็อกเฉพาะประเภทฝากประจำที่ไม่ได้กำหนดให้ส่งรายงวด (ฝากครั้งเดียวตอนเปิด)
+  const typePeriodic = !!accType && (accType.st?.periodicSend === 'period' || accType.st?.periodicSend === true);
+  const periodicLocked = !!accType && !typePeriodic && !!(window.depIsFixedType && window.depIsFixedType(typeCode));
+  // งวดเรียกเก็บ — ระบบกำหนดให้ (ไม่ต้องกรอก): เริ่ม = งวดที่เปิดบัญชี · ถึง = ตามจำนวนงวดของประเภท (ไม่กำหนด = 9999999)
+  //  แก้ภายหลังที่เมนูเปลี่ยนแปลงฝากรายเดือน
+  const periodicFrom = depPerOf(openDate);
+  const periodicUntil = depPerUntil(periodicFrom, accType?.st?.periodicCount);
   const ownerCode = openerType === 'member' ? member?.code : extId;  const ownerReady = openerType === 'member' ? !!member : (!!extId.trim() && !!nameTh.trim());
   useEffect(() => { pickOpenedBy(ownerCode ? defOpenBy : ''); }, [ownerCode]);
-  const accNo = useMemo(() => ownerCode && typeCode ? window.depGenAccNo(typeCode, ownerCode, accounts) : '—', [ownerCode, typeCode, accounts]);
-  const termMonths = (projRound && Number(projRound.termMonths)) || DEP_TERM_MONTHS[typeCode] || 0;
+  // เลขที่บัญชี — จากรหัสคุมเลขที่บัญชี + รูปแบบเลขบัญชี (ถ้าประเภทนี้ไม่ได้กำหนดรหัสคุม ใช้วิธีเดิม)
+  const accNoInfo = useMemo(() => {
+    if (!ownerCode || !accType) return null;
+    const code = String(accType.st.docNo || '').trim().toUpperCase();
+    if (!code) return { accNo: window.depGenAccNo(typeCode, ownerCode, accounts), src: '' };
+    const n = window.depNextAccNo(accType, accounts);
+    if (!n) return { accNo: '—', src: code, err: 'ไม่พบรหัสคุมเลขที่บัญชี “' + code + '” — ติดต่อฝ่าย IT ก่อนเปิดบัญชีประเภทนี้' };
+    return { accNo: n.display, src: code, next: n.next };
+  }, [ownerCode, typeCode, accounts, accType]);
+  const accNo = accNoInfo ? accNoInfo.accNo : '—';
+  const stTerm = accType && (accType.st.fixedTerm || accType.st.hasTerm) ? Number(accType.st.termMonths) || 0 : 0;
+  const termMonths = (projRound && Number(projRound.termMonths)) || stTerm || DEP_TERM_MONTHS[typeCode] || 0;
   const maturityDate = termMonths ? depAddMonths(openDate, termMonths) : '';
 
-  const minOpen = (projRound && projRound.minOpen) ? Number(projRound.minOpen) : (accType?.cond?.minOpen || 0);
+  const minOpen = (projRound && projRound.minOpen) ? Number(projRound.minOpen) : Number(accType?.st?.minOpen ?? accType?.cond?.minOpen ?? 0);
   const inNum = Number(inAmt) || 0;
   const extNum = Number(extAmt) || 0;
   const chequeSum = cheques.reduce((s, c) => s + (Number(c.amount) || 0), 0);
   const totalNet = inNum + extNum + chequeSum;
+  const openRate = accType ? depOpenRate(accType, openerType, totalNet, openDate) : { rate: 0, src: '' };
 
   const [extTick, setExtTick] = useState(0);
   const [quickAdd, setQuickAdd] = useState(false);
   // ทะเบียนบุคคล/นิติบุคคลภายนอก (ใช้ค้นหาเลขทะเบียนในโหมดภายนอก)
   const extSource = useMemo(() => (window.depExtPersonsLoad ? window.depExtPersonsLoad() : [])
-    .filter(p => p.kind === (openerType === 'juristic' ? 'juristic' : 'person'))
+    .filter(p => p.kind === (openerType === 'juristic' ? 'juristic' : 'person') && (!p.status || p.status === 'ใช้งาน'))
     .map(p => ({ ...p, name: p.kind === 'juristic' ? (p.orgName || '') : [p.title, p.firstName, p.lastName].filter(Boolean).join(' ').replace(/^(นาย|นาง|นางสาว) /, '$1'),
                  citizenId: p.kind === 'juristic' ? (p.taxId || '') : (p.citizenId || '') })), [openerType, extTick]);
   const condOf = (name, phone) => [name, phone ? 'โทร ' + phone : ''].filter(Boolean).join(' · ');
@@ -260,9 +359,12 @@ function DepOpenAccountPage({ onToast }) {
   // เมื่อเลือกประเภทบัญชี → เติมค่าเริ่มต้นตามค่าคงที่ประเภทบัญชี
   useEffect(() => {
     if (!accType) return;
-    setNoBook(!accType.passbook?.useBook && !!accType.passbook?.noBook);
-    setInAmt(''); setExtAmt(String(accType.cond?.minOpen || ''));
+    const st = accType.st || {};
+    setNoBook(st.passbookHold ? st.passbookHold !== 'book' : (!accType.passbook?.useBook && !!accType.passbook?.noBook));
+    setInAmt(''); setExtAmt(String(Number(st.minOpen ?? accType.cond?.minOpen) || ''));
     setProjRoundId('');
+    setIntMethod(st.intReceiveMode || 'compound');
+    setPeriodicMode('none'); setPeriodicAmt('');
   }, [typeCode]);
 
   useEffect(() => {
@@ -272,22 +374,33 @@ function DepOpenAccountPage({ onToast }) {
   const errors = [];
   if (openerType === 'member' && member && !depMemberWork(member).ok) errors.push(`สมาชิกมีสถานะ “${depMemberWork(member).label}” — ต้องตรวจสอบสิทธิ์ก่อนเปิดบัญชี`);
   if (accType) {
-    const sameTypeCount = (openerType === 'member' && member) ? accounts.filter(a => a.member === member.code && a.typeCode === typeCode && a.status === 'active').length : 0;
-    if (accType.cond?.limitPerMember && sameTypeCount >= (accType.cond.maxPerMember || 0))
-      errors.push(`สมาชิกมีบัญชี “${accType.name}” ครบ ${accType.cond.maxPerMember} บัญชีแล้ว (จำกัดต่อสมาชิก)`);
+    const st = accType.st || {};
+    if (!depPersonOk(st.personType, openerType, member))
+      errors.push(`ประเภท “${accType.name}” เปิดได้เฉพาะ${window.datLabel ? window.datLabel('personType', st.personType) : st.personType} — ไม่ตรงกับเจ้าของบัญชีนี้`);
     if (totalNet < minOpen) errors.push(`ยอดเงินเปิดบัญชีต้องไม่น้อยกว่าขั้นต่ำ ${fmt.money(minOpen, 0)} บาท`);
+    if (st.maxBalanceOn && Number(st.maxBalance) > 0 && totalNet > Number(st.maxBalance))
+      errors.push(`ยอดเงินเปิดบัญชีเกินยอดคงเหลือสูงสุดของประเภทนี้ ${fmt.money(Number(st.maxBalance), 2)} บาท`);
+    if (accNoInfo && accNoInfo.err) errors.push(accNoInfo.err);
+    if (periodicMode !== 'none') {
+      const minDep = Number(st.minDeposit) || 0;
+      if (!(Number(periodicAmt) > 0)) errors.push('กรุณาระบุจำนวนส่งต่องวด');
+      else if (minDep > 0 && Number(periodicAmt) < minDep) errors.push(`จำนวนส่งต่องวดต้องไม่น้อยกว่าฝากขั้นต่ำของประเภทนี้ ${fmt.money(minDep, 2)} บาท`);
+    }
   }
   const cashOpen = /เงินสด/.test(openedBy || '');
   const ctBlocked = !(window.depCtCashReady && window.depCtCashReady());
   // จำนวนบัญชีที่เปิดได้ต่อสมาชิก — ตามค่าคงที่ประเภทเงินฝาก
+  // จำนวนบัญชีที่เปิดได้ (แท็บข้อมูลหลัก) + จำกัดจำนวนบัญชีต่อสมาชิก (แท็บข้อกำหนดและการปรับ)
   const limitMsg = (() => {
     if (!accType || !ownerReady) return '';
-    let rec = null; try { rec = (window.datLoad ? window.datLoad() : []).find(r => r.code === accType.code); } catch (e) {}
-    const st = (rec && rec.settings) || {};
-    if (!st.limitAccounts || !Number(st.maxAccounts)) return '';
+    const st = accType.st || {};
     const key = openerType === 'member' ? (member && member.code) : extId;
-    const have = (window.depTxnLoadAccounts ? window.depTxnLoadAccounts() : []).filter(a => a.typeCode === accType.code && a.status !== 'closed' && (a.member === key || a.memberCode === key)).length;
-    return have >= Number(st.maxAccounts) ? 'สมาชิกเปิดบัญชีประเภท “' + accType.name + '” ครบ ' + st.maxAccounts + ' บัญชีแล้ว — ไม่สามารถเปิดเพิ่มได้' : '';
+    const have = accounts.filter(a => a.typeCode === accType.code && a.status !== 'closed' && (a.member === key || a.memberCode === key)).length;
+    const max = (st.accountOpenRule === 'one' || st.accountOpenRule === 'reopen') ? 1 : (st.limitAccounts && Number(st.maxAccounts) ? Number(st.maxAccounts) : 0);
+    if (!max || have < max) return '';
+    return st.accountOpenRule === 'reopen'
+      ? 'มีบัญชีประเภท “' + accType.name + '” ที่ยังไม่ปิดอยู่แล้ว — เปิดใหม่ได้เมื่อปิดบัญชีเดิม'
+      : 'เจ้าของบัญชีมีบัญชีประเภท “' + accType.name + '” ครบ ' + max + ' บัญชีแล้ว — ไม่สามารถเปิดเพิ่มได้';
   })();
   const canSubmit = ownerReady && accType && errors.length === 0 && !ctBlocked && !limitMsg;
   const openerCfg = DEP_OPENER_TYPES.find(o => o.v === openerType) || DEP_OPENER_TYPES[0];
@@ -318,20 +431,31 @@ function DepOpenAccountPage({ onToast }) {
     if (limitMsg) { onToast && onToast(limitMsg); return; }
     if (!canSubmit) return;
     const openerLabel = DEP_OPENER_TYPES.find(o => o.v === openerType)?.l || '';
+    const bookNo = noBook ? '' : (certNo || (window.depBookIssue ? window.depBookIssue({ typeCode, projectCode: proj ? proj.project.code : '' }, openDate) : '') || '');
     const rec = {
       accNo, member: ownerCode, name: nameTh || member?.name, dept: member?.dept || '—', memberStatus: member ? depMemberWork(member).label : '—',
-      openerType, ownerKind: openerType, extId, typeCode, type: accType.name, openDate, rate: accType.interest.rate,
+      openerType, ownerKind: openerType, extId, typeCode, type: accType.name, openDate, rate: openRate.rate, rateTable: openRate.src, accCounter: accNoInfo ? accNoInfo.src : '', depGroup: accType.st.depGroup || '',
       balance: totalNet, status: needApprove ? 'pending' : 'active',
+      openedBy: OPEN_USER, openReqAt: new Date().toISOString(), openTerm: window.DEP_DAILY_TERMINAL || '',
       payrollLinked: false, bank: srcBank, bankAcc: srcAcc, bankLinkStatus: srcBank ? 'pending' : 'none',
       useLoan: !!accType.control?.loanDisburse, useFuneral: false,
-      freeQuota: accType.withdraw.freeCount, freeUsed: 0, ytdInterest: 0,
-      certNo: certNo || autoCert, contactPhone: phone, noBook, holderType, withdrawCond, withdrawCondText: withdrawCond, intMethod, joints, maturityDate,
+      freeQuota: accType.st.wdCountLimit ? Number(accType.st.wdCountMax) || 0 : (accType.withdraw.freeCount || 0), freeUsed: 0, ytdInterest: 0,
+      certNo: bookNo, bookHistory: bookNo ? [{ no: bookNo, issuedAt: openDate, reason: 'เปิดบัญชี', status: 'active', by: OPEN_USER }] : [], contactPhone: phone, noBook, holderType, withdrawCond, withdrawCondText: withdrawCond, intMethod, joints, maturityDate,
       projectCode: proj ? proj.project.code : '', projectName: proj ? proj.project.name : '',
       projectRoundId: projRound ? projRound.id : '', projectRoundName: projRound ? projRound.name : '',
       rateBonus: projRound ? Number(projRound.rateBonus) || 0 : 0,
+      ...(periodicMode !== 'none' && Number(periodicAmt) > 0 ? { monthlyDeposit: Number(periodicAmt), collectUntil: String(periodicUntil).trim(), payrollLinked: true } : {}),
     };
     const next = [rec, ...accounts];
     setAccounts(next); window.depTxnSaveAccounts(next);
+    // ฝากรายเดือน — บันทึกประวัติแถวแรก "ตั้งยอดตอนเปิดบัญชี" (เมนูเปลี่ยนแปลงฝากรายเดือน)
+    if (Number(rec.monthlyDeposit) > 0 && window.depMonthlyLoadHistory) {
+      window.depMonthlySaveHistory([{ id: 'OPEN-' + accNo, accNo, member: ownerCode, reqDate: openDate, date: openDate,
+        oldAmount: 0, newAmount: Number(rec.monthlyDeposit), collectUntil: rec.collectUntil,
+        by: window.depOpsUser ? window.depOpsUser() : OPEN_USER,
+        note: '', source: 'open', status: 'applied' }, ...window.depMonthlyLoadHistory()]);
+    }
+    if (accNoInfo && accNoInfo.src && accNoInfo.next) window.depBumpAccCounter(accNoInfo.src, accNoInfo.next);
 
     const ledger = window.depTxnLoadLedger();
     const txId = window.depTxnNextId();
@@ -348,7 +472,8 @@ function DepOpenAccountPage({ onToast }) {
     audit.log({ action: needApprove ? 'submit' : 'create', module: 'เงินฝาก — เปิดบัญชี',
       target: `${ownerCode} · ${nameTh || member?.name || ''}`,
       summary: needApprove ? `ส่งอนุมัติเปิดบัญชี ${accType.name} (${accNo})` : `เปิดบัญชี ${accType.name} (${accNo}) เงินเปิด ${fmt.money(totalNet, 2)} บาท`,
-      changes: [{ field: 'เลขที่บัญชี', before: '—', after: accNo }, { field: 'เงินเปิดบัญชี', before: '—', after: fmt.money(totalNet, 2) }] });
+      changes: [{ field: 'เลขที่บัญชี', before: '—', after: accNo }, { field: 'เงินเปิดบัญชี', before: '—', after: fmt.money(totalNet, 2) },
+        ...(Number(rec.monthlyDeposit) > 0 ? [{ field: 'ฝากรายเดือน', before: '—', after: fmt.money(rec.monthlyDeposit, 2) + ' บาท · ถึงงวด ' + rec.collectUntil }] : [])] });
 
     setSlip({
       title: needApprove ? 'คำขอเปิดบัญชีเงินฝาก (รออนุมัติ)' : 'หลักฐานการเปิดบัญชีเงินฝาก',
@@ -360,7 +485,7 @@ function DepOpenAccountPage({ onToast }) {
         ...(projRound ? [{ k: 'โครงการ', v: `${proj.project.name} — ${projRound.name}` }] : []),
         { k: 'เลขที่บัญชี', v: accNo, mono: true },
         ...(maturityDate ? [{ k: 'วันครบกำหนด', v: fmt.date(maturityDate), mono: true }] : []),
-        { k: 'อัตราดอกเบี้ย', v: accType.interest.rate.toFixed(2) + '%', mono: true },
+        { k: 'อัตราดอกเบี้ย', v: openRate.rate.toFixed(2) + '%', mono: true },
         { k: 'เงินโอนภายใน', v: fmt.money(inNum, 2) + ' บาท', mono: true },
         { k: 'เงินสด/โอนภายนอก', v: fmt.money(extNum + chequeSum, 2) + ' บาท', mono: true },
         { k: 'รวมสุทธิเปิดบัญชี', v: fmt.money(totalNet, 2) + ' บาท', mono: true, strong: true },
@@ -420,10 +545,10 @@ function DepOpenAccountPage({ onToast }) {
         <span className="spacer" />
         <div className="dep-open-toolbar" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
           {slip && <button className="btn sm" data-keep-top="" onClick={() => depPrintSlip(onToast)}><Icon name="print" /> พิมพ์เอกสาร</button>}
-          <button className="btn sm" data-keep-top="" disabled={!ownerReady || !accType} onClick={() => onToast && onToast('ส่งพิมพ์ปกสมุดแล้ว')}>
+          <button className="btn sm" data-keep-top="" disabled={!ownerReady || !accType || noBook} title={noBook ? 'เปิดบัญชีแบบไม่มีสมุด — ไม่มีการพิมพ์สมุด' : undefined} onClick={() => onToast && onToast('ส่งพิมพ์ปกสมุดแล้ว')}>
             <Icon name="print" /> พิมพ์ปกสมุด
           </button>
-          <button className="btn sm" data-keep-top="" disabled={!ownerReady || !accType} onClick={() => onToast && onToast('ส่งพิมพ์ BOOK แล้ว')}>
+          <button className="btn sm" data-keep-top="" disabled={!ownerReady || !accType || noBook} title={noBook ? 'เปิดบัญชีแบบไม่มีสมุด — ไม่มีการพิมพ์สมุด' : undefined} onClick={() => onToast && onToast('ส่งพิมพ์ BOOK แล้ว')}>
             <Icon name="print" /> พิมพ์ BOOK
           </button>
           <button className="btn primary sm" data-keep-top="" disabled={!canSubmit} onClick={() => setConfirmOpen(true)}>
@@ -481,7 +606,8 @@ function DepOpenAccountPage({ onToast }) {
             <div className="cfg-display-box mono strong">{accNo}</div>
           </DatFieldLite>
           <DatFieldLite label="เลขที่สมุด / Certificate (สร้างอัตโนมัติ)">
-            <div className="cfg-display-box mono">{autoCert}</div>
+            <div className="cfg-display-box mono">{noBook ? 'ไม่มีสมุด (No Book)'
+              : (() => { const n = typeCode ? autoCertFor(typeCode, proj ? proj.project.code : '') : ''; return n ? (window.depBookFmt ? window.depBookFmt(n) : n) : (typeCode ? 'ประเภทเงินฝากนี้กำหนดไม่มีสมุด' : '—'); })()}</div>
           </DatFieldLite>
         </div>
         {projRound && (
@@ -500,14 +626,21 @@ function DepOpenAccountPage({ onToast }) {
         )}
         {accType && (
           <div className="dep-inline-check">
-            <span className="muted" style={{ fontSize: 11.5 }}>อัตราดอกเบี้ย {accType.interest.rate.toFixed(2)}% · จ่าย {accType.interest.payCycle}{(() => { const r = window.depDormantRule ? window.depDormantRule(accType.code) : null; return r && r.on ? ' · ล็อกเมื่อไม่เคลื่อนไหวเกิน ' + r.years + ' ปี' : ''; })()}{limitMsg && <span style={{ color: 'var(--danger, #cf1322)', fontWeight: 600 }}> · {limitMsg}</span>}</span>
+            <span className="muted" style={{ fontSize: 11.5 }}>อัตราดอกเบี้ย {openRate.rate.toFixed(2)}%{openRate.src ? ' (' + openRate.src + ')' : ''}{accType.interest.payCycle ? ' · จ่าย ' + accType.interest.payCycle : ''}{limitMsg && <span style={{ color: 'var(--danger, #cf1322)', fontWeight: 600 }}> · {limitMsg}</span>}</span>
           </div>
         )}
       </div>
 
       {/* 2 · ข้อมูลเจ้าของบัญชี */}
       <div className="search-card dat-section">
-        <DepSecHead icon="user" title="ข้อมูลเจ้าของบัญชี" sub="เลือกประเภทผู้เปิดบัญชี แล้วระบุ/ค้นหาข้อมูลเจ้าของบัญชี" />
+        <DepSecHead icon="user" title="ข้อมูลเจ้าของบัญชี" sub="เลือกประเภทผู้เปิดบัญชี แล้วระบุ/ค้นหาข้อมูลเจ้าของบัญชี"
+          right={
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }} title={accType ? 'ค่าตั้งต้นตามประเภทเงินฝาก: ' + (accType.st.passbookHold === 'book' ? 'มีสมุด' : 'ไม่มีสมุด') : 'เลือกประเภทเงินฝากก่อน'}>
+              <span className="muted" style={{ fontSize: 12.5 }}>เปิดบัญชีแบบ</span>
+              <label className="dpc-check"><input type="checkbox" checked={!noBook} disabled={!accType} onChange={(e) => setNoBook(!e.target.checked)} /> มีสมุด</label>
+              <label className="dpc-check"><input type="checkbox" checked={noBook} disabled={!accType} onChange={(e) => setNoBook(e.target.checked)} /> ไม่มีสมุด</label>
+            </div>
+          } />
 
         {/* เลือกประเภทผู้เปิดบัญชี — สมาชิกสหกรณ์ / บุคคลภายนอก / นิติบุคคลภายนอก */}
         <div className="dep-opener-seg">
@@ -663,7 +796,7 @@ function DepOpenAccountPage({ onToast }) {
                 ? <div className="cfg-display-box">{srcBank || '— เลือกเลขที่บัญชีก่อน —'}</div>
                 : <select className="cfg-input" value={srcBank} onChange={(e) => setSrcBank(e.target.value)}>
                     <option value="">— เลือกธนาคาร —</option>
-                    {window.DEP_BANKS.map(b => <option key={b} value={b}>{b}</option>)}
+                    {depBanks().map(b => <option key={b} value={b}>{b}</option>)}
                   </select>}
             </DatFieldLite>
             <DatFieldLite label="สาขา">
@@ -677,10 +810,10 @@ function DepOpenAccountPage({ onToast }) {
                 : <input className="cfg-input" value={srcName} onChange={(e) => setSrcName(e.target.value)} placeholder="ชื่อบัญชี" />}
             </DatFieldLite>
             <DatFieldLite label="เงินโอนภายในเปิดบัญชี">
-              <input className="cfg-input mono num-input" type="number" value={inAmt} onChange={(e) => setInAmt(e.target.value)} placeholder="0.00" />
+              <input className="cfg-input mono num-input" ref={(el) => { if (el) el.__moneyFmt = true; }} type="number" value={inAmt} onChange={(e) => setInAmt(e.target.value)} placeholder="0.00" />
             </DatFieldLite>
             <DatFieldLite label="เงินสด / โอนภายนอกเปิดบัญชี">
-              <input className="cfg-input mono num-input" type="number" value={extAmt} onChange={(e) => setExtAmt(e.target.value)} placeholder="0.00" />
+              <input className="cfg-input mono num-input" ref={(el) => { if (el) el.__moneyFmt = true; }} type="number" value={extAmt} onChange={(e) => setExtAmt(e.target.value)} placeholder="0.00" />
             </DatFieldLite>
           </div>
           <div className="dep-recv-summary">
@@ -749,15 +882,15 @@ function DepOpenAccountPage({ onToast }) {
 
         {/* 5 · การส่งฝากรายงวด */}
         <div className="search-card dat-section">
-          <DepSecHead icon="calendar" title="การส่งฝากรายงวด" sub="สำหรับบัญชีที่ต้องฝากต่อเนื่องรายเดือน" />
-          <div className="dat-grid" style={{ gridTemplateColumns: '1fr' }}>
-            <DatFieldLite label="รูปแบบการส่งฝาก">
-              <select className="cfg-input" value={periodicMode} onChange={(e) => setPeriodicMode(e.target.value)}>
+          <DepSecHead icon="calendar" title="การส่งฝากรายงวด" sub={!accType ? 'เลือกประเภทเงินฝากก่อน' : periodicLocked ? 'ประเภทนี้ไม่มีการฝากรายเดือน' : 'ยอดเงินฝากที่หักผ่านเงินเดือนทุกเดือน'} />
+          <div className="dat-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
+            <DatFieldLite label="รูปแบบการส่งฝาก" span={2}>
+              <select className="cfg-input" value={periodicMode} disabled={!accType || periodicLocked} onChange={(e) => setPeriodicMode(e.target.value)}>
                 {DEP_PERIODIC.map(o => <option key={o.v} value={o.v}>{o.l}</option>)}
               </select>
             </DatFieldLite>
-            <DatFieldLite label="จำนวนส่งรายงวด (บาท)">
-              <input className="cfg-input mono num-input" type="number" value={periodicAmt} disabled={periodicMode === 'none'}
+            <DatFieldLite label="จำนวนส่งต่องวด (บาท)" required={periodicMode !== 'none'} span={2}>
+              <input className="cfg-input mono num-input" ref={(el) => { if (el) el.__moneyFmt = true; }} type="number" value={periodicAmt} disabled={periodicMode === 'none'}
                      onChange={(e) => setPeriodicAmt(e.target.value)} placeholder="0.00" />
             </DatFieldLite>
           </div>
@@ -777,7 +910,7 @@ function DepOpenAccountPage({ onToast }) {
                 <th style={{ minWidth: 150 }}>ธนาคาร</th>
                 <th style={{ minWidth: 120 }}>สาขา</th>
                 <th style={{ width: 78 }}>ประเภท</th>
-                <th className="center" style={{ width: 66 }}>Float</th>
+                <th className="center" style={{ width: 96 }}>วันรอเรียกเก็บ</th>
                 <th className="right" style={{ width: 120 }}>จำนวนเงิน</th>
                 <th className="center" style={{ width: 56 }}>Late</th>
                 <th style={{ width: 40 }} />
@@ -793,7 +926,7 @@ function DepOpenAccountPage({ onToast }) {
                   <td>
                     <select className="vch-cell-input" value={c.bank} onChange={(e) => setCheque(i, { bank: e.target.value })}>
                       <option value="">— เลือกธนาคาร —</option>
-                      {window.DEP_BANKS.map(b => <option key={b} value={b}>{b}</option>)}
+                      {depBanks().map(b => <option key={b} value={b}>{b}</option>)}
                     </select>
                   </td>
                   <td><input className="vch-cell-input" value={c.branch} onChange={(e) => setCheque(i, { branch: e.target.value })} placeholder="สาขา" /></td>
@@ -802,7 +935,7 @@ function DepOpenAccountPage({ onToast }) {
                       {DEP_CHEQUE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                     </select>
                   </td>
-                  <td><input className="vch-cell-input num" type="number" value={c.float} onChange={(e) => setCheque(i, { float: e.target.value })} /></td>
+                  <td><input className="vch-cell-input num" type="number" min="0" value={c.float} title="จำนวนวันรอเรียกเก็บ" onChange={(e) => setCheque(i, { float: e.target.value })} /></td>
                   <td><input className="vch-cell-input num" type="number" value={c.amount} onChange={(e) => setCheque(i, { amount: e.target.value })} placeholder="0.00" /></td>
                   <td className="center"><input type="checkbox" checked={!!c.late} onChange={(e) => setCheque(i, { late: e.target.checked })} style={{ width: 15, height: 15, accentColor: 'var(--primary)' }} /></td>
                   <td className="center"><button className="btn sm ex-row-btn del" title="ลบแถว" onClick={() => delCheque(i)}><Icon name="trash" size={13} /></button></td>
@@ -839,10 +972,9 @@ function DepOpenAccountPage({ onToast }) {
         <window.ExtPersonModal mode="add" lockKind draft0={{ kind: openerType === 'juristic' ? 'juristic' : 'person' }}
           existing={window.depExtPersonsLoad ? window.depExtPersonsLoad() : []} onClose={() => setQuickAdd(false)}
           onSubmit={(vals) => {
-            const list = window.depExtPersonsLoad ? window.depExtPersonsLoad() : [];
-            const code = window.depExtPersonNextCode(list, vals.kind);
-            const rec = { id: 'EX-' + Date.now(), code, ...vals };
-            window.depExtPersonsSave([rec, ...list]);
+            // บันทึกผ่านขั้นตอนเดียวกับเมนูเพิ่มแก้ไขบุคคลภายนอก (รหัส · สถานะ · ผู้สร้าง · Audit Log)
+            const { rec } = window.depExtPersonAdd(vals, { source: 'open', audit });
+            const code = rec.code;
             setQuickAdd(false); setExtTick(t => t + 1);
             if ((rec.kind === 'juristic') !== (openerType === 'juristic')) {
               onToast && onToast('เพิ่ม ' + code + ' · ' + window.depExtPersonName(rec) + ' แล้ว — ประเภทไม่ตรงกับแท็บที่เลือก จึงยังไม่เลือกให้');

@@ -15,11 +15,11 @@ const dpjThYear = (iso) => Number(String(iso || '').slice(0, 4)) + 543;
 
 const DPJ_SEED = [
   {
-    id: 'DPJ-01', code: 'PJ01', typeCode: 'S02', groupCode: 'DEP', name: 'ออมทรัพย์ทวีทรัพย์', enabled: true, createdDate: '2021-01-04',
+    id: 'DPJ-01', code: 'PJ01', typeCode: '11', groupCode: 'DEP', name: 'ออมทรัพย์ทวีทรัพย์', enabled: true, createdDate: '2021-01-04',
     note: 'โครงการออมทรัพย์รายปี เปิดรับสมัครต้นปีและกลางปี',
     rounds: [
       { id: 'PJR-0101', year: 2569, name: 'ทวีทรัพย์ ปี 2569', quotaMax: 500, joined: 128, enabled: true,
-        accTypes: ['S02'], minOpen: 5000, rateBonus: 0.25, termMonths: 12,
+        accTypes: ['11'], minOpen: 5000, rateBonus: 0.25, termMonths: 12,
         periods: [
           { id: 'PP-1', from: '2026-01-05', to: '2026-02-28', note: 'รอบต้นปี' },
           { id: 'PP-2', from: '2026-07-01', to: '2026-08-31', note: 'รอบกลางปี' },
@@ -27,18 +27,18 @@ const DPJ_SEED = [
         history: [{ ts: '2026-01-04T09:15:00', user: 'ประภาส ทองสุข', action: 'create',
           summary: 'สร้างรอบโครงการ “ทวีทรัพย์ ปี 2569”', changes: [] }] },
       { id: 'PJR-0102', year: 2568, name: 'ทวีทรัพย์ ปี 2568', quotaMax: 400, joined: 400, enabled: false,
-        accTypes: ['S02'], minOpen: 5000, rateBonus: 0.20, termMonths: 12,
+        accTypes: ['11'], minOpen: 5000, rateBonus: 0.20, termMonths: 12,
         periods: [{ id: 'PP-3', from: '2025-01-06', to: '2025-02-28', note: 'รอบเดียว' }],
         history: [{ ts: '2025-01-05T10:00:00', user: 'ประภาส ทองสุข', action: 'create',
           summary: 'สร้างรอบโครงการ “ทวีทรัพย์ ปี 2568”', changes: [] }] },
     ],
   },
   {
-    id: 'DPJ-02', code: 'PJ02', typeCode: 'F12', groupCode: 'OPN', name: 'ฝากประจำปันผลพิเศษ', enabled: true, createdDate: '2023-05-02',
+    id: 'DPJ-02', code: 'PJ02', typeCode: '12', groupCode: 'OPN', name: 'ฝากประจำปันผลพิเศษ', enabled: true, createdDate: '2023-05-02',
     note: 'ฝากประจำ 12 เดือน อัตราพิเศษเฉพาะช่วงรับสมัคร',
     rounds: [
       { id: 'PJR-0201', year: 2569, name: 'ปันผลพิเศษ ปี 2569', quotaMax: 250, joined: 61, enabled: true,
-        accTypes: ['F12'], minOpen: 100000, rateBonus: 0.50, termMonths: 12,
+        accTypes: ['12'], minOpen: 100000, rateBonus: 0.50, termMonths: 12,
         periods: [{ id: 'PP-4', from: '2026-09-01', to: '2026-10-31', note: 'ไตรมาส 4' }],
         history: [{ ts: '2026-08-20T14:05:00', user: DPJ_USER, action: 'create',
           summary: 'สร้างรอบโครงการ “ปันผลพิเศษ ปี 2569”', changes: [] }] },
@@ -92,7 +92,8 @@ function dpjProjectsUsing(typeCode) {
 const dpjAccTypes = () => (window.DEP_ACCTYPE_SEED || []).filter(t => t.enabled);
 // กลุ่มประเภทเงินฝาก (ค่าคงที่) — ใช้เป็นตัวเลือกประเภทเงินฝากของโครงการ
 const dpjDepGroups = () => {
-  try { const s = localStorage.getItem('dep_const_depgroup_v2'); if (s) return JSON.parse(s).filter(g => g.enabled !== false).map(g => ({ code: g.code, name: g.name })); } catch (e) {}
+  // อ่านจากเมนูรหัสกลุ่มรายการ (ที่เก็บปัจจุบัน) — เฉพาะที่เปิดใช้งาน
+  try { if (window.depConstList) { const l = window.depConstList('depgroup').map(g => ({ code: g.code, name: g.name })); if (l.length) return l; } } catch (e) {}
   return [
     { code: 'DEP', name: 'ฝากเงิน' }, { code: 'WID', name: 'ถอนเงิน' }, { code: 'OPN', name: 'เปิดบัญชี' },
     { code: 'CLS', name: 'ปิดบัญชี' }, { code: 'INT', name: 'ดอกเบี้ย' }, { code: 'FEE', name: 'ค่าธรรมเนียม' }, { code: 'ADJ', name: 'รายการปรับปรุง' },
@@ -410,7 +411,7 @@ function DepProjectConfigPage({ onToast }) {
   const toggleProject = (p) => window.depConfirmOff(p.enabled, p.code + ' · ' + p.name, () => {
     persist(list.map(x => x.id === p.id ? { ...x, enabled: !x.enabled } : x));
     onToast && onToast((p.enabled ? 'ปิด' : 'เปิด') + `ใช้งานโครงการ “${p.name}” แล้ว`);
-  }, 'โครงการนี้จะไม่แสดงให้เลือกตอนเปิดบัญชีเงินฝาก', 'ปิดการใช้งานโครงการ');
+  }, 'โครงการนี้จะไม่แสดงให้เลือกตอนเปิดบัญชีเงินฝาก', 'ปิดการใช้งานโครงการ', { effectOn: 'รอบที่เปิดใช้งานจะแสดงให้เลือกตอนเปิดบัญชีเงินฝาก' });
 
   const saveRound = (f) => {
     const project = roundModal.project;
@@ -546,10 +547,7 @@ function DepProjectConfigPage({ onToast }) {
                       </td>
                       <td className="center"><span className={'pill ' + st.pill}>{st.label}</span></td>
                       <td className="center">
-                        <button className={'lt-switch' + (r.enabled ? ' on' : '')} role="switch" aria-checked={r.enabled}
-                                aria-label={r.enabled ? 'ปิดใช้งาน' : 'เปิดใช้งาน'} onClick={() => toggleRound(cur, r)}>
-                          <span className="lt-switch-knob" />
-                        </button>
+                        <window.ConstSwitch on={r.enabled} onClick={() => toggleRound(cur, r)} />
                       </td>
                       <td className="center">
                         <div style={{ display: 'inline-flex', gap: 6 }}>
@@ -645,10 +643,7 @@ function DepProjectConfigPage({ onToast }) {
                     <td>{latest ? <span>{latest.name} <span className="muted mono">· {latest.year}</span></span> : <span className="muted">— ยังไม่มีรอบ —</span>}</td>
                     <td className="center">{st ? <span className={'pill ' + st.pill}>{st.label}</span> : <span className="muted">—</span>}</td>
                     <td className="center" onClick={(e) => e.stopPropagation()}>
-                      <button className={'lt-switch' + (p.enabled ? ' on' : '')} role="switch" aria-checked={p.enabled}
-                              aria-label={p.enabled ? 'ปิดใช้งาน' : 'เปิดใช้งาน'} onClick={() => toggleProject(p)}>
-                        <span className="lt-switch-knob" />
-                      </button>
+                      <window.ConstSwitch on={p.enabled} onClick={() => toggleProject(p)} />
                     </td>
                     <td className="center" onClick={(e) => e.stopPropagation()}>
                       <button className="btn sm dat-view-btn" title="ดูรอบโครงการ"

@@ -8,6 +8,29 @@
 
 const FRZ_USER2 = 'จันทร์เพ็ญ มาลี';
 const FRZ_MACHINE2 = 'CNT-01';
+// ผู้ทำรายการ / เครื่อง / วันทำการ — ใช้ค่าเดียวกับหน้าทำรายการอื่น
+const frzUser = () => window.DEP_OPS_USER || FRZ_USER2;
+const frzTerm = () => window.DEP_DAILY_TERMINAL || FRZ_MACHINE2;
+const frzToday = () => (window.dpcToday ? window.dpcToday() : new Date().toISOString().slice(0, 10));
+// เลขที่คำขอ FRZ-ปี-ลำดับ — รันต่อเนื่อง ไม่ซ้ำแม้มีการยกเลิกอายัด
+function frzNextSeq(by, maps) {
+  let seq = {};
+  try { seq = JSON.parse(localStorage.getItem('dep_frz_seq') || '{}'); } catch (e) {}
+  let n = Number(seq[by]) || 0;
+  const pre = 'FRZ-' + by + '-';
+  maps.forEach(m => Object.values(m || {}).forEach(e => {
+    [e, e && e.prev, e && e.releasePending].forEach(x => {
+      if (x && String(x.reqNo || '').startsWith(pre)) n = Math.max(n, Number(String(x.reqNo).slice(pre.length)) || 0);
+    });
+  }));
+  return n + 1;
+}
+function frzSaveSeq(by, n) {
+  let seq = {};
+  try { seq = JSON.parse(localStorage.getItem('dep_frz_seq') || '{}'); } catch (e) {}
+  seq[by] = Math.max(Number(seq[by]) || 0, n);
+  try { localStorage.setItem('dep_frz_seq', JSON.stringify(seq)); } catch (e) {}
+}
 
 const FRZ_DEP_TYPES = [
   { code: '1', label: 'อายัดจำนวนเงิน',       pill: 'bad'  },
@@ -94,7 +117,7 @@ function DepFreezePage({ onToast }) {
 
   const [action, setAction] = useState('freeze');      // freeze | release
   const [scope, setScope] = useState('deposit');       // deposit | atm | both
-  const [txnDate] = useState(new Date().toISOString().slice(0, 10));
+  const [txnDate] = useState(frzToday);
   const [reasonList] = useState(() => (window.depFreezeReasonLoad ? window.depFreezeReasonLoad() : []));
   const [reasonCode, setReasonCode] = useState('');
   const [reasonOther, setReasonOther] = useState('');
@@ -110,8 +133,14 @@ function DepFreezePage({ onToast }) {
   const curDep = cur ? depFrz[cur.accNo] : null;
   const curAtm = cur ? atmFrz[cur.accNo] : null;
   const balance = cur ? cur.balance : 0;
-  const frozenNow = curDep && curDep.amount ? Number(curDep.amount) : (curDep ? balance : 0);
-  const withdrawable = cur ? Math.max(0, (cur.withdrawable != null ? Number(cur.withdrawable) : balance) - frozenNow) : 0;
+  // ยอดถอนได้ — หักคงเหลือขั้นต่ำตามประเภทเงินฝาก และวงเงินที่อายัด (ตามกฎเดียวกับหน้าฝาก/ถอน)
+  const minBal = useMemo(() => {
+    if (!cur || !window.dpcRules) return 0;
+    try { return Number(window.dpcRules(cur, { type: 'withdraw', date: txnDate, amt: 0, moves: [] }).minBal) || 0; } catch (e) { return 0; }
+  }, [cur && cur.accNo, txnDate]);
+  const effFrz = cur && window.dpcFreezeOf ? window.dpcFreezeOf(cur.accNo) : null;
+  const effRule = window.dpcFreezeRule ? window.dpcFreezeRule(effFrz, balance) : { out: false, amt: 0 };
+  const withdrawable = cur ? (effRule.out ? 0 : Math.max(0, balance - minBal - effRule.amt)) : 0;
   const bookBal = cur ? (cur.bookBalance != null ? Number(cur.bookBalance) : cur.passbookBalance != null ? Number(cur.passbookBalance) : balance) : 0;
   const amtNum = Number(amount) || 0;
   const wantDep = scope === 'deposit' || scope === 'both';
@@ -119,7 +148,7 @@ function DepFreezePage({ onToast }) {
   const reasonRow = reasonList.find(r => r.code === reasonCode);
   const isOther = reasonCode === FRZ_OTHER || (reasonRow && /อื่น/.test(reasonRow.name || ''));
   const reason = isOther ? reasonOther : (reasonRow ? reasonRow.name : '');
-  const reasonHasOther = reasonList.some(r => /อื่น/.test(r.name || ''));
+  const reasonHasOther = reasonList.some(r => r.enabled !== false && /อื่น/.test(r.name || ''));
   const depAmtType = depType === '1';
   const atmCard = cur ? (cur.atmCard || '5061-XX' + String(cur.accNo).replace(/\D/g, '').slice(-4)) : '';
 
@@ -128,10 +157,9 @@ function DepFreezePage({ onToast }) {
     setAmtMode('full'); setAmount(''); setReasonCode(''); setReasonOther(''); setApprover(''); setSlip(null);
   };
 
-  const reqNo = useMemo(() => {
-    const n = Object.keys(depFrz).length + Object.keys(atmFrz).length + 1;
-    return 'FRZ-2569-' + String(n).padStart(4, '0');
-  }, [depFrz, atmFrz]);
+  const reqBy = Number(String(txnDate).slice(0, 4)) + 543;
+  const reqSeq = useMemo(() => frzNextSeq(reqBy, [depFrz, atmFrz]), [depFrz, atmFrz, reqBy]);
+  const reqNo = 'FRZ-' + reqBy + '-' + String(reqSeq).padStart(4, '0');
 
   const amountValid = amtMode === 'full' || (amtNum > 0 && amtNum <= balance);
   const canSubmit = !!cur && reason.trim() && (
@@ -149,18 +177,24 @@ function DepFreezePage({ onToast }) {
     const at = frzAtmType(atmType);
     const frozenAmt = amtMode === 'partial' ? amtNum : 0;
 
+    // ส่งเข้าเมนูอนุมัติทำรายการ — ยกเลิกอายัดมีผลเมื่ออนุมัติ · อายัดใหม่เก็บสถานะเดิม (prev) ไว้คืนเมื่อไม่อนุมัติ
+    const reqAt = new Date().toISOString();
+    const reqTerm = frzTerm();
+    frzSaveSeq(reqBy, reqSeq);
     if (action === 'release') {
-      if (wantDep) delete nextDep[cur.accNo];
-      if (wantAtm) delete nextAtm[cur.accNo];
+      const rel = { reqNo, reason: reason.trim(), date: txnDate, at: reqAt, by: frzUser(), term: reqTerm };
+      if (wantDep && nextDep[cur.accNo]) nextDep[cur.accNo] = { ...nextDep[cur.accNo], releasePending: rel };
+      if (wantAtm && nextAtm[cur.accNo]) nextAtm[cur.accNo] = { ...nextAtm[cur.accNo], releasePending: rel };
     } else {
       if (wantDep) nextDep[cur.accNo] = {
         type: depType, label: dt.label, reason: reason.trim(), mode: amtMode,
-        amount: frozenAmt, date: txnDate, by: FRZ_USER2,
-        approveStatus: 'pending', approver: approver.trim(), reqNo,
+        amount: frozenAmt, date: txnDate, at: reqAt, by: frzUser(), term: reqTerm,
+        approveStatus: 'pending', reqNo, prev: curDep || null,
       };
       if (wantAtm) nextAtm[cur.accNo] = {
         type: atmType, label: at.label, reason: reason.trim(), mode: amtMode,
-        amount: frozenAmt, date: txnDate, by: FRZ_USER2, reqId: reqNo,
+        amount: frozenAmt, date: txnDate, at: reqAt, by: frzUser(), term: reqTerm, reqId: reqNo, reqNo,
+        approveStatus: 'pending', prev: curAtm || null,
       };
     }
     setDepFrz(nextDep); frzSaveMap('dep_freezes', nextDep);
@@ -196,11 +230,12 @@ function DepFreezePage({ onToast }) {
         { k: 'รูปแบบวงเงิน', v: action === 'release' ? '—' : (amtMode === 'partial' ? 'อายัดเฉพาะวงเงินที่ระบุ' : 'อายัดทั้งบัญชี') },
         ...(action === 'freeze' && amtMode === 'partial' ? [
           { k: 'วงเงินที่อายัด', v: fmt.money(amtNum, 2) + ' บาท', mono: true, strong: true },
-          { k: 'ยอดถอนได้คงเหลือ', v: fmt.money(Math.max(0, balance - amtNum), 2) + ' บาท', mono: true },
+          { k: 'ยอดถอนได้คงเหลือ', v: fmt.money(Math.max(0, balance - minBal - amtNum), 2) + ' บาท', mono: true },
         ] : []),
         { k: 'เหตุผล', v: reason.trim() },
         { k: 'สถานะอนุมัติ', v: 'รออนุมัติ' },
-        { k: 'ผู้อนุมัติ', v: approver.trim() || '—' },
+        { k: 'ผู้ทำรายการ', v: frzUser() + ' · เครื่อง ' + frzTerm() },
+        { k: 'ผู้อนุมัติ', v: 'อนุมัติที่เมนูอนุมัติทำรายการ' },
       ],
       foot: action === 'release'
         ? 'คำขอยกเลิกการอายัด — รอผู้มีอำนาจอนุมัติก่อนมีผลบังคับ'
@@ -266,7 +301,7 @@ function DepFreezePage({ onToast }) {
                   : { background: 'var(--success-50)', borderColor: 'color-mix(in srgb, var(--success) 28%, transparent)', color: 'var(--success)' }}>
                   <Icon name={curDep ? 'lock' : 'check'} size={14} />
                   <span>บัญชีเงินฝาก: {curDep
-                    ? <>ถูกอายัดอยู่ — <b>{curDep.label}</b>{curDep.amount ? ` (วงเงิน ${fmt.money(curDep.amount, 2)} บาท)` : ''} · เหตุผล: {curDep.reason} · เมื่อ {fmt.date(curDep.date)}</>
+                    ? <>ถูกอายัดอยู่ — <b>{curDep.label}</b>{curDep.amount ? ` (วงเงิน ${fmt.money(curDep.amount, 2)} บาท)` : ''} · เหตุผล: {curDep.reason} · เมื่อ {fmt.date(curDep.date)}{curDep.releasePending ? ' · รออนุมัติยกเลิกอายัด' : curDep.approveStatus === 'pending' ? ' · รออนุมัติ' : ''}</>
                     : <>สถานะ<b>ปกติ</b> — ไม่มีการอายัด</>}</span>
                 </div>}
                 {curAtm && <div className="dat-warn" style={curAtm
@@ -274,7 +309,7 @@ function DepFreezePage({ onToast }) {
                   : { background: 'var(--success-50)', borderColor: 'color-mix(in srgb, var(--success) 28%, transparent)', color: 'var(--success)' }}>
                   <Icon name={curAtm ? 'lock' : 'check'} size={14} />
                   <span>บัญชีเงินฝาก ATM: {curAtm
-                    ? <>ถูกอายัดอยู่ — <b>{curAtm.label}</b>{curAtm.amount ? ` (วงเงิน ${fmt.money(curAtm.amount, 2)} บาท)` : ''} · เมื่อ {fmt.date(curAtm.date)}</>
+                    ? <>ถูกอายัดอยู่ — <b>{curAtm.label}</b>{curAtm.amount ? ` (วงเงิน ${fmt.money(curAtm.amount, 2)} บาท)` : ''} · เมื่อ {fmt.date(curAtm.date)}{curAtm.releasePending ? ' · รออนุมัติยกเลิกอายัด' : curAtm.approveStatus === 'pending' ? ' · รออนุมัติ' : ''}</>
                     : <>สถานะ<b>ปกติ</b> — ทำรายการผ่านบัตรได้</>}</span>
                 </div>}
               </div>
@@ -286,13 +321,13 @@ function DepFreezePage({ onToast }) {
             <DepSecHead icon="user" title="รายละเอียดผู้ทำรายการ" sub="เจ้าหน้าที่ เครื่อง และวันที่ทำรายการ" />
             <div className="dat-grid g3">
               <DatFieldLite label="ผู้ทำรายการ">
-                <input className="cfg-input" value={FRZ_USER2} readOnly style={{ background: 'var(--surface-2, #f5f5f5)' }} />
+                <input className="cfg-input" value={frzUser()} readOnly style={{ background: 'var(--surface-2, #f5f5f5)' }} />
               </DatFieldLite>
               <DatFieldLite label="วันทำรายการ">
                 <input className="cfg-input mono" value={frzDmy(txnDate)} readOnly disabled style={{ background: 'var(--surface-2, #f5f5f5)', cursor: 'not-allowed' }} />
               </DatFieldLite>
               <DatFieldLite label="เครื่องที่ทำรายการ">
-                <input className="cfg-input mono" value={FRZ_MACHINE2} readOnly style={{ background: 'var(--surface-2, #f5f5f5)' }} />
+                <input className="cfg-input mono" value={frzTerm()} readOnly style={{ background: 'var(--surface-2, #f5f5f5)' }} />
               </DatFieldLite>
             </div>
           </div>
@@ -348,14 +383,14 @@ function DepFreezePage({ onToast }) {
               )}
               {action === 'freeze' && amtMode === 'partial' && !(wantDep && depAmtType) && (
                 <DatFieldLite label="ยอดถอนได้คงเหลือ">
-                  <FrzBox value={cur ? fmt.money(Math.max(0, balance - amtNum), 2) : ''} mono />
+                  <FrzBox value={cur ? fmt.money(Math.max(0, balance - minBal - amtNum), 2) : ''} mono />
                 </DatFieldLite>
               )}
 
               <DatFieldLite label={action === 'release' ? 'เหตุผลการยกเลิกอายัด' : 'เหตุผลการอายัด'} required>
                 <select className="cfg-input" value={reasonCode} disabled={!cur} onChange={(e) => { setReasonCode(e.target.value); setReasonOther(''); }}>
                   <option value="">— เลือกเหตุผล —</option>
-                  {reasonList.map(r => <option key={r.id || r.code} value={r.code}>{r.code}-{r.name}</option>)}
+                  {reasonList.filter(r => r.enabled !== false || r.code === reasonCode).map(r => <option key={r.id || r.code} value={r.code}>{r.code}-{r.name}{r.enabled === false ? ' (ปิดใช้งาน)' : ''}</option>)}
                   {!reasonHasOther && <option value={FRZ_OTHER}>อื่นๆ</option>}
                 </select>
               </DatFieldLite>
@@ -407,7 +442,8 @@ function DepFreezePage({ onToast }) {
                 <span className="pill warn">รออนุมัติ</span>
               </div>
               <DatFieldLite label="ผู้อนุมัติ">
-                <input className="cfg-input" value={approver} disabled={!cur} onChange={(e) => setApprover(e.target.value)} placeholder="ชื่อผู้มีอำนาจอนุมัติ" />
+                <FrzBox value={!cur ? '' : curDep && curDep.apvBy && !curDep.releasePending && curDep.approveStatus !== 'pending'
+                  ? curDep.apvBy + ' (อายัดปัจจุบัน)' : 'อนุมัติที่เมนูอนุมัติทำรายการ'} />
               </DatFieldLite>
             </div>
           </div>

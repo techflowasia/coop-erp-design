@@ -10,7 +10,7 @@ window.DEP_OPS_USER = 'จันทร์เพ็ญ มาลี';
 // ─── ดอกเบี้ย: ตัวช่วยคำนวณ ──────────────────────────────────────────
 window.depDaysBetween = (a, b) => Math.max(0, Math.round((new Date(b) - new Date(a)) / 86400000));
 // อัตราภาษีหัก ณ ที่จ่าย: ฝากประจำ 15% · อื่น ๆ 0%
-window.depTaxRate = (typeCode) => (typeCode === 'F12' || typeCode === 'F24') ? 0.15 : 0;
+window.depTaxRate = (typeCode) => { const c = window.depTypeCodeNorm ? window.depTypeCodeNorm(typeCode) : typeCode; return (c === '12' || c === 'F24') ? 0.15 : 0; };
 // คำนวณดอกเบี้ยค้างของบัญชี ณ วันที่ asOf (ตั้งแต่ lastIntDate)
 window.depAccrued = function (acc, asOf) {
   const from = acc.lastIntDate || '2025-12-31';

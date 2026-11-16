@@ -571,13 +571,14 @@ function DepIntRateTablePage({ onToast }) {
                   <td className="center mono">{(t.rows || []).length}</td>
                   <td className="right mono"><b>{ditRange(t)}</b></td>
                   <td className="center mono">{ditLatest(t) ? fmt.date(ditLatest(t)) : '—'}</td>
-                  <td className="center">{t.enabled ? <span className="chip success">เปิดใช้งาน</span> : <span className="chip">ปิดใช้งาน</span>}</td>
+                  <td className="center"><window.ConstStatusPill on={t.enabled} /></td>
                   <td className="center">
-                    <button className={'lt-switch' + (t.enabled ? ' on' : '')} role="switch" aria-checked={t.enabled} aria-label="ใช้งาน"
-                            onClick={() => window.depConfirmOff
-                              ? window.depConfirmOff(!!t.enabled, t.code + ' · ' + t.name.replace(new RegExp('^' + t.code + '-'), ''), () => applyTg({ t, to: !t.enabled }),
-                                  'ประเภทเงินฝากที่เลือกตารางนี้จะไม่ได้อัตราจากตารางนี้ และเลือกตารางนี้เพิ่มไม่ได้', 'ปิดการใช้งานตารางอัตรา')
-                              : setTg({ t, to: !t.enabled })}><span className="lt-switch-knob" /></button>
+                    <window.ConstSwitch on={t.enabled}
+                            onClick={() => window.depConfirmOff(!!t.enabled, t.code + ' · ' + t.name.replace(new RegExp('^' + t.code + '-'), ''), () => applyTg({ t, to: !t.enabled }),
+                                  'ประเภทเงินฝากที่เลือกตารางนี้จะไม่ได้อัตราจากตารางนี้ และเลือกตารางนี้เพิ่มไม่ได้', 'ปิดการใช้งานตารางอัตรา',
+                                  { effectOn: 'ประเภทเงินฝากเลือกใช้ตารางนี้ได้อีกครั้ง',
+                                    blocked: () => { const u = (window.datLoad ? window.datLoad() : []).filter(d => d.enabled !== false && (d.rateTiers || []).some(x => x.rateTable === t.code));
+                                      return u.length ? `ตารางอัตรา “${t.code}” ถูกผูกอยู่กับ ${u.length} ประเภทเงินฝากที่เปิดใช้งาน: ${u.map(d => d.code + ' ' + d.name).join(', ')} — เปลี่ยนตารางในประเภทเงินฝากก่อน` : null; } })} />
                   </td>
                   <td className="center"><button className="btn sm ex-row-btn" onClick={() => setOpenCode(t.code)}><Icon name="eye" size={13} /> ดู</button></td>
                 </tr>

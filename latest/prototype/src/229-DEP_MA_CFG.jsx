@@ -18,6 +18,25 @@ function DepMaRo({ label, value, mono, wide }) {
   );
 }
 
+// ── ค่าคงที่ที่ใช้ในหน้านี้ — ธนาคาร / รหัสรายการ + คู่บัญชี
+const dmaConst = (key) => { try { return window.depConstList ? window.depConstList(key) : []; } catch (e) { return []; } };
+function dmaBanks() { const l = dmaConst('bank').map(b => b.name).filter(Boolean); return l.length ? l : (window.DEP_BANKS || []); }
+// วันรอเรียกเก็บเช็ค — ค่ากลางจาก ข้อกำหนดระบบเงินฝาก (ไม่มีค่าคงที่ประเภทเช็คแล้ว)
+const dmaClearDays = () => (window.depChqClearDays ? window.depChqClearDays() : 1);
+const DMA_CODE = { deposit: { cash: 'DCA', chq: 'DCP', trf: 'DTE' }, withdraw: { cash: 'WCA', chq: 'WCQ', trf: 'WTE' } };
+const DMA_MONEY = { cash: 'CSH', chq: 'CHQ', trf: 'TRF' };
+function dmaCode(type, kind) {
+  const codes = window.dpcCodesFor ? window.dpcCodesFor(type) : ((window.DPC_TXN_CODES || {})[type] || []);
+  return codes.find(c => c.code === DMA_CODE[type][kind]) || codes.find(c => c.money === DMA_MONEY[kind]) || { code: DMA_CODE[type][kind], label: '', pair: '', money: DMA_MONEY[kind] };
+}
+// อายัดที่มีผลอยู่ — คำขอที่ยังรออนุมัติยังไม่มีผล (ใช้สถานะก่อนหน้า)
+function dmaFreezeOf(accNo) {
+  let m = {};
+  try { m = JSON.parse(localStorage.getItem('dep_freezes') || '{}'); } catch (e) {}
+  const e = m[accNo]; if (!e) return null;
+  return e.approveStatus === 'pending' ? (e.prev || null) : e;
+}
+
 // บัญชีธนาคารของเจ้าของบัญชี — จากทะเบียนสมาชิก / ทะเบียนบุคคลภายนอก
 function depMaOwnerBanks(acc) {
   if (!acc) return [];
@@ -33,10 +52,11 @@ function depMaOwnerBanks(acc) {
     if (p && (p.bankAcc || p.bankAcct || p.acctNo || (p.bankAccounts || []).length)) break;
   }
   if (!p) return [];
-  // ชื่อธนาคารให้ตรงกับรายการ DEP_BANKS (เช่น "ธ. กรุงไทย จำกัด (มหาชน)" → "ธ.กรุงไทย")
+  // ชื่อธนาคารให้ตรงกับค่าคงที่ธนาคาร (เช่น "ธ. กรุงไทย จำกัด (มหาชน)" → "ธนาคารกรุงไทย")
+  const strip = (v) => String(v || '').replace(/\s+/g, '').replace(/^(ธนาคาร|ธ\.)/, '');
   const normBank = (b) => {
-    const s = String(b || '').replace(/\s+/g, '');
-    return (window.DEP_BANKS || []).find(x => { const n = String(x).replace(/\s+/g, '').replace(/^ธ\./, ''); return n && s.includes(n); }) || b || '';
+    const s = strip(b);
+    return dmaBanks().find(x => { const n = strip(x); return n && s.includes(n); }) || b || '';
   };
   const list = [];
   const push = (bank, accNo, name, branch) => { if (accNo && !list.some(x => x.acc === accNo)) list.push({ bank: normBank(bank), acc: accNo, name: name || acc.name || '', branch: branch || '' }); };
@@ -55,7 +75,7 @@ function DepMultiAmountPage({ mode: mode0 = 'deposit', onToast }) {
   const [ownerBanks, setOwnerBanks] = useState([]);
   const blankTrf = (ob) => {
     const b = (ob || ownerBanks)[0];
-    return { k: Date.now() + Math.random(), bank: b ? b.bank : window.DEP_BANKS[0], acc: b ? b.acc : '', name: b ? b.name : '', other: !b,
+    return { k: Date.now() + Math.random(), bank: b ? b.bank : dmaBanks()[0], acc: b ? b.acc : '', name: b ? b.name : '', other: !b,
              ref: '', date: window.DEP_OPS_TODAY || '', amount: '' };
   };
   const [trfs, setTrfs] = useState([]);
@@ -98,9 +118,9 @@ function DepMultiAmountPage({ mode: mode0 = 'deposit', onToast }) {
   const total = cashSum + chqSum + trfSum;
   const ctBlocked = !ctReady;   // ทำรายการใดไม่ได้จนกว่าหัวหน้าอนุมัติเบิกเงินและยืนยันรับเงินแล้ว
   const lines = [
-    ...cash.filter(r => num(r.amount) > 0).map(r => ({ amount: num(r.amount), kind: 'เงินสด', ref: '—' })),
-    ...chqs.filter(r => num(r.amount) > 0).map(r => ({ amount: num(r.amount), kind: 'เช็ค', ref: `${r.chqNo || '—'} ${r.bank}` })),
-    ...trfs.filter(r => num(r.amount) > 0).map(r => ({ amount: num(r.amount), kind: mode === 'withdraw' ? 'โอนออก' : 'โอนเข้า', ref: `${r.bank} ${r.acc || '—'}${r.ref ? ' · ' + r.ref : ''}` })),
+    ...cash.filter(r => num(r.amount) > 0).map(r => ({ t: 'cash', amount: num(r.amount), kind: 'เงินสด', ref: '—' })),
+    ...chqs.filter(r => num(r.amount) > 0).map(r => ({ t: 'chq', amount: num(r.amount), kind: 'เช็ค', ref: `${r.chqNo || '—'} ${r.bank}` })),
+    ...trfs.filter(r => num(r.amount) > 0).map(r => ({ t: 'trf', amount: num(r.amount), kind: mode === 'withdraw' ? 'โอนออก' : 'โอนเข้า', ref: `${r.bank} ${r.acc || '—'}${r.ref ? ' · ' + r.ref : ''}` })),
   ];
   const hasData = total > 0;
   const resetLines = () => {
@@ -108,10 +128,74 @@ function DepMultiAmountPage({ mode: mode0 = 'deposit', onToast }) {
     setChqs([]);
     setTrfs([]);
   };
-  const bankOpts = (cur) => [...new Set([...(window.DEP_BANKS || []), ...ownerBanks.map(b => b.bank), cur].filter(Boolean))];
+  const bankOpts = (cur) => [...new Set([...dmaBanks(), ...ownerBanks.map(b => b.bank), cur].filter(Boolean))];
   const switchMode = (m) => { if (m === mode) return; if (hasData) setAskMode(m); else { setMode(m); setDone(null); } };
-  const avail = cur ? cur.balance : 0;
-  const over = mode === 'withdraw' && total > avail;
+  // ── การควบคุมตามค่าคงที่ประเภทเงินฝาก / อายัด / ล็อกไม่เคลื่อนไหว / วงเงินขออนุมัติ ──
+  const today = window.dpcToday ? window.dpcToday() : (window.DEP_OPS_TODAY || new Date().toISOString().slice(0, 10));
+  const isWd = mode === 'withdraw';
+  const moves = cur && window.dpcMoves ? window.dpcMoves(cur.accNo, ledger) : [];
+  const rule = cur && window.dpcRules ? window.dpcRules(cur, { type: isWd ? 'withdraw' : 'deposit', date: today, amt: isWd ? total : 0, moves }) : null;
+  const rs = (rule && rule.rec && rule.rec.settings) || {};
+  // ค่าปรับถอนเกินจำนวนครั้ง — แต่ละยอดนับเป็น 1 ครั้ง
+  const overFees = lines.map((l, i) => {
+    if (!isWd || !rule || rule.wdUsed == null || !rs.overWdPenaltyOn || rule.wdUsed + i < rule.wdMax) return 0;
+    const base = rs.overWdBase === 'balance' ? cur.balance : l.amount;
+    const cond = Number(rs.overWdRangeCond) || 0;
+    if (cond > 0 && base > cond) return 0;
+    return Math.round(Math.max(base * (Number(rs.overWdPercent) || 0) / 100, Number(rs.overWdMinFee) || 0) * 100) / 100;
+  });
+  const overFee = overFees.reduce((a, b) => a + b, 0);
+  const penalty = isWd && rule ? rule.penalty : 0;
+  const charges = overFee + penalty;
+  const minBal = rule ? rule.minBal : 0;
+  const frz = cur ? dmaFreezeOf(cur.accNo) : null;
+  const frzAmt = frz && frz.type === '1' ? (Number(frz.amount) || (cur ? cur.balance : 0)) : 0;
+  const frzBlock = !!frz && (isWd ? ['2', '3', '4'].includes(frz.type) : ['2', '5'].includes(frz.type));
+  const dRule = cur && window.depDormantRule ? window.depDormantRule(cur.typeCode) : null;
+  const idle = cur && window.dpcLastMove ? window.dpcIdleDays(window.dpcLastMove(cur.accNo, ledger)) : 0;
+  const unl = cur && window.dpcUnlocksLoad ? window.dpcUnlocksLoad()[cur.accNo] : null;
+  const locked = !!(cur && dRule && dRule.on && idle > dRule.days && !(unl && unl.date === today));
+  const avail = cur ? Math.max(0, cur.balance - frzAmt - minBal) : 0;
+  const over = isWd && total + charges > avail;
+  const afterBal = cur ? cur.balance + cfg.sign * total - charges : 0;
+  // ถอนรวมตั้งแต่วงเงิน → ต้องขออนุมัติที่เมนูอนุมัติทำรายการ · ยอดตั้งแต่ 2 ล้าน → รายงาน ปปง.
+  const apvLimit = window.DEP_WD_APV_LIMIT || 2000000;
+  const needApv = isWd && total >= apvLimit;
+  const [, setApvTick] = useState(0);
+  const apvReq = cur && needApv && window.dpcWdReqLoad
+    ? window.dpcWdReqLoad().filter(r => r.src === 'multi' && r.accNo === cur.accNo && r.date === today && Number(r.amount) === total).slice(-1)[0] : null;
+  const apvPending = !!apvReq && apvReq.status === 'pending';
+  const apvOk = !!apvReq && apvReq.status === 'approved';
+  const apvRejected = !!apvReq && apvReq.status === 'rejected';
+  React.useEffect(() => { if (!apvPending) return; const t = setInterval(() => setApvTick(x => x + 1), 2000); return () => clearInterval(t); }, [apvPending]);
+  const AML_LIMIT = 2000000;
+  const amlForced = total >= AML_LIMIT;
+  const [aml, setAml] = useState(false);
+  const errors = [];
+  if (cur && cur.status && cur.status !== 'active') errors.push(cur.status === 'pending' ? 'บัญชีรออนุมัติเปิดบัญชี — ยังทำรายการไม่ได้' : 'บัญชีนี้ไม่อยู่ในสถานะใช้งาน — ทำรายการไม่ได้');
+  if (frzBlock) errors.push('บัญชีถูกอายัด — ' + frz.label + (frz.reason ? ' (' + frz.reason + ')' : ''));
+  if (locked) errors.push('บัญชีไม่เคลื่อนไหวเกิน ' + dRule.years + ' ปี — ต้องขอปลดล็อกที่เมนูฝาก / ถอน / โอน / ปิดบัญชีก่อน');
+  if (isWd && cur && total > 0 && afterBal < minBal) errors.push('ถอนแล้วคงเหลือต่ำกว่าขั้นต่ำของประเภทบัญชี (' + fmt.money(minBal, 2) + ' บาท)');
+  if (isWd && frzAmt > 0 && total + charges > cur.balance - frzAmt) errors.push('ยอดถอนเกินยอดที่ไม่ถูกอายัด (อายัดไว้ ' + fmt.money(frzAmt, 2) + ' บาท)');
+  if (apvRejected) errors.push('คำขอถอนเกินวงเงินไม่ได้รับอนุมัติ' + (apvReq.rejectReason ? ' — ' + apvReq.rejectReason : ''));
+  const blocked = errors.length > 0 || (needApv && !apvOk);
+  const sendApv = () => {
+    const d = new Date(), p = (n) => String(n).padStart(2, '0');
+    const first = lines[0] || { t: 'cash' };
+    const cd0 = dmaCode('withdraw', first.t);
+    const req = { id: 'WA-' + Date.now(), src: 'multi', accNo: cur.accNo, name: cur.name, amount: total, code: cd0.code,
+      codeLabel: cd0.label || '', money: cd0.money || DMA_MONEY[first.t],
+      note: 'ถอนหลายยอด ' + lines.length + ' รายการ รวมตั้งแต่ ' + fmt.money(apvLimit, 0) + ' บาท',
+      reqBy: window.DEP_OPS_USER, reqTerm: window.DEP_DAILY_TERMINAL || 'POS-01',
+      reqDate: p(d.getDate()) + '/' + p(d.getMonth() + 1) + '/' + (d.getFullYear() + 543) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()),
+      date: today, status: 'pending' };
+    window.dpcWdReqSave([...window.dpcWdReqLoad(), req]);
+    setApvTick(x => x + 1);
+    audit.log({ action: 'create', module: 'เงินฝาก — ขออนุมัติถอนหลายยอดเกินวงเงิน', target: cur.accNo + ' · ' + cur.name,
+      summary: 'ส่งคำขออนุมัติถอน ' + lines.length + ' รายการ รวม ' + fmt.money(total, 2) + ' บาท' });
+    window.depSuccess && window.depSuccess({ title: 'ส่งคำขออนุมัติแล้ว', desc: 'รอหัวหน้าอนุมัติที่เมนู “อนุมัติทำรายการ”',
+      lines: [['เลขที่บัญชี', cur.accNo], ['ยอดถอนรวม', fmt.money(total, 2) + ' บาท'], ['เลขที่คำขอ', req.id]] });
+  };
 
   const pick = (a) => {
     const ob = depMaOwnerBanks(a);
@@ -123,11 +207,11 @@ function DepMultiAmountPage({ mode: mode0 = 'deposit', onToast }) {
 
   const addCash = () => setCash(c => [...c, { k: Date.now(), amount: '' }]);
   const delCash = (k) => setCash(c => (c.length > 1 ? c.filter(r => r.k !== k) : c));
-  const addChq = () => setChqs(c => [...c, { k: Date.now(), chqNo: '', faceDate: '', bank: window.DEP_BANKS[0], branch: '', type: window.DEP_CHQ_TYPES[0], float: '0', amount: '', late2: false }]);
+  const addChq = () => setChqs(c => [...c, { k: Date.now(), chqNo: '', faceDate: '', bank: dmaBanks()[0], branch: '', type: '', float: String(dmaClearDays()), amount: '', late2: false }]);
   const delChq = (k) => setChqs(c => (c.length > 1 ? c.filter(r => r.k !== k) : c));
   const setChq = (k, f, v) => setChqs(c => c.map(r => (r.k === k ? { ...r, [f]: v } : r)));
 
-  const blankChq = (k) => ({ k, chqNo: '', faceDate: '', bank: window.DEP_BANKS[0], branch: '', type: window.DEP_CHQ_TYPES[0], float: '0', amount: '', late2: false });
+  const blankChq = (k) => ({ k, chqNo: '', faceDate: '', bank: dmaBanks()[0], branch: '', type: '', float: String(dmaClearDays()), amount: '', late2: false });
   const allRows = [...cash.map(r => ({ ...r, _t: 'cash' })), ...chqs.map(r => ({ ...r, _t: 'chq' })), ...trfs.map(r => ({ ...r, _t: 'trf' }))]
     .sort((a, b) => (a.seq || a.k) - (b.seq || b.k));
   const rmFrom = (r) => r._t === 'cash' ? setCash(c => c.filter(x => x.k !== r.k)) : r._t === 'chq' ? setChqs(c => c.filter(x => x.k !== r.k)) : setTrfs(c => c.filter(x => x.k !== r.k));
@@ -141,12 +225,24 @@ function DepMultiAmountPage({ mode: mode0 = 'deposit', onToast }) {
 
   const submit = () => {
     let bal = cur.balance;
-    const entries = lines.map(l => {
-      bal += cfg.sign * l.amount;
-      return { id: window.depTxnNextId(), date: window.DEP_OPS_TODAY, accNo: cur.accNo, member: cur.member,
-        type: cfg.type, channel: `${cfg.channel} — ${l.kind}`, amount: l.amount, fee: 0, balance: bal,
-        ref: l.ref, by: window.DEP_OPS_USER };
+    const amlOn = aml || amlForced;
+    // แต่ละยอดใช้รหัสรายการ / คู่บัญชีจากค่าคงที่ · ค่าปรับถอนเกินครั้งหักรายยอด · ค่าปรับก่อนกำหนดหักที่ยอดสุดท้าย
+    const entries = lines.map((l, i) => {
+      const cd = dmaCode(cfg.type, l.t);
+      const fee = overFees[i] || 0;
+      const pen = i === lines.length - 1 ? penalty : 0;
+      bal += cfg.sign * l.amount - fee - pen;
+      return { id: window.depTxnNextId(), date: today, accNo: cur.accNo, member: cur.member,
+        type: cfg.type, channel: `${cd.code} ${cd.label || cfg.channel + ' — ' + l.kind}`, code: cd.code, pair: cd.pair || '', money: cd.money || DMA_MONEY[l.t],
+        amount: l.amount, fee, penalty: pen, balance: bal, ref: l.ref, src: cfg.title, aml: amlOn || undefined, by: window.DEP_OPS_USER };
     });
+    if (apvOk && window.dpcWdReqSave) window.dpcWdReqSave(window.dpcWdReqLoad().map(r => r.id === apvReq.id ? { ...r, status: 'posted' } : r));
+    // เช็ครับฝาก → ทะเบียนเช็ค (ใช้ที่เมนูผ่านเช็ค / คืนเช็ค) · วันพักตามข้อกำหนดระบบ
+    if (!isWd && window.depChqRegAdd) {
+      window.depChqRegAdd(chqs.filter(r => num(r.amount) > 0).map(r => ({ chqNo: r.chqNo, bank: r.bank, branch: r.branch, payer: r.payer || '',
+        type: r.type, floatDays: Number(r.float) || 0, faceDate: r.faceDate || today, sendDate: today, amount: num(r.amount),
+        accNo: cur.accNo, accName: cur.name, src: cfg.title, by: window.DEP_OPS_USER })));
+    }
     const nextAcc = accounts.map(a => (a.accNo === cur.accNo ? { ...a, balance: bal } : a));
     setAccounts(nextAcc); window.depTxnSaveAccounts(nextAcc);
     const nextL = [...entries.slice().reverse(), ...ledger];
@@ -188,9 +284,13 @@ function DepMultiAmountPage({ mode: mode0 = 'deposit', onToast }) {
           <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>{cfg.desc} · รับ/จ่ายได้ทั้งเงินสด เช็ค และโอน</div>
         </div>
         <span className="spacer" style={{ flex: 1 }} />
-        <button className="btn primary sm" data-keep-top="" disabled={noAcc || lines.length === 0 || over || ctBlocked} onClick={submit}
+        {needApv && !apvOk && !noAcc && (apvPending
+          ? <span className="pill warn" style={{ alignSelf: 'center' }}>รออนุมัติถอนเกินวงเงิน</span>
+          : <button className="btn sm" data-keep-top="" disabled={lines.length === 0 || over || ctBlocked || errors.length > 0} onClick={sendApv}
+                    style={{ color: '#cf1322', borderColor: '#cf1322' }}><Icon name="upload" /> ส่งขออนุมัติ</button>)}
+        <button className="btn primary sm" data-keep-top="" disabled={noAcc || lines.length === 0 || over || ctBlocked || blocked} onClick={submit}
                 style={mode === 'withdraw'
-                  ? ((noAcc || lines.length === 0 || over || ctBlocked)
+                  ? ((noAcc || lines.length === 0 || over || ctBlocked || blocked)
                       ? { background: '#ffa39e', borderColor: '#ffa39e', color: '#fff', opacity: 1 }
                       : { background: '#cf1322', borderColor: '#cf1322', color: '#fff' })
                   : undefined}>
@@ -199,6 +299,17 @@ function DepMultiAmountPage({ mode: mode0 = 'deposit', onToast }) {
       </div>
 
       {ctBlocked && window.DepCtGateBanner && <window.DepCtGateBanner what="การฝาก/ถอนเงิน" />}
+      {cur && errors.length > 0 && (
+        <div className="dat-warn" style={{ marginTop: 0, marginBottom: 12, background: 'var(--danger-50)', borderColor: 'color-mix(in srgb, var(--danger) 28%, transparent)', color: 'var(--danger)' }}>
+          <Icon name="info" size={14} /><div>{errors.map((e, i) => <div key={i}>{e}</div>)}</div>
+        </div>
+      )}
+      {cur && needApv && errors.length === 0 && (
+        <div className="dat-warn" style={{ marginTop: 0, marginBottom: 12 }}>
+          <Icon name="info" size={14} />
+          <span>ถอนรวมตั้งแต่ {fmt.money(apvLimit, 0)} บาท ต้องได้รับอนุมัติก่อนบันทึก — {apvOk ? <b>อนุมัติแล้ว กดบันทึกได้</b> : apvPending ? 'ส่งคำขอแล้ว รอหัวหน้าอนุมัติที่เมนู “อนุมัติทำรายการ”' : 'กด “ส่งขออนุมัติ”'}</span>
+        </div>
+      )}
       <div className="dep-form-cols" style={{ marginTop: 0, alignItems: 'start' }}>
       <div className="dep-form-main" style={{ display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 }}>
       <div className="search-card dat-section" style={{ marginTop: 0, minWidth: 0 }}>
@@ -277,7 +388,7 @@ function DepMultiAmountPage({ mode: mode0 = 'deposit', onToast }) {
                                 : <input className="cfg-input mono" value={r.acc} disabled={noAcc} placeholder="เลขที่บัญชี" onChange={(e) => setTrf(r.k, 'acc', e.target.value)} />)
                             : dash}</td>
                         <td>{r._t === 'chq'
-                          ? <select className="cfg-input" value={r.bank} disabled={noAcc} onChange={(e) => setChq(r.k, 'bank', e.target.value)}>{window.DEP_BANKS.map(b => <option key={b}>{b}</option>)}</select>
+                          ? <select className="cfg-input" value={r.bank} disabled={noAcc} onChange={(e) => setChq(r.k, 'bank', e.target.value)}>{bankOpts(r.bank).map(b => <option key={b}>{b}</option>)}</select>
                           : r._t === 'trf'
                             ? <input className="cfg-input" value={r.bank} disabled={noAcc} onChange={(e) => setTrf(r.k, 'bank', e.target.value)} />
                             : dash}</td>
@@ -349,7 +460,15 @@ function DepMultiAmountPage({ mode: mode0 = 'deposit', onToast }) {
           <div className="dep-sum-row"><span>รวมโอน</span><span className="mono">{fmt.money(trfSum, 2)}</span></div>
           <div className="dep-sum-row"><span>จำนวนรายการ</span><span className="mono">{lines.length}</span></div>
           <div className="dep-sum-row total"><span>รวมยอด{mode === 'withdraw' ? 'ถอน' : 'ฝาก'}</span><span className="mono" style={{ color: TINT }}>{fmt.money(total, 2)}</span></div>
-          <div className="dep-sum-row"><span>ยอดคงเหลือหลังทำรายการ</span><span className="mono">{fmt.money(avail + cfg.sign * total, 2)}</span></div>
+          {overFee > 0 && <div className="dep-sum-row"><span>ค่าปรับถอนเกินจำนวนครั้ง</span><span className="mono" style={{ color: 'var(--danger)' }}>− {fmt.money(overFee, 2)}</span></div>}
+          {penalty > 0 && <div className="dep-sum-row"><span>ค่าปรับถอนก่อนกำหนด</span><span className="mono" style={{ color: 'var(--danger)' }}>− {fmt.money(penalty, 2)}</span></div>}
+          <div className="dep-sum-row"><span>ยอดคงเหลือหลังทำรายการ</span><span className="mono">{fmt.money(afterBal, 2)}</span></div>
+          {rule && rule.wdUsed != null && isWd && <div className="muted" style={{ fontSize: 11.5, marginTop: 6 }}>ถอนแล้วในรอบนี้ {rule.wdUsed}/{rule.wdMax} ครั้ง · แต่ละยอดนับเป็น 1 ครั้ง</div>}
+          <label className="dpc-aml sm" style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <input type="checkbox" checked={aml || amlForced} disabled={noAcc || amlForced} onChange={(e) => setAml(e.target.checked)}
+                   title={amlForced ? 'ยอดตั้งแต่ 2,000,000 บาท ต้องรายงานสำนักงาน ปปง.' : undefined} />
+            <span>จัดทำข้อมูลการทำธุรกรรมส่งสำนักงาน ปปง.</span>
+          </label>
         </div>
       </div>
           <div className="search-card dat-section" style={{ marginTop: 0 }}>

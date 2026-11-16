@@ -73,7 +73,7 @@ function DtMulti({ v, editing, onChange, opts, placeholder }) {
     </div>
   );
 }
-function DtNum({ v, editing, onChange, decimals, suffix, disabled, max, fill }) {
+function DtNum({ v, editing, onChange, decimals, suffix, disabled, max, fill, noSlot }) {
   if (!editing || disabled) {
     return (
       <div className={"l2-val num" + (disabled ? ' dis-val' : '')}>
@@ -82,12 +82,17 @@ function DtNum({ v, editing, onChange, decimals, suffix, disabled, max, fill }) 
       </div>
     );
   }
+  // ช่องที่มีทศนิยม — แสดงทศนิยมครบเสมอเมื่อไม่ได้พิมพ์อยู่ (เช่น 0.00)
+  const [focus, setFocus] = React.useState(false);
+  const shownV = (!focus && decimals && v !== '' && v != null && !isNaN(Number(v))) ? Number(v).toFixed(decimals) : (v == null ? '' : v);
   return (
     <div className="l2-inwrap" style={{ justifyContent: 'flex-end' }}>
-      <input className="l2-input num" type="number" inputMode="decimal" style={fill ? { flex: 1, maxWidth: 'none' } : { maxWidth: max || 150 }}
-             step={decimals ? '0.0001' : '1'} value={v}
-             onChange={(e) => onChange(e.target.value)} />
-      {suffix && <span className="l2-suf">{suffix}</span>}
+      <input className="l2-input num" type={decimals ? 'text' : 'number'} inputMode="decimal" style={{ flex: '1 1 0', minWidth: 0, maxWidth: 'none' }}
+             step={decimals ? '0.0001' : '1'} value={shownV}
+             onFocus={() => setFocus(true)}
+             onBlur={(e) => { setFocus(false); if (decimals && e.target.value !== '' && !isNaN(Number(e.target.value))) onChange(Number(Number(e.target.value).toFixed(decimals))); }}
+             onChange={(e) => onChange(decimals ? e.target.value.replace(/[^0-9.\-]/g, '') : e.target.value)} />
+      {suffix ? <span className="l2-suf">{suffix}</span> : (noSlot || fill ? null : <span className="l2-suf" aria-hidden="true" />)}
     </div>
   );
 }
@@ -156,9 +161,9 @@ function DtTxtCell({ editing, v, onChange, align }) {
     ? <input className="sh-grid-input" style={{ textAlign: align || 'left', maxWidth: 'none' }} value={v || ''} onChange={(e) => onChange(e.target.value)} />
     : <span style={{ display: 'block', textAlign: align || 'left' }}>{v || <span className="muted">—</span>}</span>;
 }
-function DtNumCell({ editing, v, onChange, decimals }) {
+function DtNumCell({ editing, v, onChange, decimals, full }) {
   return editing
-    ? <input className="sh-grid-input" type="number" step={decimals ? '0.0001' : '1'} value={v} onChange={(e) => onChange(e.target.value)} />
+    ? <input className="sh-grid-input" style={full ? { maxWidth: 'none' } : undefined} type="number" step={decimals ? '0.0001' : '1'} value={v} onChange={(e) => onChange(e.target.value)} />
     : <span className="sh-grid-num">{decimals != null ? fmt.money(Number(v || 0), decimals) : (v ?? '—')}</span>;
 }
 function DtDateCell({ editing, v, onChange }) {
@@ -196,10 +201,10 @@ function DatTabMaster({ record, editing, onSettings }) {
             <DtRow label="กลุ่มเงินฝาก"><DtSel group="depGroup" v={s.depGroup} editing={editing} onChange={(v) => set('depGroup', v)} /></DtRow>
             <DtRow label="รหัสคุมเลขที่บัญชี">{(() => {
               const code = (s.docNo || '').trim().toUpperCase();
-              const ctr = code ? (window.DEP_ACC_COUNTERS || {})[code] : null;
-              return <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0, flex: 1 }}>
+              const ctr = code ? (window.depAccCounters ? window.depAccCounters() : (window.DEP_ACC_COUNTERS || {}))[code] : null;
+              return <div className="dt-stack" style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0, width: '100%' }}>
                 <DtTxt v={s.docNo} editing={editing} mono placeholder="DPACCDOCNO10" onChange={(v) => set('docNo', v.toUpperCase())} />
-                {ctr && <div className="muted" style={{ fontSize: 12 }}>เลขที่บัญชีล่าสุด <b className="mono" style={{ color: 'var(--text-1, inherit)' }}>{String(ctr.last).padStart(ctr.digits || 7, '0')}</b> · ปรับปรุง {fmt.date(ctr.updated.slice(0, 10))} {ctr.updated.slice(11, 16)} น.</div>}
+                {ctr && <div className="muted" style={{ fontSize: 12 }}>เลขที่บัญชีล่าสุด <b className="mono" style={{ color: 'var(--text-1, inherit)' }}>{String(ctr.last).padStart(ctr.digits || 7, '0')}</b></div>}
                 {code && !ctr && <div style={{ fontSize: 12, color: 'var(--danger)' }}>ไม่พบรหัสคุม “{code}” ในฐานข้อมูล — เปิดบัญชีประเภทนี้ไม่ได้ ติดต่อฝ่าย IT</div>}
               </div>;
             })()}</DtRow>
@@ -212,6 +217,7 @@ function DatTabMaster({ record, editing, onSettings }) {
             </DtRow>
             {s.limitAccounts && <DtRow label="จำนวนบัญชีต่อสมาชิก" indent><DtNum v={s.maxAccounts} editing={editing} suffix="บัญชี" max={110} onChange={(v) => set('maxAccounts', v)} /></DtRow>}
             <DtRow label="คงเหลือขั้นต่ำถอน Online"><DtNum v={s.minOnlineBalance} editing={editing} decimals={2} suffix="บาท" onChange={(v) => set('minOnlineBalance', v)} /></DtRow>
+            <DtCheck label="ร่วมหักหุ้นพูนทวีได้" checked={s.sharePlusOn !== false} editing={editing} onChange={(v) => set('sharePlusOn', v)} />
           </DtGroup>
 
           <DtGroup title="การเชื่อมโยงบัญชี (GL / ACC)" sub="ผูกรหัสบัญชีแยกประเภทและกลุ่มบัญชี เพื่อสร้างรายการบัญชีอัตโนมัติเมื่อฝาก/ถอน/จ่ายดอกเบี้ย/หักภาษี/เก็บค่าธรรมเนียม">
@@ -262,15 +268,15 @@ function DatTabConditions({ record, editing, onSettings }) {
               <DtRow label="ถอนได้ไม่เกิน" indent><DtNum v={s.wdCountMax} editing={editing} suffix="ครั้ง" max={110} onChange={(v) => set('wdCountMax', v)} /></DtRow>
               <DtRow label="ภายใน" indent>
                 <div className="l2-inwrap" style={{ justifyContent: 'flex-end' }}>
-                  <DtNum v={s.wdCountWithin} editing={editing} max={90} onChange={(v) => set('wdCountWithin', v)} />
-                  <DtSel group="timeUnit" v={s.wdCountWithinUnit} editing={editing} width={90} onChange={(v) => set('wdCountWithinUnit', v)} />
+                  <DtNum v={s.wdCountWithin} editing={editing} noSlot onChange={(v) => set('wdCountWithin', v)} />
+                  <DtSel group="timeUnit" v={s.wdCountWithinUnit} editing={editing} width={88} onChange={(v) => set('wdCountWithinUnit', v)} />
                 </div>
               </DtRow>
             </>}
             <DtRow label="ถอน/ปิดบัญชีได้เมื่อเปิดบัญชีแล้ว">
               <div className="l2-inwrap" style={{ justifyContent: 'flex-end' }}>
-                <DtNum v={s.closeAfterN} editing={editing} max={90} onChange={(v) => set('closeAfterN', v)} />
-                <DtSel group="timeUnit" v={s.closeAfterUnit} editing={editing} width={90} onChange={(v) => set('closeAfterUnit', v)} />
+                <DtNum v={s.closeAfterN} editing={editing} noSlot onChange={(v) => set('closeAfterN', v)} />
+                <DtSel group="timeUnit" v={s.closeAfterUnit} editing={editing} width={88} onChange={(v) => set('closeAfterUnit', v)} />
               </div>
             </DtRow>
           </DtGroup>
@@ -287,6 +293,14 @@ function DatTabConditions({ record, editing, onSettings }) {
             {s.lostBookPenaltyOn && <>
               <DtRow label="ค่าปรับกรณีสมุดหาย" indent><DtNum v={s.lostBookFee} editing={editing} decimals={2} suffix="บาท" onChange={(v) => set('lostBookFee', v)} /></DtRow>
               <DtRow label="คู่บัญชี (บันทึกรายได้ค่าปรับ)" indent><DtGl v={s.lostBookGl} editing={editing} onChange={(v) => set('lostBookGl', v)} /></DtRow>
+            </>}
+          </DtGroup>
+
+          <DtGroup title="ค่าธรรมเนียมปิดบัญชี">
+            <DtCheck label="คิดค่าธรรมเนียมปิดบัญชี" checked={s.closeFeeOn} editing={editing} onChange={(v) => set('closeFeeOn', v)} />
+            {s.closeFeeOn && <>
+              <DtRow label="จำนวนเงิน" indent><DtNum v={s.closeFee} editing={editing} decimals={2} suffix="บาท" onChange={(v) => set('closeFee', v)} /></DtRow>
+              <DtRow label="คู่บัญชี (บันทึกรายได้ค่าธรรมเนียม)" indent><DtGl v={s.closeFeeGl} editing={editing} onChange={(v) => set('closeFeeGl', v)} /></DtRow>
             </>}
           </DtGroup>
 
@@ -359,27 +373,29 @@ function DatTabPayInt({ record, editing, onSettings, onTable }) {
               </>}
             </DtGroup>
 
-            <DtGroup title="การให้ / การทบ Int./Div.">
-              <DtCheck label="มีการให้ดอกเบี้ย/เงินปันผล" checked={s.intGiveOn} editing={editing} onChange={(v) => set('intGiveOn', v)} />
-              {s.intGiveOn && <>
-                <DtRow label="ดูที่" indent><DtSel group="intGiveRef" v={s.intGiveRef} editing={editing} onChange={(v) => set('intGiveRef', v)} /></DtRow>
-                <DtRow label="ทบ Int./Div. เป็นต้น"><DtSel group="compoundWhen" v={s.compoundWhen} editing={editing} onChange={(v) => set('compoundWhen', v)} /></DtRow>
-                <DtRow label="วิธีคิด Int./Div."><DtSel group="intCalcMethod" v={s.intCalcMethod} editing={editing} onChange={(v) => set('intCalcMethod', v)} /></DtRow>
-              </>}
+            <DtGroup title="การให้ Int./Div.">
+              <DtCheck label="มีการให้ดอกเบี้ย" checked={s.intGiveOn} editing={editing} onChange={(v) => set('intGiveOn', v)} />
+              {s.intGiveOn && <DtRow label="ดูที่" indent><DtSel group="intGiveRef" v={s.intGiveRef} editing={editing} onChange={(v) => set('intGiveRef', v)} /></DtRow>}
             </DtGroup>
+            {s.intGiveOn && (
+              <DtGroup title="การทบ Int./Div.">
+                <DtRow label="การทบ Int./Div. เป็นต้น"><DtSel group="compoundWhen" v={s.compoundWhen} editing={editing} onChange={(v) => set('compoundWhen', v)} /></DtRow>
+                <DtRow label="วิธีการคิด Int./Div."><DtSel group="intCalcMethod" v={s.intCalcMethod} editing={editing} onChange={(v) => set('intCalcMethod', v)} /></DtRow>
+              </DtGroup>
+            )}
           </div>
 
           <div className="l2-col">
             <DtGroup title="การรักษาบัญชี" sub="คิดค่าธรรมเนียมตามยอดคงเหลือและระยะเวลาไม่มีความเคลื่อนไหว">
-              <DtCheck label="มีค่ารักษาบัญชี (ค่าธรรมเนียม)" checked={s.maintFeeOn} editing={editing} onChange={(v) => set('maintFeeOn', v)} />
-              {s.maintFeeOn && <>
-                <DtRow label="คิดครั้งละ" indent><DtNum v={s.maintFeeAmount} editing={editing} decimals={2} suffix="บาท" onChange={(v) => set('maintFeeAmount', v)} /></DtRow>
-                <DtRow label="คิดทุกวันที่" indent>
+              <>
+                <DtRow label="ค่ารักษาบัญชี ครั้งละ"><DtNum v={s.maintFeeAmount} editing={editing} decimals={2} suffix="บาท" onChange={(v) => set('maintFeeAmount', v)} /></DtRow>
+                {!(Number(s.maintFeeAmount) > 0) && <div className="muted" style={{ fontSize: 11, margin: '-2px 0 4px' }}>ใส่ 0 = ไม่คิดค่ารักษาบัญชี</div>}
+                <DtRow label="คิดทุกวันที่">
                   {(() => {
                     const dv = s.maintFeeDay === 'eom' || Number(s.maintFeeDay) > 31 ? 'eom' : String(s.maintFeeDay || 1);
                     const lbl = dv === 'eom' ? 'สิ้นเดือน' : 'วันที่ ' + dv + ' ของเดือน';
                     return editing
-                      ? <select className="cfg-input" style={{ width: 180, height: 32 }} value={dv}
+                      ? <select className="l2-select" value={dv}
                                 onChange={(e) => set('maintFeeDay', e.target.value === 'eom' ? 'eom' : Number(e.target.value))}>
                           {Array.from({ length: 31 }, (_, i) => <option key={i + 1} value={String(i + 1)}>วันที่ {i + 1}</option>)}
                           <option value="eom">สิ้นเดือน</option>
@@ -387,34 +403,34 @@ function DatTabPayInt({ record, editing, onSettings, onTable }) {
                       : <span>{lbl}</span>;
                   })()}
                 </DtRow>
-                <DtRow label="คงเหลือในบัญชีต่ำกว่า" indent><DtNum v={s.maintBalanceUnder} editing={editing} decimals={2} suffix="บาท" onChange={(v) => set('maintBalanceUnder', v)} /></DtRow>
-                <DtRow label="ไม่มีการเคลื่อนไหวติดต่อกัน" indent>
+                <DtRow label="คงเหลือในบัญชีต่ำกว่า"><DtNum v={s.maintBalanceUnder} editing={editing} decimals={2} suffix="บาท" onChange={(v) => set('maintBalanceUnder', v)} /></DtRow>
+                <DtRow label="ไม่มีการเคลื่อนไหวติดต่อกัน">
                   <div className="l2-inwrap" style={{ justifyContent: 'flex-end' }}>
-                    <DtNum v={s.maintInactiveDur} editing={editing} max={90} onChange={(v) => set('maintInactiveDur', v)} />
-                    <DtSel group="feeUnit" v={s.maintUnit} editing={editing} width={80} onChange={(v) => set('maintUnit', v)} />
+                    <DtNum v={s.maintInactiveDur} editing={editing} noSlot onChange={(v) => set('maintInactiveDur', v)} />
+                    <DtSel group="feeUnit" v={s.maintUnit} editing={editing} width={88} onChange={(v) => set('maintUnit', v)} />
                   </div>
                 </DtRow>
                 <DtCheck label="คิดทุกเดือน" checked={s.maintEveryMonth} editing={editing} onChange={(v) => set('maintEveryMonth', v)} />
-                <DtRow label="คู่บัญชี" indent><DtGl v={s.maintGl} editing={editing} onChange={(v) => set('maintGl', v)} /></DtRow>
-              </>}
+                <DtRow label="คู่บัญชี"><DtGl v={s.maintGl} editing={editing} onChange={(v) => set('maintGl', v)} /></DtRow>
+              </>
             </DtGroup>
           </div>
         </div>
       </div>
 
       {editing && rows.some(r => { const m = Math.min(12, Math.max(1, Number(r.payMonth) || 12)); const last = new Date(2024, m, 0).getDate();
-        return [r.payDay, r.calcToDay].some(d => d !== 'eom' && Number(d) <= 31 && Number(d) > last); }) && (
+        return [r.payDay].some(d => d !== 'eom' && Number(d) <= 31 && Number(d) > last); }) && (
         <div className="dat-warn" style={{ marginTop: 12 }}><Icon name="info" size={14} /><span>มีวันที่ที่ไม่มีในเดือนที่เลือก (ช่องสีแดง) — แนะนำให้เลือก “สิ้นเดือน” แทน</span></div>
       )}
       <DtTableShell title="วันที่จ่าย Int./Div. (ตามยอดคงเหลือ)" count={rows.length} editing={editing} onAdd={addRow} minWidth={760}
-        sub="รองรับการกำหนดวันจ่ายดอกเบี้ย/เงินปันผลหลายช่วงตามยอดคงเหลือ">
+        sub="รองรับการกำหนดวันจ่ายดอกเบี้ยหลายช่วงตามยอดคงเหลือ">
         <thead>
           <tr>
             <th rowSpan={2} className="center" style={{ width: 56 }}>ลำดับ</th>
             <th colSpan={2} className="center group-col">ยอดคงเหลือ</th>
             <th rowSpan={2} className="center group-col" style={{ width: 120 }}>วันที่จ่าย</th>
             <th rowSpan={2} className="center group-col" style={{ width: 120 }}>เดือนที่จ่าย</th>
-            <th rowSpan={2} className="center group-col" style={{ width: 140 }}>คิดดอกเบี้ยถึงวันที่</th>
+            <th rowSpan={2} className="center group-col" style={{ width: 170 }}>คิดดอกเบี้ยถึงวันที่</th>
             {editing && <th rowSpan={2} className="center group-col" style={{ width: 62 }}>จัดการ</th>}
           </tr>
           <tr>
@@ -426,8 +442,8 @@ function DatTabPayInt({ record, editing, onSettings, onTable }) {
           {rows.map((r, i) => (
             <tr key={i}>
               <td className="center">{i + 1}</td>
-              <td className="num-cell"><DtNumCell editing={editing} v={r.balFrom} decimals={0} onChange={(v) => setRow(i, 'balFrom', v)} /></td>
-              <td className="num-cell"><DtNumCell editing={editing} v={r.balTo} decimals={0} onChange={(v) => setRow(i, 'balTo', v)} /></td>
+              <td className="num-cell"><DtNumCell full editing={editing} v={r.balFrom} decimals={0} onChange={(v) => setRow(i, 'balFrom', v)} /></td>
+              <td className="num-cell"><DtNumCell full editing={editing} v={r.balTo} decimals={0} onChange={(v) => setRow(i, 'balTo', v)} /></td>
               {(() => {
                 const m = Math.min(12, Math.max(1, Number(r.payMonth) || 12));
                 const last = new Date(2024, m, 0).getDate();
@@ -449,7 +465,13 @@ function DatTabPayInt({ record, editing, onSettings, onTable }) {
                         {DT_MONTHS.map((n, x) => <option key={x} value={String(x + 1)}>{n}</option>)}
                       </select>
                     : DT_MONTHS[m - 1]}</td>
-                  <td className="center">{editing ? daySel(cd, 'calcToDay') : <span className="mono">คิดถึง {dl(cd)} {DT_MONTHS_S[m - 1]}</span>}</td>
+                  {(() => { const ct = r.calcToDay === 'pay' ? 'pay' : 'eom'; return (
+                  <td className="center">{editing
+                    ? <select className="cfg-input" style={{ height: 32 }} value={ct} onChange={(e) => setRow(i, 'calcToDay', e.target.value)}>
+                        <option value="pay">วันที่จ่ายดอกเบี้ย</option>
+                        <option value="eom">วันที่สิ้นเดือน</option>
+                      </select>
+                    : (ct === 'pay' ? 'วันที่จ่ายดอกเบี้ย' : 'วันที่สิ้นเดือน')}</td>); })()}
                 </>;
               })()}
               <DtDelCell editing={editing} onDel={() => delRow(i)} />
@@ -670,5 +692,5 @@ function DatTabEarly({ record, editing, onTable }) {
 }
 
 Object.assign(window, {
-  DatTabMaster, DatTabConditions, DatTabPayInt, DatTabCalc, DatTabRate, DatTabEarly,
+  DatTabMaster, DatTabConditions, DatTabPayInt, DatTabCalc, DatTabRate, DatTabEarly, DtGl,
 });

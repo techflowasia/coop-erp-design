@@ -13,13 +13,17 @@ const DEP_PROJ_PERIODS = [
   { id: 'custom', label: 'กำหนดช่วงเอง',           from: '', to: '' },
 ];
 
-// สร้างบรรทัดประมาณการรายบัญชี (ยอดคงเหลือ × อัตรา% × วัน ÷ 365, หักภาษี)
-function depProjLine(a, days) {
-  const gross = a.balance * (a.rate / 100) * days / 365;
-  const taxRate = window.depTaxRate(a.typeCode);
+// สร้างบรรทัดประมาณการรายบัญชี (ยอดคงเหลือ × อัตรา% × วัน ÷ ฐานวัน, หักภาษี)
+// อัตรา/ภาษี/ฐานวัน ใช้กฎเดียวกับหน้าคำนวณ–จ่ายดอกเบี้ย (depIntRuleOf) — บัญชีที่เข้าโครงการได้ดอกเบี้ยพิเศษของรอบรวมด้วย
+function depProjLine(a, days, asOf) {
+  const r = (typeof window.depIntRuleOf === 'function') ? window.depIntRuleOf(a, asOf)
+    : { rate: Number(a.rate) || 0, taxRate: window.depTaxRate(a.typeCode), dayBase: 365 };
+  const gross = a.balance * (r.rate / 100) * days / (r.dayBase || 365);
+  const taxRate = r.taxRate;
   const tax = gross * taxRate;
   return { accNo: a.accNo, member: a.member, name: a.name, dept: a.dept, type: a.type, typeCode: a.typeCode,
-    balance: a.balance, rate: a.rate, days, taxRate, gross, tax, net: gross - tax };
+    balance: a.balance, rate: r.rate, days, taxRate, gross, tax, net: gross - tax,
+    projectName: a.projectCode ? (a.projectName || a.projectCode) : '' };
 }
 const depProjSum = (rows, k) => rows.reduce((s, x) => s + (x[k] || 0), 0);
 
@@ -41,6 +45,7 @@ function DepInterestProjectionPage({ onToast, mode }) {
   // ตัวกรองแบบระบบเดิม (เฉพาะประมาณการจ่ายล่วงหน้า): สาขา · ช่วงวันที่ · ช่วงประเภท → กด "ประมวลผล"
   const allTypes = (window.DEP_ACCTYPE_SEED || []).filter(t => t.enabled);
   const [branch, setBranch] = useState('สำนักงานใหญ่');
+  const [appliedBranch, setAppliedBranch] = useState('สำนักงานใหญ่'); // สาขาที่ใช้กรองจริง (หลังกด "ประมวลผล")
   const [dFrom, setDFrom] = useState(adv ? nxt.from : '');
   const [dTo, setDTo] = useState(adv ? nxt.to : '');
   const [tFrom, setTFrom] = useState(allTypes[0] ? allTypes[0].code : '');
@@ -49,7 +54,7 @@ function DepInterestProjectionPage({ onToast, mode }) {
   const runAdv = () => {
     let a = allTypes.findIndex(t => t.code === tFrom), b = allTypes.findIndex(t => t.code === tTo);
     if (a > b) { const x = a; a = b; b = x; }
-    setFromDate(dFrom); setToDate(dTo); setRange({ a, b });
+    setFromDate(dFrom); setToDate(dTo); setRange({ a, b }); setAppliedBranch(branch);
     onToast && onToast('ประมวลผลประมาณการจ่ายดอกเบี้ยล่วงหน้าแล้ว');
   };
   const [openType, setOpenType] = useState(null); // typeCode ที่กำลังดูรายละเอียด
@@ -57,12 +62,17 @@ function DepInterestProjectionPage({ onToast, mode }) {
   // ช่วงวันจริงที่ใช้คำนวณ
   const from = periodId === 'custom' ? fromDate : period.from;
   const to = periodId === 'custom' ? toDate : period.to;
-  const days = window.depDaysBetween(from, to);
+  // นับรวมวันแรกและวันสุดท้าย — ตรงกับหน้า "คำนวณดอกเบี้ย" (เลือกวันเดียวกัน = 1 วัน)
+  const days = (from && to && to >= from) ? window.depDaysBetween(from, to) + 1 : 0;
 
   // บัญชีใช้งานอยู่ + บรรทัดประมาณการ
   const lines = useMemo(
-    () => accounts.filter(a => a.status === 'active').map(a => depProjLine(a, days)),
-    [accounts, days]
+    () => accounts
+      .filter(a => a.status === 'active')
+      // กรองสาขา (เฉพาะประมาณการจ่ายล่วงหน้า) — บัญชีที่ไม่ระบุสาขาถือเป็นสำนักงานใหญ่
+      .filter(a => !adv || (a.branch || 'สำนักงานใหญ่') === appliedBranch)
+      .map(a => depProjLine(a, days, to)),
+    [accounts, days, to, adv, appliedBranch]
   );
 
   // จัดกลุ่มตามประเภทเงินฝาก — อิงประเภทที่เปิดใช้งานทั้งหมด (แสดงทุกประเภท)
@@ -140,7 +150,7 @@ function DepInterestProjectionPage({ onToast, mode }) {
                 {grp.rows.map(l => (
                   <tr key={l.accNo}>
                     <td className="mono">{l.accNo}</td>
-                    <td><div className="lt-row-name">{l.name}</div><div className="lt-row-note muted mono">{l.member}</div></td>
+                    <td><div className="lt-row-name">{l.name}</div><div className="lt-row-note muted mono">{l.member}{l.projectName ? <span style={{ fontFamily: 'inherit' }}> · โครงการ {l.projectName}</span> : null}</div></td>
                     <td className="right mono">{fmt.money(l.balance, 2)}</td>
                     <td className="center mono">{l.rate.toFixed(2)}%</td>
                     <td className="center mono">{l.days}</td>
@@ -215,7 +225,7 @@ function DepInterestProjectionPage({ onToast, mode }) {
           )}
         </div>
         <div className="muted" style={{ fontSize: 11.5, marginTop: 8 }}>
-          <Icon name="info" size={11} /> สูตร: ยอดคงเหลือ × อัตรา% × จำนวนวัน ÷ 365 · ช่วง {fmt.date(from)} – {fmt.date(to)} = {days} วัน · เงินฝากประจำหักภาษี ณ ที่จ่าย 15%
+          <Icon name="info" size={11} /> สูตร: ยอดคงเหลือ × อัตรา% × จำนวนวัน ÷ 365 · ช่วง {fmt.date(from)} – {fmt.date(to)} = {days} วัน (นับรวมวันแรกและวันสุดท้าย){adv ? ' · สาขา ' + appliedBranch : ''} · เงินฝากประจำหักภาษี ณ ที่จ่าย 15%
         </div>
       </div>
       )}

@@ -4,12 +4,13 @@
 //  ลงมาอยู่ในแถบติดขอบล่าง (ปุ่มเดิมถูกซ่อน แต่ยังทำงานเดิม)
 // ════════════════════════════════════════════════════════════════════
 (function () {
+  // ติดตั้งครั้งเดียว — กัน 458-bottom_action_bar.js (รุ่นเก่า รายการ NO_BAR ไม่ครบ) ทำงานซ้อนจนปุ่มหาย/หน้ากระตุก
   if (window.__appActionBarInstalled) return;
   window.__appActionBarInstalled = true;
-  const MATCH = [/^บันทึก/, /^แก้(ไข|ข้อมูล)/, /^ยกเลิก/];
+  const MATCH = [/^บันทึก/, /^แก้(ไข|ข้อมูล)/, /^ยกเลิก/, /^พิมพ์(ปกสมุด| BOOK)/, /^ส่งอนุมัติ/];
   const ROWS = '.page-actions > button, .lrq-topbar button, .lrq-topbtns button,' +
                ' .page-actions > span > button';
-  const SKIP_IN = '.modal-card, .modal-backdrop, .lrq-printview, .lrqd-sheet';
+  const SKIP_IN = '.modal-card, .modal-backdrop, .lrq-printview, .lrqd-sheet, .fb-embed, .fb-vch-embed';
   // ปุ่มที่ให้คงอยู่มุมบนขวาของหน้า (ไม่ย้ายลงแถบล่าง)
   const KEEP_TOP = [/^\u0e41\u0e01\u0e49\u0e44\u0e02\u0e08\u0e33\u0e19\u0e27\u0e19\u0e04\u0e19\u0e04\u0e49\u0e33/, /^\u0e41\u0e01\u0e49\u0e44\u0e02\u0e42\u0e04\u0e23\u0e07\u0e01\u0e32\u0e23/, /\u0e2b\u0e19\u0e31\u0e07\u0e2a\u0e37\u0e2d\u0e40\u0e0a\u0e34\u0e0d/];
 
@@ -17,11 +18,11 @@
   bar.className = 'app-action-bar';
   bar.setAttribute('role', 'toolbar');
 
-  const order = (t) => (/^ยกเลิก/.test(t) ? 0 : /^แก้(ไข|ข้อมูล)/.test(t) ? 1 : 2);
+  const order = (t) => (/^ยกเลิก/.test(t) ? 0 : /^แก้(ไข|ข้อมูล)/.test(t) ? 1 : /^พิมพ์/.test(t) ? 2 : 3);
   let obs = null, lastSig = '';
 
   // หน้าที่จัดปุ่มไว้มุมบนขวาเองแล้ว — ไม่ต้องมีแถบล่าง
-  const NO_BAR = '[data-screen-label="หน้ารายละเอียดกลุ่มนับค้ำ"],[data-screen-label="หน้ารายละเอียดสมาชิก"],[data-screen-label="หน้ารายละเอียดประเภทเงินกู้"],[data-screen-label="หน้ารายละเอียดโครงการเงินกู้"],[data-screen-label="หน้ารายละเอียดอัตราดอกเบี้ยเงินกู้"],[data-screen-label="หน้ารายละเอียดจำนวนคนค้ำประกัน"],[data-screen-label="หน้ารายละเอียดข้อกำหนดสินเชื่อ"],[data-screen-label="หน้ารายละเอียดวงเงินค้ำประกัน"],[data-screen-label="หน้าเพิ่มสมาชิกใหม่"],[data-screen-label*="สร้างคำขอกู้"],[data-screen-label="บันทึกหลักทรัพย์"],[data-screen-label="สำรวจหลักทรัพย์"],[data-screen-label="หน้าเบิกเงินกู้ค้างจ่าย (รายละเอียด)"],[data-screen-label="หน้ารายละเอียดคำขอสินไหม"],[data-screen-label="หน้าบันทึกทะเบียนขอสินไหม"]';
+  const NO_BAR = '[data-screen-label="หน้ารายละเอียดกลุ่มนับค้ำ"],[data-screen-label="หน้ารายละเอียดสมาชิก"],[data-screen-label="หน้ารายละเอียดประเภทเงินกู้"],[data-screen-label="หน้ารายละเอียดจำนวนคนค้ำประกัน"],[data-screen-label="หน้ารายละเอียดข้อกำหนดสินเชื่อ"],[data-screen-label="หน้ารายละเอียดวงเงินค้ำประกัน"],[data-screen-label="หน้าข้อกำหนดระบบเงินฝาก"],[data-screen-label="หน้ารายการธนาคาร"],[data-screen-label="หน้ารายละเอียดประเภทบัญชีเงินฝาก"],[data-screen-label="หน้ารายละเอียดโครงการเงินกู้"],[data-screen-label="หน้ารายละเอียดอัตราดอกเบี้ยเงินกู้"],[data-screen-label="หน้าเพิ่มสมาชิกใหม่"],[data-screen-label*="สร้างคำขอกู้"],[data-screen-label="บันทึกหลักทรัพย์"],[data-screen-label="สำรวจหลักทรัพย์"],[data-screen-label="หน้าเบิกเงินกู้ค้างจ่าย (รายละเอียด)"],[data-screen-label="หน้ารายละเอียดคำขอสินไหม"],[data-screen-label="หน้าบันทึกทะเบียนขอสินไหม"],[data-screen-label="หน้ารายละเอียดกำหนดเงินเดือนคงเหลือ"]';
 
   function pass(main) {
     const originals = [];
@@ -43,7 +44,9 @@
     });
     originals.sort((a, c) => order((a.textContent || '').trim()) - order((c.textContent || '').trim()));
 
-    const sig = originals.map((b) => (b.textContent || '').trim() + '|' + (b.disabled ? 1 : 0)).join('~');
+    // ปุ่มที่อยู่ในส่วน inert (โหมดดูอย่างเดียว) → แสดงในแถบแต่กดไม่ได้
+    const locked = (b) => b.disabled || !!b.closest('[inert], fieldset[disabled], .fb-readonly');
+    const sig = originals.map((b) => (b.textContent || '').trim() + '|' + (locked(b) ? 1 : 0)).join('~');
     if (sig === lastSig) return;
     lastSig = sig;
 
@@ -56,8 +59,8 @@
     originals.forEach((b) => {
       const c = b.cloneNode(true);
       c.classList.remove('ab-moved');
-      c.disabled = b.disabled;
-      c.addEventListener('click', (e) => { e.preventDefault(); b.click(); });
+      c.disabled = locked(b);
+      c.addEventListener('click', (e) => { e.preventDefault(); if (locked(b)) return; b.click(); });
       bar.appendChild(c);
     });
     bar.classList.add('show');

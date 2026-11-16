@@ -270,13 +270,13 @@ function JBookConfigPage({ onToast }) {
                     {c.note && <div className="ac-note">{c.note}</div>}
                   </td>
                   <td className="center">
-                    <button className={"ac-switch" + (c.enabled ? ' on' : '')}
-                            onClick={() => toggleEnabled(c)}
-                            title={c.enabled ? 'คลิกเพื่อปิดใช้งาน' : 'คลิกเพื่อเปิดใช้งาน'}
-                            aria-pressed={c.enabled}>
-                      <span className="ac-switch-track"><span className="ac-switch-knob" /></span>
-                      <span className="ac-switch-label">{c.enabled ? 'ใช้งาน' : 'ไม่ใช้งาน'}</span>
-                    </button>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                      <window.ConstSwitch on={c.enabled}
+                        onClick={() => window.depConfirmOff(c.enabled, (c.code || '') + ' · ' + (c.name || ''), () => toggleEnabled(c),
+                          'ประเภทสมุดรายวันนี้จะไม่แสดงเป็นตัวเลือกในการทำรายการบัญชี ข้อมูลเดิมยังคงอยู่', 'ปิดการใช้งานประเภทสมุดรายวัน',
+                          { effectOn: 'ประเภทสมุดรายวันนี้จะแสดงเป็นตัวเลือกในการทำรายการบัญชีอีกครั้ง' })} />
+                      <window.ConstStatusPill on={c.enabled} />
+                    </span>
                   </td>
                   <td className="bud-act-cell">
                     <div className="bud-acts" style={{ justifyContent: 'center' }}>

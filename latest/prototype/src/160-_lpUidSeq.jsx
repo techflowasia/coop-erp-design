@@ -94,6 +94,8 @@ const LP_FIELD_LABELS = {
   noMonthlyInstallment: 'ไม่ผ่อนรายเดือน', dividendRepayBase: 'ตัดชำระจาก',
   accrueInterestMonthly: 'สะสมดอกเบี้ยรายเดือน', interestOnlyAllowed: 'จ่ายเฉพาะดอกเบี้ยได้',
   checkRebateHistory: 'ตรวจยอดเฉลี่ยคืน', rebatePayPercent: '% การจ่ายจากปันผล',
+  divNextPayDate: 'วันที่ประมาณการจ่ายปันผลปีถัดไป', divCalcYear: 'ปีที่นำยอดปันผล+เฉลี่ยคืนมาคำนวณ',
+  divRightPct: 'สิทธิกู้ % จากยอดปันผล+เฉลี่ยคืน', divCremationPct: 'หักฌาปนกิจ (%)', divMinNet: 'ยอดสุทธิขั้นต่ำที่ให้กู้',
 };
 const LP_TABLE_LABELS = {
   limitRights: 'สิทธิแบบกำหนดเอง', limitCollateral: 'สิทธิจากหลักประกัน', interestTiers: 'ดอกเบี้ยตามช่วงเวลา', amountInterestTiers: 'ดอกเบี้ยตามเงินกู้',guaranteeRules: 'กำหนดหุ้น/บุคคลค้ำ', collateralValues: 'มูลค่าหลักประกัน',
@@ -274,14 +276,22 @@ function LpDetail({ record, onBack, onSave, onShowHistory, onSaveTemplate, start
     setTab(id);
   };
   const discardAndGo = () => { setDraft(record); setEditing(false); setTab(pendingTab); setPendingTab(null); };
-  const saveAndGo    = () => { onSave(draft, effectiveDate, { silent: true }); setTab(pendingTab); setPendingTab(null); };
+  // ตรวจตารางดอกเบี้ยก่อนบันทึก — ไม่ผ่าน: พาไปแท็บดอกเบี้ยและแสดงข้อความแจ้ง
+  const [valErrors, setValErrors] = useState([]);
+  const checkBeforeSave = () => {
+    const errs = window.lpInterestErrors ? window.lpInterestErrors(draft) : [];
+    setValErrors(errs);
+    if (errs.length) { setTab('interest'); setPendingTab(null); }
+    return errs.length === 0;
+  };
+  const saveAndGo    = () => { if (!checkBeforeSave()) return; onSave(draft, effectiveDate, { silent: true }); setTab(pendingTab); setPendingTab(null); };
 
   useEffect(() => { if (!editing) setDraft(record); }, [record, editing]);
 
   const startEdit = () => { setDraft(record); setEffectiveDate(lpToday()); setEditing(true); };
   const cancel    = () => setConfirmCancel(true);
-  const doCancel  = () => { setDraft(record); setEditing(false); setConfirmCancel(false); };
-  const save = () => { onSave(draft, effectiveDate); setSavedAt(new Date()); setEditing(false); };
+  const doCancel  = () => { setDraft(record); setEditing(false); setConfirmCancel(false); setValErrors([]); };
+  const save = () => { if (!checkBeforeSave()) return; onSave(draft, effectiveDate); setSavedAt(new Date()); setEditing(false); };
 
   const cur = editing ? draft : record;
   const setHdr = (k, v) => setDraft(d => ({ ...d, [k]: v }));
@@ -358,6 +368,19 @@ function LpDetail({ record, onBack, onSave, onShowHistory, onSaveTemplate, start
           ))}
         </div>
       </div>
+
+      {editing && valErrors.length > 0 && (
+        <div className="search-card" style={{ marginTop: 12, padding: '12px 16px', border: '1px solid #ffccc7', background: '#fff2f0' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, color: 'var(--danger, #cf1322)', fontSize: 13 }}>
+            <Icon name="info" size={14} /> บันทึกไม่ได้ — กรุณาแก้ไขข้อมูลในแท็บดอกเบี้ย ({valErrors.length} รายการ)
+            <span className="spacer" style={{ flex: 1 }} />
+            <button className="btn text sm" onClick={() => setValErrors([])} aria-label="ปิดข้อความแจ้ง"><Icon name="close" size={12} /></button>
+          </div>
+          <ul style={{ margin: '6px 0 0', paddingLeft: 22, fontSize: 12.5, color: 'rgba(0,0,0,.75)', lineHeight: 1.7 }}>
+            {valErrors.map((m, i) => <li key={i}>{m}</li>)}
+          </ul>
+        </div>
+      )}
 
       {tab === 'general' && <LpTabGeneral {...tabProps} />}
       {tab === 'limit' && <LpTabLimit {...tabProps} />}

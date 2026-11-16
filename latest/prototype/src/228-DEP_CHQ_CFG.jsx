@@ -6,6 +6,34 @@
 
 const chqToIso = (s) => { const m = String(s || '').match(/^(\d{2})\/(\d{2})\/(\d{4})$/); return m ? (Number(m[3]) - 543) + '-' + m[2] + '-' + m[1] : ''; };
 const chqToTh = (iso) => { const [y, m, d] = String(iso || '').split('-'); return y ? d + '/' + m + '/' + (Number(y) + 543) : ''; };
+// ── ทะเบียนเช็ครับฝาก — เช็คจากหน้าฝาก/ถอนหลายยอด และฝาก/ถอน/โอน/ปิดบัญชี (สถานะ pending → cleared / returned)
+const DEP_CHQ_REG_KEY = 'dep_cheque_register_v1';
+const chqIsoToday = () => (window.dpcToday ? window.dpcToday() : new Date().toISOString().slice(0, 10));
+window.depChqRegLoad = function () {
+  try { const s = localStorage.getItem(DEP_CHQ_REG_KEY); if (s) return JSON.parse(s); } catch (e) {}
+  const seed = (window.DEP_DAILY_CHEQUES || []).map((c, i) => ({ id: 'CHQ-S' + String(i + 1).padStart(3, '0'), chqNo: c.chqNo, bank: c.bank, branch: c.branch,
+    type: '', floatDays: 0, faceDate: chqToIso(c.faceDate), sendDate: chqToIso(c.sendDate), amount: c.amount, accNo: c.accNo, accName: c.accName,
+    src: 'ข้อมูลตั้งต้น', status: 'pending', actDate: '', reason: '', fee: 0, by: '' }));
+  try { localStorage.setItem(DEP_CHQ_REG_KEY, JSON.stringify(seed)); } catch (e) {}
+  return seed;
+};
+window.depChqRegSave = (l) => { try { localStorage.setItem(DEP_CHQ_REG_KEY, JSON.stringify(l)); } catch (e) {} };
+window.depChqRegAdd = (rows) => {
+  if (!rows || !rows.length) return;
+  const cur = window.depChqRegLoad();
+  window.depChqRegSave([...rows.map((r, i) => ({ id: 'CHQ-' + Date.now() + '-' + i, status: 'pending', actDate: '', reason: '', fee: 0, ...r })), ...cur]);
+};
+const DEP_CHQ_ST = { pending: 'รอเรียกเก็บ', cleared: 'ผ่านเช็คแล้ว', returned: 'คืนเช็คแล้ว' };
+// ประเภท / กลุ่มเงินฝากของบัญชี — จากข้อมูลบัญชี + ค่าคงที่ประเภทเงินฝาก / ประเภทกลุ่มเงินฝาก
+const chqAccInfo = (accNo, accounts, types, kinds) => {
+  const a = accounts.find(x => x.accNo === accNo) || {};
+  const rec = types.find(t => t.code === a.typeCode);
+  const g = rec && rec.settings ? (window.depKindNorm ? window.depKindNorm(rec.settings.depGroup) : rec.settings.depGroup) : '';
+  const k = kinds.find(o => o.v === g);
+  return { acc: a, depType: a.typeCode ? a.typeCode + ' ' + (a.type || '') : '', depGroup: k ? k.l.replace(/^\S+\s/, '') : '' };
+};
+const chqTxnName = (code, fb) => { try { const r = (window.depTxnTypeLoad ? window.depTxnTypeLoad() : []).find(x => x.code === code); return (r && r.name) || fb; } catch (e) { return fb; } };
+
 const DEP_CHQ_CFG = {
   clear: { title: 'ผ่านเช็ค', desc: 'นำเช็คที่เรียกเก็บได้ผ่านรายการเข้าระบบเงินฝาก', sumLabel: 'รวมผ่านเช็ค', action: 'บันทึกผ่านเช็ค', dateCol: 'วันที่ผ่าน', doneStatus: 'ผ่านเช็คแล้ว' },
   ret:   { title: 'คืนเช็ค', desc: 'บันทึกรายการขอคืนเช็คที่เรียกเก็บไม่ได้ พร้อมเหตุผลการคืน', sumLabel: 'รวมคืนเช็ค', action: 'บันทึกคืนเช็ค', dateCol: 'วันที่คืนเช็ค', doneStatus: 'คืนเช็คแล้ว' },
@@ -25,18 +53,33 @@ function DepChequeOpsPage({ variant = 'clear', onToast }) {
   const cfg = DEP_CHQ_CFG[variant];
   const isRet = variant === 'ret';
 
-  const [date, setDate] = useState('25/02/2569');
+  const today = chqIsoToday();
+  const [date, setDate] = useState(chqToTh(today));
   const [status, setStatus] = useState('รอเรียกเก็บ');
   const [rows, setRows] = useState(null);
   const [sel, setSel] = useState([]);
   const [cur, setCur] = useState(null);
-  const [actDate, setActDate] = useState('25/02/2569');
-  const [reason, setReason] = useState(window.DEP_CHQ_RETURN_REASONS[0]);
+  const [actDate, setActDate] = useState(chqToTh(today));
+  // เหตุผลการคืนเช็ค / ค่าธรรมเนียมเช็คคืน — กรอกเอง (ไม่ใช้ค่าคงที่)
+  const [reason, setReason] = useState('');
+  const [fee, setFee] = useState('');
 
+  // ดึงจากทะเบียนเช็คจริง — กรองวันที่นำส่ง (ถึงวันที่เลือก) และสถานะ
   const pull = () => {
-    setRows(window.DEP_DAILY_CHEQUES.map((c, i) => ({ ...c, seq: i + 1, done: false, actDate: '', reason: '' })));
+    const iso = chqToIso(date);
+    const want = isRet ? (status === 'รอเรียกเก็บ' ? ['pending'] : status === 'คืนเช็คแล้ว' ? ['returned'] : ['pending', 'returned', 'cleared'])
+                       : ['pending', 'cleared'];
+    const accounts = window.depTxnLoadAccounts ? window.depTxnLoadAccounts() : [];
+    const types = window.datLoad ? window.datLoad() : [];
+    const kinds = window.depKindOpts ? window.depKindOpts() : [];
+    const got = window.depChqRegLoad().filter(c => want.includes(c.status) && (!iso || !c.sendDate || c.sendDate <= iso))
+      .sort((a, b) => String(a.sendDate).localeCompare(String(b.sendDate)));
+    setRows(got.map((c, i) => { const inf = chqAccInfo(c.accNo, accounts, types, kinds); return {
+      ...c, _id: c.id, seq: i + 1, done: c.status !== 'pending', status: DEP_CHQ_ST[c.status] || c.status,
+      sendDate: chqToTh(c.sendDate), faceDate: chqToTh(c.faceDate), actDate: chqToTh(c.actDate),
+      accName: c.accName || inf.acc.name || '', depType: inf.depType, depGroup: inf.depGroup }; }));
     setSel([]); setCur(null);
-    onToast && onToast(`ดึงข้อมูลเช็คนำส่งวันที่ ${date} — ${window.DEP_DAILY_CHEQUES.length} รายการ`);
+    onToast && onToast(`ดึงข้อมูลเช็คนำส่งถึงวันที่ ${date} — ${got.length} รายการ`);
   };
 
   const list = rows || [];
@@ -46,13 +89,43 @@ function DepChequeOpsPage({ variant = 'clear', onToast }) {
   const doneTotal = list.filter(r => r.done).reduce((s, r) => s + r.amount, 0);
 
   const commit = () => {
+    if (isRet && !reason.trim()) { onToast && onToast('กรุณาระบุเหตุผลการคืนเช็ค'); return; }
     const ids = picked.map(r => r.seq);
+    const regIds = picked.map(r => r._id);
+    const actIso = chqToIso(actDate) || today;
+    const feeNum = isRet ? (Number(fee) || 0) : 0;
+    const user = window.DEP_OPS_USER || '';
+    // คืนเช็ค → หักยอดเช็ค (RCL) + ค่าธรรมเนียมเช็คคืน (FEE) ออกจากบัญชี · บันทึกสถานะลงทะเบียนเช็ค
+    let accs = window.depTxnLoadAccounts ? window.depTxnLoadAccounts() : [];
+    const newL = [];
+    const reg = window.depChqRegLoad().map(c => {
+      if (!regIds.includes(c.id)) return c;
+      if (!isRet) return { ...c, status: 'cleared', actDate: actIso, by: user };
+      const a = accs.find(x => x.accNo === c.accNo);
+      if (a && window.depTxnNextId) {
+        let bal = Number(a.balance) - Number(c.amount);
+        newL.push({ id: window.depTxnNextId(), date: actIso, accNo: a.accNo, member: a.member, type: 'withdraw',
+          channel: 'RCL ' + chqTxnName('RCL', 'เช็คคืน') + ' ' + c.chqNo, code: 'RCL', amount: Number(c.amount), fee: 0, balance: bal, ref: c.chqNo, by: user });
+        if (feeNum) {
+          bal -= feeNum;
+          newL.push({ id: window.depTxnNextId(), date: actIso, accNo: a.accNo, member: a.member, type: 'withdraw',
+            channel: 'FEE ค่าธรรมเนียมเช็คคืน ' + c.chqNo, code: 'FEE', amount: feeNum, fee: 0, balance: bal, ref: c.chqNo, by: user });
+        }
+        accs = accs.map(x => x.accNo === a.accNo ? { ...x, balance: bal } : x);
+      }
+      return { ...c, status: 'returned', actDate: actIso, reason, fee: feeNum, by: user };
+    });
+    window.depChqRegSave(reg);
+    if (isRet && newL.length) {
+      window.depTxnSaveAccounts && window.depTxnSaveAccounts(accs);
+      window.depTxnSaveLedger && window.depTxnSaveLedger([...newL.reverse(), ...(window.depTxnLoadLedger ? window.depTxnLoadLedger() : [])]);
+    }
     setRows(list.map(r => ids.includes(r.seq)
-      ? { ...r, done: true, status: cfg.doneStatus, actDate, reason: isRet ? reason : '' } : r));
+      ? { ...r, done: true, status: cfg.doneStatus, actDate, reason: isRet ? reason : '', fee: feeNum } : r));
     setSel([]);
     audit.log({
       action: 'update', module: 'เงินฝาก — ' + cfg.title, target: date,
-      summary: `${cfg.action} ${ids.length} ฉบับ รวม ${fmt.money(picked.reduce((s, r) => s + r.amount, 0), 2)} บาท${isRet ? ' · เหตุผล: ' + reason : ''}`,
+      summary: `${cfg.action} ${ids.length} ฉบับ รวม ${fmt.money(picked.reduce((s, r) => s + r.amount, 0), 2)} บาท${isRet ? ' · เหตุผล: ' + reason + (feeNum ? ' · ค่าธรรมเนียม ' + fmt.money(feeNum, 2) + ' บาท/ฉบับ' : '') : ''}`,
       changes: picked.map(r => ({ field: 'เช็คเลขที่ ' + r.chqNo, before: 'รอเรียกเก็บ', after: cfg.doneStatus })),
     });
     window.depSuccess({ title: 'บันทึกข้อมูลเรียบร้อยแล้ว', desc: cfg.action + ' ' + ids.length + ' ฉบับเรียบร้อยแล้ว' });
@@ -68,10 +141,10 @@ function DepChequeOpsPage({ variant = 'clear', onToast }) {
       </div>
 
       <div className="search-card dat-section" style={{ marginTop: 0 }}>
-        <DepSecHead icon="filter" title="แสดงรายละเอียดข้อมูลวันที่" sub="ระบุวันที่นำส่งเช็คเพื่อดึงรายการ" />
+        <DepSecHead icon="filter" title="แสดงรายละเอียดข้อมูลวันที่" sub="ดึงเช็คที่นำส่งถึงวันที่ระบุ จากทะเบียนเช็ครับฝาก" />
         <div style={{ padding: 16, display: 'flex', gap: 16, alignItems: 'flex-end', flexWrap: 'wrap' }}>
           <div className="dat-grid" style={{ padding: 0, flex: 1, minWidth: 300, gridTemplateColumns: isRet ? '200px 200px' : '200px', justifyContent: 'start' }}>
-            <DatFieldLite label="วันที่">
+            <DatFieldLite label="นำส่งถึงวันที่">
               <window.ThaiDateField value={chqToIso(date)} onChange={(v) => { setDate(chqToTh(v)); setRows(null); }} />
             </DatFieldLite>
             {isRet && (
@@ -126,7 +199,7 @@ function DepChequeOpsPage({ variant = 'clear', onToast }) {
                   <td className="right mono">{fmt.money(r.amount, 2)}</td>
                   <td className="center"><span className={'pill ' + (r.done ? (isRet ? 'bad' : 'ok') : 'warn')}>{r.status}</span></td>
                   <td className="center mono">{r.actDate || '—'}</td>
-                  {isRet && <td>{r.reason || <span className="muted">—</span>}</td>}
+                  {isRet && <td>{r.reason || <span className="muted">—</span>}{r.fee ? <div className="muted" style={{ fontSize: 11.5 }}>ค่าธรรมเนียม {fmt.money(r.fee, 2)}</div> : null}</td>}
                 </tr>
               ))}
             </tbody>
@@ -138,7 +211,7 @@ function DepChequeOpsPage({ variant = 'clear', onToast }) {
             </tr></tfoot>
           </table>
         </div></div>
-        <div style={{ padding: 16, display: 'grid', gridTemplateColumns: isRet ? '200px minmax(0,1fr) auto' : '200px max-content', justifyContent: isRet ? 'start' : 'space-between', gap: 12, alignItems: 'end', borderTop: '1px solid var(--border)' }}>
+        <div style={{ padding: 16, display: 'grid', gridTemplateColumns: isRet ? '200px minmax(0,1fr) 160px auto' : '200px max-content', justifyContent: isRet ? 'start' : 'space-between', gap: 12, alignItems: 'end', borderTop: '1px solid var(--border)' }}>
           <div className="dat-field" style={{ minWidth: 0 }}>
             <label className="dat-label">{cfg.dateCol}</label>
             <div style={list.length === 0 ? { opacity: .55, pointerEvents: 'none' } : undefined}>
@@ -148,9 +221,15 @@ function DepChequeOpsPage({ variant = 'clear', onToast }) {
           {isRet && (
             <div className="dat-field" style={{ minWidth: 0 }}>
               <label className="dat-label">เหตุผลการคืนเช็ค</label>
-              <select className="cfg-input" value={reason} disabled={list.length === 0} onChange={(e) => setReason(e.target.value)}>
-                {window.DEP_CHQ_RETURN_REASONS.map(o => <option key={o}>{o}</option>)}
-              </select>
+              <input className="cfg-input" value={reason} disabled={list.length === 0} placeholder="ระบุเหตุผลการคืนเช็ค"
+                     onChange={(e) => setReason(e.target.value)} />
+            </div>
+          )}
+          {isRet && (
+            <div className="dat-field" style={{ minWidth: 0 }}>
+              <label className="dat-label">ค่าธรรมเนียมเช็คคืน / ฉบับ</label>
+              <input className="cfg-input mono" style={{ textAlign: 'right' }} inputMode="decimal" value={fee} disabled={list.length === 0}
+                     onChange={(e) => setFee(e.target.value.replace(/[^0-9.]/g, ''))} placeholder="0.00" />
             </div>
           )}
           <button className="btn primary" style={{ whiteSpace: 'nowrap' }} disabled={picked.length === 0} onClick={commit}>

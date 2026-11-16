@@ -63,6 +63,20 @@ window.LPJ_SPECIAL_SEED = [
 ].map(([c, n]) => lpjMk(c, n, 'LP-30', 'เงินกู้พิเศษ — แสดงในบันทึกจ่ายเงินกู้พิเศษ', 1));
 window.LPJ_SEED = [...window.LPJ_NORMAL_SEED, ...window.LPJ_EMERGENCY_SEED, ...window.LPJ_SPECIAL_SEED];
 
+// หน้าต่างยืนยันซ้อนบนหน้าต่างอื่น (portal ไป body + ยกชั้นให้อยู่บนสุด)
+function LpjTopConfirm(props) {
+  const M = window.ToggleConfirmModal;
+  if (!M) return null;
+  const el = <div style={{ position: 'relative', zIndex: 5000 }}><M {...props} /></div>;
+  return window.ReactDOM && window.ReactDOM.createPortal ? window.ReactDOM.createPortal(el, document.body) : el;
+}
+// มีคำขอกู้อ้างโครงการนี้แล้วหรือไม่ — มีผู้ใช้สิทธิ์ในโครงการย่อย หรือเป็นโครงการตัวอย่างที่ใบคำขอกู้ (mock) อ้างอยู่
+window.lpjHasRequests = (project) => {
+  if (!project) return false;
+  const used = (project.rounds || []).some(r => Object.values(r.memberUsed || {}).some(n => Number(n) > 0));
+  return used || (window.LPJ_SEED || []).some(x => x.id === project.id);
+};
+
 function lpjNormalizeRound(r) {
   return {
     id: r.id || lpjUid('PJR'), name: r.name || '', abbr: r.abbr || '', year: r.year || lpjThYear(lpjToday()),
@@ -394,6 +408,7 @@ function LpjRoundModal({ project, editRec, onClose, onSubmit }) {
     };
   });
   const [error, setError] = useState('');
+  const [banAsk, setBanAsk] = useState(null);   // id โครงการที่กำลังขอนำออกจากรายการห้ามกู้ซ้ำ
   const typeLimits = window.lpjTypeLimits(project.loanTypeIds || []);
   const set = (k, v) => { setF(s => ({ ...s, [k]: v })); setError(''); };
   const otherGroups = React.useMemo(() => {
@@ -457,6 +472,8 @@ function LpjRoundModal({ project, editRec, onClose, onSubmit }) {
   const submit = (e) => {
     e.preventDefault();
     if (!String(f.name).trim()) return setError('กรุณาระบุชื่อโครงการย่อย');
+    if (!String(f.abbr || '').trim()) return setError(isEdit ? 'กรุณาระบุตัวย่อโครงการ — โครงการเดิมที่ยังไม่มีตัวย่อต้องกรอกก่อนบันทึก' : 'กรุณาระบุตัวย่อโครงการ');
+    if (String(f.abbr).trim().length > 100) return setError('ตัวย่อโครงการต้องไม่เกิน 100 ตัวอักษร');
     if (!(f.loanTypeIds || []).length) return setError('กรุณาเลือกประเภทเงินกู้ที่ใช้ในโครงการย่อยนี้');
     const ps = f.periods.filter(p => p.start || p.end);
     if (!f.noPeriodLimit) {
@@ -519,9 +536,10 @@ function LpjRoundModal({ project, editRec, onClose, onSubmit }) {
               <label className="lt-modal-label">ชื่อโครงการย่อย <span className="cfg-required">*</span></label>
               <input className="cfg-input" style={{ width: '100%' }} value={f.name} autoFocus={!isEdit} placeholder="เช่น โครงการที่อยู่อาศัย ปี 2569" onChange={(e) => set('name', e.target.value)} />
             </div>
-            <div style={{ flex: '0 0 104px' }}>
-              <label className="lt-modal-label">ตัวย่อโครงการ</label>
-              <input className="cfg-input" style={{ width: '100%' }} value={f.abbr || ''} placeholder="พศ68" onChange={(e) => set('abbr', e.target.value)} />
+            <div style={{ flex: '0 0 140px' }}>
+              <label className="lt-modal-label">ตัวย่อโครงการ <span className="cfg-required">*</span></label>
+              <input className="cfg-input" style={{ width: '100%', borderColor: error && !String(f.abbr || '').trim() ? '#ff4d4f' : undefined }}
+                     value={f.abbr || ''} maxLength={100} placeholder="พศ68" onChange={(e) => set('abbr', e.target.value.slice(0, 100))} />
             </div>
             <div style={{ flex: '0 0 88px' }}>
               <label className="lt-modal-label">ปี (พ.ศ.)</label>
@@ -649,13 +667,22 @@ function LpjRoundModal({ project, editRec, onClose, onSubmit }) {
                   {(f.banWithRounds || []).map(id => (
                     <span key={id} className="sem-dept-chip on">
                       {banLabel(id)}
-                      <button type="button" className="sem-file-x" style={{ marginLeft: 2 }} onClick={() => toggleBan(id)} aria-label="นำออก">×</button>
+                      <button type="button" className="sem-file-x" style={{ marginLeft: 2 }} onClick={() => setBanAsk(id)} aria-label="นำออก">×</button>
                     </span>
                   ))}
                 </div>
               )}
             </div>
           </div>
+
+          {banAsk && (
+            <LpjTopConfirm next={false} title="ยืนยันนำโครงการออกจากรายการห้ามกู้ซ้ำ"
+              subtitle={f.name}
+              detail={'นำโครงการ “' + banLabel(banAsk) + '” ออกจากรายการห้ามกู้ซ้ำ ต้องการดำเนินการต่อหรือไม่'}
+              confirmLabel="นำออก"
+              onCancel={() => setBanAsk(null)}
+              onConfirm={() => { toggleBan(banAsk); setBanAsk(null); }} />
+          )}
 
           <div style={{ marginTop: 12 }}>
             <label className="lt-modal-label">หมายเหตุ / อ้างอิงประกาศ</label>
@@ -684,7 +711,13 @@ function LpjDetail({ project, onBack, onSaveProject, onAddRound, onEditRound, on
     ? { code: project.code, name: project.name, note: project.note || '', loanTypeIds: (project.loanTypeIds || []).slice() }
     : null);
   const [editErr, setEditErr] = useState('');
+  const [typeAsk, setTypeAsk] = useState(null);   // { id, blocked } = ประเภทเงินกู้ที่กำลังจะเปลี่ยนไป
   const types = React.useMemo(() => window.lpjLoanTypes(), []);
+  const typeName = (id) => { const t = types.find(x => x.id === id); return t ? t.code + ' — ' + t.name : (id || '—'); };
+  const askType = (id) => {
+    if (id === ((edit && edit.loanTypeIds) || [])[0]) return;
+    setTypeAsk({ id, blocked: window.lpjHasRequests(project) });
+  };
   const startEdit = () => { setEditErr(''); setEdit({ code: project.code, name: project.name, note: project.note || '', loanTypeIds: (project.loanTypeIds || []).slice() }); };
   const pickType = (id) => {
     const t = types.find(x => x.id === id);
@@ -724,6 +757,18 @@ function LpjDetail({ project, onBack, onSaveProject, onAddRound, onEditRound, on
           )}
       </div>
 
+      {typeAsk && (typeAsk.blocked
+        ? <LpjTopConfirm blocked next={false} title="เปลี่ยนประเภทเงินกู้ไม่ได้"
+            subtitle={project.code + ' · ' + project.name}
+            detail="เปลี่ยนประเภทเงินกู้ไม่ได้ เพราะมีคำขอกู้อ้างโครงการนี้แล้ว"
+            onCancel={() => setTypeAsk(null)} onConfirm={() => setTypeAsk(null)} />
+        : <LpjTopConfirm next={false} title="ยืนยันเปลี่ยนประเภทเงินกู้"
+            subtitle={project.code + ' · ' + project.name}
+            detail={'เปลี่ยนประเภทเงินกู้จาก “' + typeName(((edit && edit.loanTypeIds) || [])[0]) + '” เป็น “' + (typeAsk.id ? typeName(typeAsk.id) : 'ไม่ระบุ') + '” ต้องการดำเนินการต่อหรือไม่'}
+            confirmLabel="เปลี่ยน"
+            onCancel={() => setTypeAsk(null)}
+            onConfirm={() => { pickType(typeAsk.id); setTypeAsk(null); }} />)}
+
       <div className="search-card" style={{ padding: 18 }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, flexWrap: 'wrap' }}>
           <div className="lt-head-ico"><Icon name="calendar" size={20} /></div>
@@ -736,7 +781,7 @@ function LpjDetail({ project, onBack, onSaveProject, onAddRound, onEditRound, on
                 </div>
                 <div>
                   <label className="lt-modal-label">ประเภทเงินกู้ที่ใช้ <span className="cfg-required">*</span></label>
-                  <select className="cfg-input" value={(edit.loanTypeIds || [])[0] || ''} onChange={(e) => pickType(e.target.value)}>
+                  <select className="cfg-input" value={(edit.loanTypeIds || [])[0] || ''} onChange={(e) => askType(e.target.value)}>
                     <option value="">เลือกประเภทเงินกู้</option>
                     {types.map(t => <option key={t.id} value={t.id}>{t.code} — {t.name}{t.enabled ? '' : ' (ปิดใช้งาน)'}</option>)}
                   </select>
@@ -758,7 +803,10 @@ function LpjDetail({ project, onBack, onSaveProject, onAddRound, onEditRound, on
                 <h1 className="lt-head-title">
                   <span className="mono" style={{ color: 'var(--text-muted)', fontWeight: 600 }}>{project.code}</span> · {project.name}
                 </h1>
-                <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>หมายเหตุ: {project.note || '—'}</div>
+                <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>
+                  ประเภทเงินกู้: <span style={{ color: 'rgba(0,0,0,.88)' }}>{(project.loanTypeIds || []).map(window.lpjTypeLabel).join(', ') || '—'}</span>
+                </div>
+                <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>หมายเหตุ: {project.note || '—'}</div>
               </>
             )}
           </div>
@@ -781,14 +829,13 @@ function LpjDetail({ project, onBack, onSaveProject, onAddRound, onEditRound, on
         </div>
         <div style={{ padding: '14px 16px 16px' }}>
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', minWidth: 1020, borderCollapse: 'collapse', fontSize: 13 }}>
+            <table style={{ width: '100%', minWidth: 840, borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
                 <tr style={{ background: '#fafafa' }}>
                   <th style={{ ...LPJ_TH, minWidth: 220 }}>ชื่อโครงการย่อย</th>
                   <th style={{ ...LPJ_TH, width: 110 }}>ตัวย่อโครงการ</th>
                   <th style={{ ...LPJ_TH, width: 70, textAlign: 'center' }}>ปี</th>
                   <th style={{ ...LPJ_TH, minWidth: 220 }}>ช่วงเวลาโครงการ</th>
-                  <th style={{ ...LPJ_TH, minWidth: 200 }}>ประเภทเงินกู้ที่ใช้</th>
                   <th style={{ ...LPJ_TH, width: 150, textAlign: 'right' }}>สิทธิ์การกู้สูงสุด/ราย</th>
                   <th style={{ ...LPJ_TH, width: 108, textAlign: 'center' }}>สถานะ</th>
                   <th style={{ ...LPJ_TH, width: 70, textAlign: 'center' }}>ใช้งาน</th>
@@ -816,11 +863,6 @@ function LpjDetail({ project, onBack, onSaveProject, onAddRound, onEditRound, on
                               {!r.noRepeat && p.rights ? <span style={{ color: 'rgba(0,0,0,.45)' }}> · {p.rights} ครั้ง/ราย</span> : null}
                             </span>
                           ))}
-                        </div>
-                      </td>
-                      <td style={LPJ_TD}>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                          {(r.loanTypeIds || []).map(id => <span key={id} className="chip">{window.lpjTypeLabel(id)}</span>)}
                         </div>
                       </td>
                       <td style={{ ...LPJ_TD, ...LPJ_MONO, textAlign: 'right' }}>
@@ -853,7 +895,7 @@ function LpjDetail({ project, onBack, onSaveProject, onAddRound, onEditRound, on
                   );
                 })}
                 {(project.rounds || []).length === 0 && (
-                  <tr><td colSpan={9} style={{ ...LPJ_TD, textAlign: 'center', color: 'rgba(0,0,0,.45)', padding: '28px 12px' }}>
+                  <tr><td colSpan={8} style={{ ...LPJ_TD, textAlign: 'center', color: 'rgba(0,0,0,.45)', padding: '28px 12px' }}>
                     ยังไม่มีโครงการย่อย — กด “สร้างโครงการย่อย” เพื่อเปิดรอบแรก
                   </td></tr>
                 )}
